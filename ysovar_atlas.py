@@ -21,6 +21,7 @@ import ysovar_lombscargle
 from great_circle_dist import dist_radec, dist_radec_fast
 
 def readdata(filename1, filename2):  
+	# outdated routine, not used anymore
 	print 'reading ysovar data...'
 	ysovar1raw = scipy.io.readsav(filename1) # this is the 3.6 mu data
 	ysovar1 = ysovar1raw['ch1lightcurves']
@@ -49,6 +50,7 @@ def radec_from_dict(data, RA = 'ra', DEC = 'dec'):
 
 
 def test_crossmatch_irac(yso1, yso2):
+	# outdated routine, not used anymore
 	crossid_test = np.ones(len(yso1), int)*-99999
 	id_dist = 1./3600. # = 1 arcsec
 	for i in np.arange(0,len(yso1)):
@@ -60,7 +62,7 @@ def test_crossmatch_irac(yso1, yso2):
 
 
 def readguentherlist(filename):  
-	# reads the data from Table 3 in Guenther+ 2012 and returns both (a) all data and (b) only ysos and stars as one subset.
+	# reads the data from Table 3 in Guenther+ 2012 and returns both (a) all data and (b) only ysos and stars as one subset. The data from the paper needs to be stored locally as ascii file.
 	print 'reading data from Guenther+ 2012 ...'
 	a = asciitable.read(filename)
 	guenther_data = a.data
@@ -84,6 +86,7 @@ def makeclassinteger(guenther_data_yso):
 
 
 def makecrossids(data1, data2, radius, ra1='RAdeg', dec1='DEdeg', ra2='ra', dec2='dec'):
+	# outdated function, no longer used
 	# make cross-ids (using the coordinates) between Spiter lcs and Guenther2012.
 	# use 1 arcsec as radius.
 	cross_ids = np.ones(len(data1),int) * -99999
@@ -104,7 +107,6 @@ sed_bands = {'Umag': ['e_Umag', 0.355, 1500], 'Bmag': ['e_Bmag', 0.430, 4000.87]
 # compare: http://casa.colorado.edu/~ginsbura/filtersets.htm
 # from: http://coolwiki.ipac.caltech.edu/index.php/Central_wavelengths_and_zero_points
 # from: http://arxiv.org/pdf/1011.2020.pdf for SLoan u', r', i' (Umag, Rmag, Imag)
-# check again later if all bands are correct (FLWO filters and such).
 def get_sed(data, sed_bands = sed_bands):
     '''make SED by collecting info from the input data
     
@@ -416,20 +418,51 @@ def check_dataset(data, min_number_of_times = 5, match_dist = 1./3600.):
     print '----------------------------------------------------------------------------'
 
 def make_onecolor_stats(datalist, datalist_error):
+    '''Calculates some basic statistical values for a single one-band light curve
+    
+    Parameters
+    ----------
+    datalist : np.array
+        single light curve in magnitudes
+    datalist_error : np.array
+        error on data points in magnitudes        
+        
+    Returns
+    -------
+    stats : np.array
+        array of statistical values (median, MAD, mean, stddev, chi**2 with respect to mean, maximum value, minimum value, "delta" (0.5 * (90th percentile - 1-th percentile)) )
+        
+    '''
 	median = np.median(datalist)
 	mad = np.median(abs(datalist - median))
 	mean = np.mean(datalist)
-	#stddev = np.sqrt(np.sum(((datalist - mean)**2)) / len(datalist))
-	#linear_scale = mean * 2.5**(mean - datalist)
 	stddev = np.std(datalist)
-	#skew = ( np.sum((datalist - mean)**3)/len(datalist) ) / ( np.sum((datalist - mean)**2)/len(datalist)  )**1.5
 	chisq_to_mean = np.sum( (datalist - mean)**2/(datalist_error**2) )/(len(datalist)-1)
-	# quantiles:
 	delta = (scipy.stats.mstats.mquantiles(datalist, prob=0.9) - scipy.stats.mstats.mquantiles(datalist, prob=0.1))/2.
-	return np.array([median, mad, mean, stddev, chisq_to_mean, np.max(datalist), np.min(datalist), delta])
+	stats = np.array([median, mad, mean, stddev, chisq_to_mean, np.max(datalist), np.min(datalist), delta])
+	return stats
 
 def make_twocolor_stats(datalist1, datalist1_error,datalist2, datalist2_error, verbose = True):
-    # calculates stetson index; use only simultaneous data!
+    '''Calculates the Stetson index for a two-band light curve. Uses only near-simultaneous data points as defined in dict_cleanup.
+    
+    Parameters
+    ----------
+    datalist1 : np.array
+        single light curve of band 1 in magnitudes
+    datalist1_error : np.array
+        error on data points of band 1 in magnitudes    
+    datalist2 : np.array
+        single light curve of band 2 in magnitudes
+    datalist2_error : np.array
+        error on data points of band 2 in magnitudes          
+        
+    Returns
+    -------
+    stetson : float
+        Stetson value for the provided two-band light curve
+        
+    '''
+    
     # number of datapoints:
     N = float(len(datalist1))
     if N > 1:
@@ -440,8 +473,6 @@ def make_twocolor_stats(datalist1, datalist1_error,datalist2, datalist2_error, v
         res_36 = (datalist1 - wmean_36) / datalist1_error
         res_45 = (datalist2 - wmean_45) / datalist2_error
         
-        #print N
-        # then the stetson index is:
         stetson = np.sqrt(1./(N*(N-1))) * np.sum( res_36 * res_45 )
         if verbose:
             print stetson
@@ -450,6 +481,21 @@ def make_twocolor_stats(datalist1, datalist1_error,datalist2, datalist2_error, v
 
 
 def make_stats(data, info, verbose = True):
+    '''Adds appropriate statistical values for all objects to info array.
+    
+    Parameters
+    ----------
+    data : np.ndarray
+        structure with all the raw object information
+    info : np.rec.array
+        structure with the refined object properties         
+        
+    Returns
+    -------
+    info : np.rec.array
+        structure with the updated object properties 
+        
+    '''
     for i in np.arange(0,len(data)):
         if 'm1' in data[i].keys():
             (info.median_36[i], info.mad_36[i], info.mean_36[i], info.stddev_36[i], info.chisq_36[i], info.max_36[i], info.min_36[i], info.delta_36[i])    = make_onecolor_stats(data[i]['m1'], data[i]['m1_error'])
@@ -480,7 +526,6 @@ def make_stats(data, info, verbose = True):
 def calc_reddening():
 	# this is basically from Rieke & Lebofsky 1984.
 	# I take the extinctions from the L and M band (3.5, 5.0).
-	# expand this function to do reddening vectors for different bands!
 	A36 = 0.058
 	A45 = 0.023
 	R36 = - A36/(A45 - A36)
@@ -491,8 +536,8 @@ def calc_reddening():
 
 def fit_twocolor(data):
 	# measures the slope of the data points in the color-magnitude diagram.
-	# this is just fitted with least squares, using the analytic formula.
-	# REMINDER TO SELF: REPLACE THIS WITH PYTHON'S ODR FITTING ROUTINE.
+	# this is just fitted with ordinary least squares, using the analytic formula.
+	# this is then used as a first guess for an orthogonal least squares fit with simultaneous treatment of errors in x and y (see fit_twocolor_odr)
 	x = data['m36'] - data['m45']
 	y = data['m36']
 	x_error = np.sqrt( data['m36_error']**2 + data['m45_error']**2 )
@@ -509,12 +554,11 @@ def fit_twocolor(data):
 	# now calculate chisquared for this line:
 	reduced_chisq = sum( (y - (m*x+b))**2/ y_error**2)/N
 	
-	# now fit reddening vector to data (just shifting it in y:)
+	# now fit theoretical reddening vector to data, for plotting purposes (i.e. just shifting it in y:)
 	m2 = calc_reddening()[0] # the sign is okay, because the y axis is inverted in the plots
 	b2 = 1/N * ( sum_y - m2 * sum_x )
 	reduced_chisq2 = sum( (y - (m2*x+b2))**2/y_error**2 )/N
 	
-	#print np.array([m,b,m2,b2])
 	return np.array([m,b,m2,b2,reduced_chisq,reduced_chisq2])
 
 
@@ -523,7 +567,7 @@ def fit_twocolor(data):
 
 
 def initialize_info_array(data, guenther_data, guenther_class):
-    # creates numpy record array for all data except the light curves themselves.
+    # creates numpy record array for all refined data of all objects.
     # fills in the id fields from the data dictionary.
     Ndata = 71 # number of data entries to be collected for each source
     oneset = []
@@ -536,7 +580,7 @@ def initialize_info_array(data, guenther_data, guenther_class):
         allsets.append(oneset)
     print len(allsets)
     infos = np.rec.array(allsets, dtype=[
-        ('id', '|f4'), # my ID number
+        ('id', '|f4'), # ID number
         ('id_guenther', '|f4'), # ID as in Guenther+ 2012
         ('index_guenther', '|f4'), # index where to find this in the Guenther data array ( = id_guenther - 1)
         ('ysoclass', '|f4'), # class from Guenther+ 2012 (0='XYSO', 1='I+I*', 2='II+II*', 3='III', 4='star')
@@ -686,8 +730,27 @@ def calc_ls(data, infos, maxper, oversamp = 4, maxfreq = 1.):
 
 
 def is_there_a_good_period(data,infos, power, minper, maxper):
-	# check if a strong periodogram peak is found
-	#print 'test'
+	'''check if a strong periodogram peak is found; if yes, this is saved to the info structure.
+	
+	Parameters
+	----------
+	data : np.ndarray
+	    which contains the input lightcurves
+	infos : np.rec.array
+	    info structure with refined object information
+	power : float
+	    required power threshold for "good" period
+	minper : float
+	    lowest period which is considered
+	maxper : float
+	    maximum period which is considered
+        Returns
+        -------
+        infos : np.rec.array
+            structure with the updated object properties ("good" period and power of peak)
+        
+        '''
+	
 	for i in np.arange(0, len(data)):
 		per = -99999.
 		peak = -99999.
@@ -718,7 +781,6 @@ def is_there_a_good_period(data,infos, power, minper, maxper):
 
 def phase_fold_data(data,infos):
 	# take data sets for which a strong periodogram peak is found and fold these data by period.
-	#new function for usual keyerror thing for phase data generation and plots.
 	for i in np.arange(0,len(data)):
 		period = infos.good_period[i]
 		if period > 0: # if there's a good period
@@ -733,7 +795,7 @@ def phase_fold_data(data,infos):
 
 
 def spectra_coordinates(filename):
-	
+	# only for IRAS 20050: read ascii file with info about hectospec data.
 	a = asciitable.read(filename)
 	ra_string = a['RA']
 	dec_string = a['DEC']
@@ -757,7 +819,7 @@ def spectra_coordinates(filename):
 
 
 def spectra_check(infos, ra, dec, files, night_id, radius):
-	# check if there's a hectospec spectrum available for the sources, and if yes, add the filename of the spectrum to the info array.
+	# only for IRAS 20050: check if there's a hectospec spectrum available for the sources, and if yes, add the filename of the spectrum to the info array.
 	for i in np.arange(0,len(infos)):
 		distance = np.sqrt((infos.ra_guenther[i] - ra)**2 + (infos.dec_guenther[i] - dec)**2)
 		min_ind = np.where(distance == min(distance))[0]
@@ -778,7 +840,6 @@ def make_latexfile(data, infos, outroot, name, ind, pdflatex = True):
     f.write('\\documentclass[letterpaper,12pt]{article}\n')
     f.write('\\usepackage{graphicx}\n')
     f.write('\\begin{document}\n')
-    #f.write('IRAS20050 sources\n')
     f.write('\\setlength{\parindent}{0pt}\n')
     f.write('\\oddsidemargin 0.0in\n')
     f.write('\\evensidemargin 0.0in\n')
@@ -805,7 +866,6 @@ def make_latexfile(data, infos, outroot, name, ind, pdflatex = True):
         
         try:
             if len(data[i]['t']) > 5:
-                #test = data[i]['t']
                 filename = outroot + str(i) + '_color'
                 line = '\includegraphics[width=' + plotwidth  + '\\textwidth]{' + filename + '}' + '\n'
                 f.write(line)
@@ -813,7 +873,6 @@ def make_latexfile(data, infos, outroot, name, ind, pdflatex = True):
                 pass
         
         f.write('\n')
-        #f.write('\\vspace{-0.5cm}\n')
         #f.write('\\end{figure*}\n')
         
         
@@ -827,7 +886,6 @@ def make_latexfile(data, infos, outroot, name, ind, pdflatex = True):
         line = '\includegraphics[width=' + plotwidth  + '\\textwidth]{' + filename + '}' + '\n'
         f.write(line)
         f.write('\n')
-        #f.write('\\vspace{-0.5cm}\n')
         #f.write('\\end{figure}\n')
         
         # write lc_phased and cmd_phased, if both exist:
@@ -840,7 +898,6 @@ def make_latexfile(data, infos, outroot, name, ind, pdflatex = True):
                 filename = outroot + str(i) + '_color_phased'
                 line = '\includegraphics[width=' + plotwidth  + '\\textwidth]{' + filename + '}' + '\n'
                 f.write(line)
-                #f.write('\\vspace{-0.5cm}\n')
                 #f.write('\\end{figure*}\n')
                 f.write('\n')
         except KeyError:
@@ -856,7 +913,6 @@ def make_latexfile(data, infos, outroot, name, ind, pdflatex = True):
         if (('t1' in data[i].keys()) and (len(data[i]['t1']) > 15)) or (('t2' in data[i].keys()) and (len(data[i]['t2']) > 15)):
             line = '\includegraphics[width=' + plotwidth  + '\\textwidth]{' + filename + '}' + '\n'
             f.write(line)
-            #f.write('\\vspace{-0.5cm}\n')
             #f.write('\\end{figure*}\n')
             f.write('\n')
 
@@ -929,8 +985,32 @@ def make_latexfile(data, infos, outroot, name, ind, pdflatex = True):
 
 
 def fit_twocolor_odr(dataset, index, p_guess, outroot, n_bootstrap, ifplot, ifbootstrap, xyswitch):
-	# this fits a straight line to data using the ODR package (orthogonal distance weighted least squares).
-	# it can also do a bootstrap and output plots if desired.
+	'''Fits a straight line to a single CMD, using a weighted orthogonal least squares algorithm (ODR).
+	
+	Parameters
+	----------
+	dataset : np.ndarray
+	    data collection for one detected source
+	index : integer
+	    the index of the dataset within the data structure
+	p_guess : tuple
+	    initial fit parameters derived from fit_twocolor
+	outroot : string
+	    dictionary where to save the plot
+	n_bootstrap : integer
+	    how many bootstrap trials
+	ifplot : boolean
+	    if you want a residual plot or not
+	ifbootstrap : boolean
+	    if you want to bootstrap or not
+	xyswitch : boolean
+	    if the X and Y axis will be switched for the fit or not. This has nothing to do with bisector fitting! The fitting algorithm used here takes care of errors in x and y simultaneously; the xyswitch is only for taking care of pathological cases where a vertical fitted line would occur without coordinate switching.
+        Returns
+        -------
+        result : tuple
+            contains output = fit parameters, bootstrap_output = results from the bootstrap, bootstrap_raw = the actual bootstrapped data, alpha = the fitted slope angle, sd_alpha = the error on the fitted slope angle, x_spread = the spread of the data along the fitted line (0.5*(90th percentile - 10th percentile)))
+        
+        '''
 	
 	#define the fitting function (in this case a straight line)
 	def fitfunc(p, x):
@@ -987,7 +1067,8 @@ def fit_twocolor_odr(dataset, index, p_guess, outroot, n_bootstrap, ifplot, ifbo
 	
 	
 	if ifplot:
-		# I got this from a python script from http://www.physics.utoronto.ca/~phy326/python/odr_fit_to_data.py, I have to check this properly.
+		# I got the following from a python script from http://www.physics.utoronto.ca/~phy326/python/odr_fit_to_data.py, I have to check this properly.
+		# This does a residual plot, and some bootstrapping if desired.
 		# error ellipses:
 		xstar = x_error*np.sqrt( ((y_error*delta)**2) / ( (y_error*delta)**2 + (x_error*eps)**2 ) )
 		ystar = y_error*np.sqrt( ((x_error*eps)**2) / ( (y_error*delta)**2 + (x_error*eps)**2 ) )
@@ -1084,16 +1165,41 @@ def fit_twocolor_odr(dataset, index, p_guess, outroot, n_bootstrap, ifplot, ifbo
 		output.beta[0] = 1./output.beta[0] # m
 		alpha = np.pi/2 - alpha
 	
-	return (output, bootstrap_output, bootstrap_raw, alpha, sd_alpha, x_spread)
+	result = (output, bootstrap_output, bootstrap_raw, alpha, sd_alpha, x_spread)
+	return result
 
 
 
 def add_twocolor_fits_to_infos(data, infos, outroot, n_bootstrap, ifplot, ifbootstrap, xyswitch):
-	# this performs the fit of a straight line to the CMD with the ODR package for all sources and adds the output to 'infos'.
+	'''Performs straight line fit to CMD for all sources. Adds fitted parameters to info structure.
+	
+	Parameters
+	----------
+	data : np.ndarray
+	    data collection for all sources
+	infos : np.rec.array
+	    info structure for all sources
+	outroot : string
+	    directory for plots
+	n_bootstrap : integer
+	    how many bootstrap trials
+	ifplot : boolean
+	    if you want a residual plot or not
+	ifbootstrap : boolean
+	    if you want to bootstrap or not
+	xyswitch : boolean
+	    if the X and Y axis will be switched for the fit or not. This has nothing to do with bisector fitting! The fitting algorithm used here takes care of errors in x and y simultaneously; the xyswitch is only for taking care of pathological cases where a vertical fitted line would occur without coordinate switching.
+        Returns
+        -------
+        infos : np.rec.array
+            updated info structure
+        
+        '''
 	for i in np.arange(0, len(data)):
 		if 't' in data[i].keys() : 
 			# use the result of the plain least squares fitting as a first parameter guess.
 			p_guess = (infos[i].cmd_m_plain, infos[i].cmd_b_plain)
+			
 			(fit_output, bootstrap_output, bootstrap_raw, alpha, alpha_error, x_spread) = fit_twocolor_odr(data[i], i, p_guess, outroot, n_bootstrap, ifplot, ifbootstrap, xyswitch)
 
 			if xyswitch:
@@ -1116,6 +1222,19 @@ def add_twocolor_fits_to_infos(data, infos, outroot, n_bootstrap, ifplot, ifboot
 	return infos
 
 def good_slope_angle(infos):
+	'''Checks if the ODR fit with switched X and Y axes yields a more constrained fit than the original axes. This basically catches the pathological cases with a (nearly) vertical fit with large nominal errors.
+	
+	Parameters
+	----------
+	infos : np.rec.array
+	    info structure for all sources
+
+	Returns
+        -------
+        infos : np.rec.array
+            updated info structure
+        
+        '''
 	for i in np.arange(0, len(infos)):
 		if infos[i]['cmd_alpha1'] > -99999.:
 			if infos[i]['cmd_alpha1_error']/infos[i]['cmd_alpha1'] < infos[i]['cmd_alpha2_error']/infos[i]['cmd_alpha2']:
