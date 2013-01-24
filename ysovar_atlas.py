@@ -107,6 +107,7 @@ sed_bands = {'Umag': ['e_Umag', 0.355, 1500], 'Bmag': ['e_Bmag', 0.430, 4000.87]
 # compare: http://casa.colorado.edu/~ginsbura/filtersets.htm
 # from: http://coolwiki.ipac.caltech.edu/index.php/Central_wavelengths_and_zero_points
 # from: http://arxiv.org/pdf/1011.2020.pdf for SLoan u', r', i' (Umag, Rmag, Imag)
+
 def get_sed(data, sed_bands = sed_bands):
     '''make SED by collecting info from the input data
     
@@ -1167,7 +1168,6 @@ def fit_twocolor_odr(dataset, index, p_guess, outroot, n_bootstrap, ifplot, ifbo
 	
 	result = (output, bootstrap_output, bootstrap_raw, alpha, sd_alpha, x_spread)
 	return result
-
 
 
 def add_twocolor_fits_to_infos(data, infos, outroot, n_bootstrap, ifplot, ifbootstrap, xyswitch):
