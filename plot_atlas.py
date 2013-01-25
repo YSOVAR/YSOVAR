@@ -59,259 +59,259 @@ def get_stamps(data, outroot, verbose = True):
             f.close()
 
 def make_reddeningvector_for_plot(x1, x2, y1, y2):
-	# calculates the coordinates of the reddening evctor in convenient plot coordinates.
-	slope = calc_reddening()
-	
-	if (x2-x1 <= 0.1):
-		AV = 0.25
-		vec_ylength = slope[1]*AV
-	elif (x2-x1 > 0.1) & (x2-x1 <= 0.2):
-		AV = 0.5
-		vec_ylength = slope[1]*AV
-	elif (x2-x1 > 0.2) & (x2-x1 <= 0.4):
-		AV = 1.
-		vec_ylength = slope[1]*AV
-	elif (x2-x1 > 0.4):
-		AV = 2.
-		vec_ylength = slope[1]*AV
-	
-	vec_startpoint = np.array([ x1 + 0.55*np.abs(x2-x1) , y1 + 0.1*np.abs(y2-y1) ]) # note: y-axis is inverted in plots!
-	vec_endpoint = vec_startpoint + np.array([ vec_ylength/slope[0] , vec_ylength ])
-	vec_info = np.array([ vec_startpoint[0], vec_startpoint[1], vec_endpoint[0], vec_endpoint[1], vec_ylength, AV ])
-	#print vec_info
-	
-	return vec_info
+    # calculates the coordinates of the reddening evctor in convenient plot coordinates.
+    slope = calc_reddening()
+    
+    if (x2-x1 <= 0.1):
+        AV = 0.25
+        vec_ylength = slope[1]*AV
+    elif (x2-x1 > 0.1) & (x2-x1 <= 0.2):
+        AV = 0.5
+        vec_ylength = slope[1]*AV
+    elif (x2-x1 > 0.2) & (x2-x1 <= 0.4):
+        AV = 1.
+        vec_ylength = slope[1]*AV
+    elif (x2-x1 > 0.4):
+        AV = 2.
+        vec_ylength = slope[1]*AV
+    
+    vec_startpoint = np.array([ x1 + 0.55*np.abs(x2-x1) , y1 + 0.1*np.abs(y2-y1) ]) # note: y-axis is inverted in plots!
+    vec_endpoint = vec_startpoint + np.array([ vec_ylength/slope[0] , vec_ylength ])
+    vec_info = np.array([ vec_startpoint[0], vec_startpoint[1], vec_endpoint[0], vec_endpoint[1], vec_ylength, AV ])
+    #print vec_info
+    
+    return vec_info
 
 
 def make_info_plots(infos, outroot):
-	# makes overview statistics plots
-	#color definition:
-	color = [(1,0.35,0.35), (1,0.95,0.35), (0.5,0.9,0.25), (0.25,0.45,1), (0.9,0.35,1)]
-	
-	# MAD 3.6 PLOT:
-	ind0 = np.where((infos.mad_36 > -99999) & (infos.ysoclass == 0))[0]
-	ind1 = np.where((infos.mad_36 > -99999) & (infos.ysoclass == 1))[0]
-	ind2 = np.where((infos.mad_36 > -99999) & (infos.ysoclass == 2))[0]
-	ind3 = np.where((infos.mad_36 > -99999) & (infos.ysoclass == 3))[0]
-	ind4 = np.where((infos.mad_36 > -99999) & (infos.ysoclass == 4))[0]
-	binning = np.arange(0,0.2,0.005)
-	
-	plt.figure()
-	plt.subplots_adjust(hspace=0.001)
-	ax1 = plt.subplot(511)
-	n0, bins, patches = plt.hist(infos.mad_36[ind0], bins=binning, facecolor = color[0])
-	plt.legend(['XYSOs'])
-	plt.yticks(np.arange(1,max(n0),max(np.trunc(max(n0)/4),1) ))
-	
-	ax2 = plt.subplot(512, sharex=ax1)
-	n1, bins, patches = plt.hist(infos.mad_36[ind1], bins=binning, facecolor = color[1])
-	plt.legend(['class 1'])
-	plt.yticks(np.arange(1,max(n1),max(np.trunc(max(n1)/4),1) ))
-	
-	ax3 = plt.subplot(513, sharex=ax1)
-	n2, bins, patches = plt.hist(infos.mad_36[ind2], bins=binning, facecolor = color[2])
-	plt.legend(['class 2'])
-	plt.ylabel('number of objects')
-	plt.yticks(np.arange(1,max(n2),max(np.trunc(max(n2)/4),1) ))
-	
-	ax4 = plt.subplot(514, sharex=ax1)
-	n3, bins, patches = plt.hist(infos.mad_36[ind3], bins=binning, facecolor = color[3])
-	plt.legend(['class 3'])
-	plt.yticks(np.arange(1,max(n3),max(np.trunc(max(n3)/4),1) ))
-	
-	ax5 = plt.subplot(515, sharex=ax1)
-	n4, bins, patches = plt.hist(infos.mad_36[ind4], bins=binning, facecolor = color[4])
-	plt.legend(['stars'])
-	plt.yticks(np.arange(1,max(n4),max(np.trunc(max(n4)/4),1) ))
-	
-	xticklabels = ax1.get_xticklabels()+ax2.get_xticklabels()+ax3.get_xticklabels()+ax4.get_xticklabels()
-	plt.setp(xticklabels, visible=False)
-	plt.xlabel('MAD in [3.6]')
-	plt.show()
-	plt.savefig(outroot + 'ysovar_mad36.eps')
-	
-	
-	
-	# MAD 4.5 PLOT:
-	ind0 = np.where((infos.mad_45 > -99999) & (infos.ysoclass == 0))[0]
-	ind1 = np.where((infos.mad_45 > -99999) & (infos.ysoclass == 1))[0]
-	ind2 = np.where((infos.mad_45 > -99999) & (infos.ysoclass == 2))[0]
-	ind3 = np.where((infos.mad_45 > -99999) & (infos.ysoclass == 3))[0]
-	ind4 = np.where((infos.mad_45 > -99999) & (infos.ysoclass == 4))[0]
-	binning = np.arange(0,0.2,0.005)
-	
-	plt.figure()
-	plt.subplots_adjust(hspace=0.001)
-	ax1 = plt.subplot(511)
-	n0, bins, patches = plt.hist(infos.mad_45[ind0], bins=binning, facecolor = color[0])
-	plt.legend(['XYSOs'])
-	plt.yticks(np.arange(1,max(n0),max(np.trunc(max(n0)/4),1) ))
-	
-	ax2 = plt.subplot(512, sharex=ax1)
-	n1, bins, patches = plt.hist(infos.mad_45[ind1], bins=binning, facecolor = color[1])
-	plt.legend(['class 1'])
-	plt.yticks(np.arange(1,max(n1),max(np.trunc(max(n1)/4),1) ))
-	
-	ax3 = plt.subplot(513, sharex=ax1)
-	n2, bins, patches = plt.hist(infos.mad_45[ind2], bins=binning, facecolor = color[2])
-	plt.legend(['class 2'])
-	plt.ylabel('number of objects')
-	plt.yticks(np.arange(1,max(n2),max(np.trunc(max(n2)/4),1) ))
-	
-	ax4 = plt.subplot(514, sharex=ax1)
-	n3, bins, patches = plt.hist(infos.mad_45[ind3], bins=binning, facecolor = color[3])
-	plt.legend(['class 3'])
-	plt.yticks(np.arange(1,max(n3),max(np.trunc(max(n3)/4),1) ))
-	
-	ax5 = plt.subplot(515, sharex=ax1)
-	n4, bins, patches = plt.hist(infos.mad_45[ind4], bins=binning, facecolor = color[4])
-	plt.legend(['stars'])
-	plt.yticks(np.arange(1,max(n4),max(np.trunc(max(n4)/4),1) ))
-	
-	xticklabels = ax1.get_xticklabels()+ax2.get_xticklabels()+ax3.get_xticklabels()+ax4.get_xticklabels()
-	plt.setp(xticklabels, visible=False)
-	plt.xlabel('MAD in [4.5]')
-	plt.show()
-	plt.savefig(outroot + 'ysovar_mad45.eps')
-	
-	
-	# STETSON PLOT:	
-	plt.clf()
-	ind0 = np.where((infos.stetson > -99999) & (infos.ysoclass == 0))[0]
-	ind1 = np.where((infos.stetson > -99999) & (infos.ysoclass == 1))[0]
-	ind2 = np.where((infos.stetson > -99999) & (infos.ysoclass == 2))[0]
-	ind3 = np.where((infos.stetson > -99999) & (infos.ysoclass == 3))[0]
-	ind4 = np.where((infos.stetson > -99999) & (infos.ysoclass == 4))[0]
-	binning = np.arange(-10,50,1)
-	
-	plt.figure()
-	plt.subplots_adjust(hspace=0.001)
-	ax1 = plt.subplot(511)
-	n0, bins, patches = plt.hist(infos.stetson[ind0], bins=binning, facecolor = color[0], alpha = 1)
-	plt.legend(['XYSOs'])
-	plt.yticks(np.arange(1,max(n0),max(np.trunc(max(n0)/4),1) ))
-	plt.plot([1.,1.],[0,max(n0)],"k--", lw=3)
-	
-	ax2 = plt.subplot(512, sharex=ax1)
-	n1, bins, patches = plt.hist(infos.stetson[ind1], bins=binning, facecolor = color[1], alpha = 1)
-	plt.legend(['class 1'])
-	plt.yticks(np.arange(1,max(n1),max(np.trunc(max(n1)/4),1) ))
-	plt.plot([1.,1.],[0,max(n1)],"k--", lw=3)
-	plt.text(30, 1, 'has longer tail')
-	
-	ax3 = plt.subplot(513, sharex=ax1)
-	n2, bins, patches = plt.hist(infos.stetson[ind2], bins=binning, facecolor = color[2], alpha = 1)
-	plt.legend(['class 2'])
-	plt.ylabel('number of objects')
-	plt.yticks(np.arange(1,max(n2),max(np.trunc(max(n2)/4),1) ))
-	plt.plot([1.,1.],[0,max(n2)],"k--", lw=3)
-	plt.text(30, 1, 'has longer tail')
-	
-	ax4 = plt.subplot(514, sharex=ax1)
-	n3, bins, patches = plt.hist(infos.stetson[ind3], bins=binning, facecolor = color[3], alpha = 1)
-	plt.legend(['class 3'])
-	plt.yticks(np.arange(1,max(n3),max(np.trunc(max(n3)/4),1) ))
-	plt.plot([1.,1.],[0,max(n3)],"k--", lw=3)
-	
-	ax5 = plt.subplot(515, sharex=ax1)
-	n4, bins, patches = plt.hist(infos.stetson[ind4], bins=binning, facecolor = color[4], alpha = 1)
-	plt.legend(['stars'])
-	plt.yticks(np.arange(1,max(n4),max(np.trunc(max(n4)/4),1) ))
-	plt.plot([1.,1.],[0,max(n4)],"k--", lw=3)
-	
-	xticklabels = ax1.get_xticklabels()+ax2.get_xticklabels()+ax3.get_xticklabels()+ax4.get_xticklabels()
-	plt.setp(xticklabels, visible=False)
-	
-	plt.text(3, 30,"varying (S.I. > 1)")
-	
-	plt.xlabel('Stetson index of [3.6], [4.5]')
-	
-	plt.savefig(outroot + 'ysovar_stetson.eps')
-	
-	
-	# SLOPE PLOT
-	plt.clf()
-	ind0 = np.where((infos.cmd_m > -99999) & (infos.ysoclass == 0))[0]
-	ind1 = np.where((infos.cmd_m > -99999) & (infos.ysoclass == 1))[0]
-	ind2 = np.where((infos.cmd_m > -99999) & (infos.ysoclass == 2))[0]
-	ind3 = np.where((infos.cmd_m > -99999) & (infos.ysoclass == 3))[0]
-	ind4 = np.where((infos.cmd_m > -99999) & (infos.ysoclass == 4))[0]
-	binning = np.arange(-3,4,0.25)
-	
-	f = plt.figure()
-	plt.subplots_adjust(hspace=0.001)
-	ax1 = plt.subplot(511)
-	n0, bins, patches = plt.hist(infos.cmd_m[ind0], bins=binning, facecolor = color[0], alpha = 1)
-	plt.legend(['XYSOs'], 'upper left')
-	plt.yticks(np.arange(1,max(n0),max(np.trunc(max(n0)/4),1) ))
-	plt.plot([1.65,1.65],[0,max(n0)],"k--", lw=3)
-	
-	ax2 = plt.subplot(512, sharex=ax1)
-	n1, bins, patches = plt.hist(infos.cmd_m[ind1], bins=binning, facecolor = color[1], alpha = 1)
-	plt.legend(['class 1'], 'upper left')
-	plt.yticks(np.arange(1,max(n1),max(np.trunc(max(n1)/4),1) ))
-	plt.plot([1.65,1.65],[0,max(n1)],"k--", lw=3)
-	
-	ax3 = plt.subplot(513, sharex=ax1)
-	n2, bins, patches = plt.hist(infos.cmd_m[ind2], bins=binning, facecolor = color[2], alpha = 1)
-	plt.legend(['class 2'], 'upper left')
-	plt.ylabel('number of objects')
-	plt.yticks(np.arange(1,max(n2),max(np.trunc(max(n2)/4),1) ))
-	plt.plot([1.65,1.65],[0,max(n2)],"k--", lw=3)
-	
-	ax4 = plt.subplot(514, sharex=ax1)
-	n3, bins, patches = plt.hist(infos.cmd_m[ind3], bins=binning, facecolor = color[3], alpha = 1)
-	plt.legend(['class 3'], 'upper left')
-	plt.yticks(np.arange(1,max(n3),max(np.trunc(max(n3)/4),1) ))
-	plt.plot([1.65,1.65],[0,max(n3)],"k--", lw=3)
-	
-	ax5 = plt.subplot(515, sharex=ax1)
-	n4, bins, patches = plt.hist(infos.cmd_m[ind4], bins=binning, facecolor = color[4], alpha = 1)
-	plt.legend(['stars'], 'upper left')
-	plt.yticks(np.arange(1,max(n4),max(np.trunc(max(n4)/4),1) ))
-	plt.plot([1.65,1.65],[0,max(n4)],"k--", lw=3)
-	
-	xticklabels = ax1.get_xticklabels()+ax2.get_xticklabels()+ax3.get_xticklabels()+ax4.get_xticklabels()
-	plt.setp(xticklabels, visible=False)
-	
-	plt.xlabel('color-magnitude slope')
-	plt.annotate('standard reddening', xy = (1.69, 10), xytext=(2.0,20), arrowprops=dict(facecolor='black', shrink=0.1, width=2, frac=0.25))
-	plt.text(-2,10,'accretion-like')
-	plt.text(-0.5,20,'colorless')
-	plt.savefig(outroot + 'ysovar_slope.eps')
-	plt.clf()
-	
-	
-	# Periodicity plot:
-	i0 = len(np.where((infos.good_period > -99999) & (infos.ysoclass == 0))[0])
-	i00 = len(np.where( (infos.ysoclass == 0))[0])
-	i1 = len(np.where((infos.good_period > -99999) & (infos.ysoclass == 1))[0])
-	i01 = len(np.where( (infos.ysoclass == 1))[0])
-	i2 = len(np.where((infos.good_period > -99999) & (infos.ysoclass == 2))[0])
-	i02 = len(np.where( (infos.ysoclass == 2))[0])
-	i3 = len(np.where((infos.good_period > -99999) & (infos.ysoclass == 3))[0])
-	i03 = len(np.where((infos.ysoclass == 3))[0])
-	i4 = len(np.where((infos.good_period > -99999) & (infos.ysoclass == 4))[0])
-	i04 = len(np.where((infos.ysoclass == 4))[0])
-	
-	f = plt.figure()
-	plt.clf()
-	x = np.arange(0,5)
-	n_var = np.array([float(i0), float(i1), float(i2), float(i3), float(i4)])
-	n_tot = np.array([float(i00), float(i01), float(i02), float(i03), float(i04)])
-	y = n_var/n_tot
-	print y
-	y_err = np.sqrt( n_var)/n_tot
-	print y_err
-	plt.bar(x,y, color=color, yerr=y_err)
-	plt.xlim(-0.5,5)
-	plt.xticks(x+0.4, ('XYSOs', 'class 1', 'class 2', 'class 3', 'stars' ))
-	plt.ylabel('fraction with significant periods*')
-	plt.text(0, 0.6, '*periods > 2d and < 20d')
-	plt.text(0, 0.57, 'with peak power > 10')
-	plt.show()
-	plt.savefig(outroot + 'ysovar_period.eps')
-	plt.savefig(outroot + 'ysovar_period.png')
+    # makes overview statistics plots
+    #color definition:
+    color = [(1,0.35,0.35), (1,0.95,0.35), (0.5,0.9,0.25), (0.25,0.45,1), (0.9,0.35,1)]
+    
+    # MAD 3.6 PLOT:
+    ind0 = np.where((infos.mad_36 > -99999) & (infos.ysoclass == 0))[0]
+    ind1 = np.where((infos.mad_36 > -99999) & (infos.ysoclass == 1))[0]
+    ind2 = np.where((infos.mad_36 > -99999) & (infos.ysoclass == 2))[0]
+    ind3 = np.where((infos.mad_36 > -99999) & (infos.ysoclass == 3))[0]
+    ind4 = np.where((infos.mad_36 > -99999) & (infos.ysoclass == 4))[0]
+    binning = np.arange(0,0.2,0.005)
+    
+    plt.figure()
+    plt.subplots_adjust(hspace=0.001)
+    ax1 = plt.subplot(511)
+    n0, bins, patches = plt.hist(infos.mad_36[ind0], bins=binning, facecolor = color[0])
+    plt.legend(['XYSOs'])
+    plt.yticks(np.arange(1,max(n0),max(np.trunc(max(n0)/4),1) ))
+    
+    ax2 = plt.subplot(512, sharex=ax1)
+    n1, bins, patches = plt.hist(infos.mad_36[ind1], bins=binning, facecolor = color[1])
+    plt.legend(['class 1'])
+    plt.yticks(np.arange(1,max(n1),max(np.trunc(max(n1)/4),1) ))
+    
+    ax3 = plt.subplot(513, sharex=ax1)
+    n2, bins, patches = plt.hist(infos.mad_36[ind2], bins=binning, facecolor = color[2])
+    plt.legend(['class 2'])
+    plt.ylabel('number of objects')
+    plt.yticks(np.arange(1,max(n2),max(np.trunc(max(n2)/4),1) ))
+    
+    ax4 = plt.subplot(514, sharex=ax1)
+    n3, bins, patches = plt.hist(infos.mad_36[ind3], bins=binning, facecolor = color[3])
+    plt.legend(['class 3'])
+    plt.yticks(np.arange(1,max(n3),max(np.trunc(max(n3)/4),1) ))
+    
+    ax5 = plt.subplot(515, sharex=ax1)
+    n4, bins, patches = plt.hist(infos.mad_36[ind4], bins=binning, facecolor = color[4])
+    plt.legend(['stars'])
+    plt.yticks(np.arange(1,max(n4),max(np.trunc(max(n4)/4),1) ))
+    
+    xticklabels = ax1.get_xticklabels()+ax2.get_xticklabels()+ax3.get_xticklabels()+ax4.get_xticklabels()
+    plt.setp(xticklabels, visible=False)
+    plt.xlabel('MAD in [3.6]')
+    plt.show()
+    plt.savefig(outroot + 'ysovar_mad36.eps')
+    
+    
+    
+    # MAD 4.5 PLOT:
+    ind0 = np.where((infos.mad_45 > -99999) & (infos.ysoclass == 0))[0]
+    ind1 = np.where((infos.mad_45 > -99999) & (infos.ysoclass == 1))[0]
+    ind2 = np.where((infos.mad_45 > -99999) & (infos.ysoclass == 2))[0]
+    ind3 = np.where((infos.mad_45 > -99999) & (infos.ysoclass == 3))[0]
+    ind4 = np.where((infos.mad_45 > -99999) & (infos.ysoclass == 4))[0]
+    binning = np.arange(0,0.2,0.005)
+    
+    plt.figure()
+    plt.subplots_adjust(hspace=0.001)
+    ax1 = plt.subplot(511)
+    n0, bins, patches = plt.hist(infos.mad_45[ind0], bins=binning, facecolor = color[0])
+    plt.legend(['XYSOs'])
+    plt.yticks(np.arange(1,max(n0),max(np.trunc(max(n0)/4),1) ))
+    
+    ax2 = plt.subplot(512, sharex=ax1)
+    n1, bins, patches = plt.hist(infos.mad_45[ind1], bins=binning, facecolor = color[1])
+    plt.legend(['class 1'])
+    plt.yticks(np.arange(1,max(n1),max(np.trunc(max(n1)/4),1) ))
+    
+    ax3 = plt.subplot(513, sharex=ax1)
+    n2, bins, patches = plt.hist(infos.mad_45[ind2], bins=binning, facecolor = color[2])
+    plt.legend(['class 2'])
+    plt.ylabel('number of objects')
+    plt.yticks(np.arange(1,max(n2),max(np.trunc(max(n2)/4),1) ))
+    
+    ax4 = plt.subplot(514, sharex=ax1)
+    n3, bins, patches = plt.hist(infos.mad_45[ind3], bins=binning, facecolor = color[3])
+    plt.legend(['class 3'])
+    plt.yticks(np.arange(1,max(n3),max(np.trunc(max(n3)/4),1) ))
+    
+    ax5 = plt.subplot(515, sharex=ax1)
+    n4, bins, patches = plt.hist(infos.mad_45[ind4], bins=binning, facecolor = color[4])
+    plt.legend(['stars'])
+    plt.yticks(np.arange(1,max(n4),max(np.trunc(max(n4)/4),1) ))
+    
+    xticklabels = ax1.get_xticklabels()+ax2.get_xticklabels()+ax3.get_xticklabels()+ax4.get_xticklabels()
+    plt.setp(xticklabels, visible=False)
+    plt.xlabel('MAD in [4.5]')
+    plt.show()
+    plt.savefig(outroot + 'ysovar_mad45.eps')
+    
+    
+    # STETSON PLOT:    
+    plt.clf()
+    ind0 = np.where((infos.stetson > -99999) & (infos.ysoclass == 0))[0]
+    ind1 = np.where((infos.stetson > -99999) & (infos.ysoclass == 1))[0]
+    ind2 = np.where((infos.stetson > -99999) & (infos.ysoclass == 2))[0]
+    ind3 = np.where((infos.stetson > -99999) & (infos.ysoclass == 3))[0]
+    ind4 = np.where((infos.stetson > -99999) & (infos.ysoclass == 4))[0]
+    binning = np.arange(-10,50,1)
+    
+    plt.figure()
+    plt.subplots_adjust(hspace=0.001)
+    ax1 = plt.subplot(511)
+    n0, bins, patches = plt.hist(infos.stetson[ind0], bins=binning, facecolor = color[0], alpha = 1)
+    plt.legend(['XYSOs'])
+    plt.yticks(np.arange(1,max(n0),max(np.trunc(max(n0)/4),1) ))
+    plt.plot([1.,1.],[0,max(n0)],"k--", lw=3)
+    
+    ax2 = plt.subplot(512, sharex=ax1)
+    n1, bins, patches = plt.hist(infos.stetson[ind1], bins=binning, facecolor = color[1], alpha = 1)
+    plt.legend(['class 1'])
+    plt.yticks(np.arange(1,max(n1),max(np.trunc(max(n1)/4),1) ))
+    plt.plot([1.,1.],[0,max(n1)],"k--", lw=3)
+    plt.text(30, 1, 'has longer tail')
+    
+    ax3 = plt.subplot(513, sharex=ax1)
+    n2, bins, patches = plt.hist(infos.stetson[ind2], bins=binning, facecolor = color[2], alpha = 1)
+    plt.legend(['class 2'])
+    plt.ylabel('number of objects')
+    plt.yticks(np.arange(1,max(n2),max(np.trunc(max(n2)/4),1) ))
+    plt.plot([1.,1.],[0,max(n2)],"k--", lw=3)
+    plt.text(30, 1, 'has longer tail')
+    
+    ax4 = plt.subplot(514, sharex=ax1)
+    n3, bins, patches = plt.hist(infos.stetson[ind3], bins=binning, facecolor = color[3], alpha = 1)
+    plt.legend(['class 3'])
+    plt.yticks(np.arange(1,max(n3),max(np.trunc(max(n3)/4),1) ))
+    plt.plot([1.,1.],[0,max(n3)],"k--", lw=3)
+    
+    ax5 = plt.subplot(515, sharex=ax1)
+    n4, bins, patches = plt.hist(infos.stetson[ind4], bins=binning, facecolor = color[4], alpha = 1)
+    plt.legend(['stars'])
+    plt.yticks(np.arange(1,max(n4),max(np.trunc(max(n4)/4),1) ))
+    plt.plot([1.,1.],[0,max(n4)],"k--", lw=3)
+    
+    xticklabels = ax1.get_xticklabels()+ax2.get_xticklabels()+ax3.get_xticklabels()+ax4.get_xticklabels()
+    plt.setp(xticklabels, visible=False)
+    
+    plt.text(3, 30,"varying (S.I. > 1)")
+    
+    plt.xlabel('Stetson index of [3.6], [4.5]')
+    
+    plt.savefig(outroot + 'ysovar_stetson.eps')
+    
+    
+    # SLOPE PLOT
+    plt.clf()
+    ind0 = np.where((infos.cmd_m > -99999) & (infos.ysoclass == 0))[0]
+    ind1 = np.where((infos.cmd_m > -99999) & (infos.ysoclass == 1))[0]
+    ind2 = np.where((infos.cmd_m > -99999) & (infos.ysoclass == 2))[0]
+    ind3 = np.where((infos.cmd_m > -99999) & (infos.ysoclass == 3))[0]
+    ind4 = np.where((infos.cmd_m > -99999) & (infos.ysoclass == 4))[0]
+    binning = np.arange(-3,4,0.25)
+    
+    f = plt.figure()
+    plt.subplots_adjust(hspace=0.001)
+    ax1 = plt.subplot(511)
+    n0, bins, patches = plt.hist(infos.cmd_m[ind0], bins=binning, facecolor = color[0], alpha = 1)
+    plt.legend(['XYSOs'], 'upper left')
+    plt.yticks(np.arange(1,max(n0),max(np.trunc(max(n0)/4),1) ))
+    plt.plot([1.65,1.65],[0,max(n0)],"k--", lw=3)
+    
+    ax2 = plt.subplot(512, sharex=ax1)
+    n1, bins, patches = plt.hist(infos.cmd_m[ind1], bins=binning, facecolor = color[1], alpha = 1)
+    plt.legend(['class 1'], 'upper left')
+    plt.yticks(np.arange(1,max(n1),max(np.trunc(max(n1)/4),1) ))
+    plt.plot([1.65,1.65],[0,max(n1)],"k--", lw=3)
+    
+    ax3 = plt.subplot(513, sharex=ax1)
+    n2, bins, patches = plt.hist(infos.cmd_m[ind2], bins=binning, facecolor = color[2], alpha = 1)
+    plt.legend(['class 2'], 'upper left')
+    plt.ylabel('number of objects')
+    plt.yticks(np.arange(1,max(n2),max(np.trunc(max(n2)/4),1) ))
+    plt.plot([1.65,1.65],[0,max(n2)],"k--", lw=3)
+    
+    ax4 = plt.subplot(514, sharex=ax1)
+    n3, bins, patches = plt.hist(infos.cmd_m[ind3], bins=binning, facecolor = color[3], alpha = 1)
+    plt.legend(['class 3'], 'upper left')
+    plt.yticks(np.arange(1,max(n3),max(np.trunc(max(n3)/4),1) ))
+    plt.plot([1.65,1.65],[0,max(n3)],"k--", lw=3)
+    
+    ax5 = plt.subplot(515, sharex=ax1)
+    n4, bins, patches = plt.hist(infos.cmd_m[ind4], bins=binning, facecolor = color[4], alpha = 1)
+    plt.legend(['stars'], 'upper left')
+    plt.yticks(np.arange(1,max(n4),max(np.trunc(max(n4)/4),1) ))
+    plt.plot([1.65,1.65],[0,max(n4)],"k--", lw=3)
+    
+    xticklabels = ax1.get_xticklabels()+ax2.get_xticklabels()+ax3.get_xticklabels()+ax4.get_xticklabels()
+    plt.setp(xticklabels, visible=False)
+    
+    plt.xlabel('color-magnitude slope')
+    plt.annotate('standard reddening', xy = (1.69, 10), xytext=(2.0,20), arrowprops=dict(facecolor='black', shrink=0.1, width=2, frac=0.25))
+    plt.text(-2,10,'accretion-like')
+    plt.text(-0.5,20,'colorless')
+    plt.savefig(outroot + 'ysovar_slope.eps')
+    plt.clf()
+    
+    
+    # Periodicity plot:
+    i0 = len(np.where((infos.good_period > -99999) & (infos.ysoclass == 0))[0])
+    i00 = len(np.where( (infos.ysoclass == 0))[0])
+    i1 = len(np.where((infos.good_period > -99999) & (infos.ysoclass == 1))[0])
+    i01 = len(np.where( (infos.ysoclass == 1))[0])
+    i2 = len(np.where((infos.good_period > -99999) & (infos.ysoclass == 2))[0])
+    i02 = len(np.where( (infos.ysoclass == 2))[0])
+    i3 = len(np.where((infos.good_period > -99999) & (infos.ysoclass == 3))[0])
+    i03 = len(np.where((infos.ysoclass == 3))[0])
+    i4 = len(np.where((infos.good_period > -99999) & (infos.ysoclass == 4))[0])
+    i04 = len(np.where((infos.ysoclass == 4))[0])
+    
+    f = plt.figure()
+    plt.clf()
+    x = np.arange(0,5)
+    n_var = np.array([float(i0), float(i1), float(i2), float(i3), float(i4)])
+    n_tot = np.array([float(i00), float(i01), float(i02), float(i03), float(i04)])
+    y = n_var/n_tot
+    print y
+    y_err = np.sqrt( n_var)/n_tot
+    print y_err
+    plt.bar(x,y, color=color, yerr=y_err)
+    plt.xlim(-0.5,5)
+    plt.xticks(x+0.4, ('XYSOs', 'class 1', 'class 2', 'class 3', 'stars' ))
+    plt.ylabel('fraction with significant periods*')
+    plt.text(0, 0.6, '*periods > 2d and < 20d')
+    plt.text(0, 0.57, 'with peak power > 10')
+    plt.show()
+    plt.savefig(outroot + 'ysovar_period.eps')
+    plt.savefig(outroot + 'ysovar_period.png')
 
 def plot_lc(ax, data):
     ''' plot lc in a given axes container
@@ -551,47 +551,47 @@ def plot_polys(data, outroot, verbose = True):
             plt.close(fig)
 
 def check_time_obs(outroot, ysovar1):
-	
-	plt.clf()
-	x = np.array(ysovar1['ra'])
-	y = np.array(ysovar1['dec'])
-	t = np.array(ysovar1['hmjd1'])
-	t_max = np.zeros(len(x))
-	for i in np.arange(0,len(x)):
-		t_max[i] = max(t[i])
-	
-	plt.clf()
-	plt.scatter(x, y, lw=0, s=40, marker='.',  c=t_max)
-	plt.savefig(outroot + 'FOV_time.eps')
-	plt.clf()
+    
+    plt.clf()
+    x = np.array(ysovar1['ra'])
+    y = np.array(ysovar1['dec'])
+    t = np.array(ysovar1['hmjd1'])
+    t_max = np.zeros(len(x))
+    for i in np.arange(0,len(x)):
+        t_max[i] = max(t[i])
+    
+    plt.clf()
+    plt.scatter(x, y, lw=0, s=40, marker='.',  c=t_max)
+    plt.savefig(outroot + 'FOV_time.eps')
+    plt.clf()
 
 
 
 
 
 def make_plot_skyview(outroot, ysovar1, ysovar2, infos):
-	plt.clf()
-	p1, = plt.plot(ysovar1['ra'], ysovar1['dec'], '.', color='0.75', markeredgecolor='0.75')
-	p2, = plt.plot(ysovar2['ra'], ysovar2['dec'], '.', color='0.75', markeredgecolor='0.75')
-	
-	i0 = np.where(infos.ysoclass == 0)[0]
-	i1 = np.where(infos.ysoclass == 1)[0]
-	i2 = np.where(infos.ysoclass == 2)[0]
-	i3 = np.where(infos.ysoclass == 3)[0]
-	
-	#p7, = plt.plot(guenther_data_stars['ra'], guenther_data_stars['dec'], 'mo')
-	p5, = plt.plot(infos.ra_spitzer[i2], infos.dec_spitzer[i2], 'o', markersize=5, color=(0.5,0.9,0.25))
-	p6, = plt.plot(infos.ra_spitzer[i3], infos.dec_spitzer[i3], 'o', markersize=5, color=(0.25,0.45,1))
-	p4, = plt.plot(infos.ra_spitzer[i1], infos.dec_spitzer[i1], 'o', markersize=5, color=(1,1,0.25))
-	p3, = plt.plot(infos.ra_spitzer[i0], infos.dec_spitzer[i0], 'o', markersize=5, color=(1,0.35,0.35))
-	
-	plt.legend([p1,p3,p4,p5,p6],['time-resolved data','Guenther+ 2012 XYSOs','Guenther+ 2012 class 1', 'Guenther+ 2012 class 2', 'Guenther+ 2012 class 3'], 'lower right',prop={'size':10})
-	
-	plt.xlabel('RA')
-	plt.ylabel('DEC')
-	
-	plt.savefig(outroot + 'skyview_iras20050.eps')
-	plt.clf()
+    plt.clf()
+    p1, = plt.plot(ysovar1['ra'], ysovar1['dec'], '.', color='0.75', markeredgecolor='0.75')
+    p2, = plt.plot(ysovar2['ra'], ysovar2['dec'], '.', color='0.75', markeredgecolor='0.75')
+    
+    i0 = np.where(infos.ysoclass == 0)[0]
+    i1 = np.where(infos.ysoclass == 1)[0]
+    i2 = np.where(infos.ysoclass == 2)[0]
+    i3 = np.where(infos.ysoclass == 3)[0]
+    
+    #p7, = plt.plot(guenther_data_stars['ra'], guenther_data_stars['dec'], 'mo')
+    p5, = plt.plot(infos.ra_spitzer[i2], infos.dec_spitzer[i2], 'o', markersize=5, color=(0.5,0.9,0.25))
+    p6, = plt.plot(infos.ra_spitzer[i3], infos.dec_spitzer[i3], 'o', markersize=5, color=(0.25,0.45,1))
+    p4, = plt.plot(infos.ra_spitzer[i1], infos.dec_spitzer[i1], 'o', markersize=5, color=(1,1,0.25))
+    p3, = plt.plot(infos.ra_spitzer[i0], infos.dec_spitzer[i0], 'o', markersize=5, color=(1,0.35,0.35))
+    
+    plt.legend([p1,p3,p4,p5,p6],['time-resolved data','Guenther+ 2012 XYSOs','Guenther+ 2012 class 1', 'Guenther+ 2012 class 2', 'Guenther+ 2012 class 3'], 'lower right',prop={'size':10})
+    
+    plt.xlabel('RA')
+    plt.ylabel('DEC')
+    
+    plt.savefig(outroot + 'skyview_iras20050.eps')
+    plt.clf()
 
 
 def make_ls_plots(ysos, outroot, maxper, oversamp, maxfreq):
@@ -749,154 +749,154 @@ def make_sed_plots(infos, outroot, title = 'SED (data from Guenther+ 2012)'):
 
 
 def extraplots_1():
-	
-	# m1 min/max plot
-	i1 = np.where(info_ysos[:,30] > -99999)[0]
-	i10 = np.where( (info_ysos[:,30] > -99999) & (info_ysos[:,1] == 0) )[0]
-	i11 = np.where( (info_ysos[:,30] > -99999) & (info_ysos[:,1] == 1) )[0]
-	i12 = np.where( (info_ysos[:,30] > -99999) & (info_ysos[:,1] == 2) )[0]
-	i13 = np.where( (info_ysos[:,30] > -99999) & (info_ysos[:,1] == 3) )[0]
-	i14 = np.where( (info_stars[:,30] > -99999))[0]
-	color = [(1,0.35,0.35), (1,0.95,0.35), (0.5,0.9,0.25), (0.25,0.45,1), (0.9,0.35,1)]
-	plt.clf()
-	p4 = plt.scatter( info_stars[i14,4], info_stars[i14,31] - info_stars[i14,30], marker='.', color = color[4] )
-	p0 = plt.scatter( info_ysos[i10,4], info_ysos[i10,31] - info_ysos[i10,30], marker='o', color = color[0] )
-	p1 = plt.scatter( info_ysos[i11,4], info_ysos[i11,31] - info_ysos[i11,30], marker='o', color = color[1] )
-	p2 = plt.scatter( info_ysos[i12,4], info_ysos[i12,31] - info_ysos[i12,30], marker='o', color = color[2] )
-	p3 = plt.scatter( info_ysos[i13,4], info_ysos[i13,31] - info_ysos[i13,30], marker='o', color = color[3] )
-	plt.xlabel('mean i1')
-	plt.ylabel('i1$_{max}$ - i1$_{min}$  ')
-	plt.legend([p0, p1, p2, p3, p4], ['XYSOs', 'class 1', 'class 2', 'class 3', 'stars'], 'upper left')
-	plt.savefig(outroot_overview + 'delta_mag_36.eps')
-	
-	# m2 min/max plot
-	i1 = np.where(info_ysos[:,32] > -99999)[0]
-	i10 = np.where( (info_ysos[:,32] > -99999) & (info_ysos[:,1] == 0) )[0]
-	i11 = np.where( (info_ysos[:,32] > -99999) & (info_ysos[:,1] == 1) )[0]
-	i12 = np.where( (info_ysos[:,32] > -99999) & (info_ysos[:,1] == 2) )[0]
-	i13 = np.where( (info_ysos[:,32] > -99999) & (info_ysos[:,1] == 3) )[0]
-	i14 = np.where( (info_stars[:,32] > -99999))[0]
-	color = [(1,0.35,0.35), (1,0.95,0.35), (0.5,0.9,0.25), (0.25,0.45,1), (0.9,0.35,1)]
-	plt.clf()
-	p4 = plt.scatter( info_stars[i14,9], info_stars[i14,33] - info_stars[i14,32], marker='.', color = color[4] )
-	p0 = plt.scatter( info_ysos[i10,9], info_ysos[i10,33] - info_ysos[i10,32], marker='o', color = color[0] )
-	p1 = plt.scatter( info_ysos[i11,9], info_ysos[i11,33] - info_ysos[i11,32], marker='o', color = color[1] )
-	p2 = plt.scatter( info_ysos[i12,9], info_ysos[i12,33] - info_ysos[i12,32], marker='o', color = color[2] )
-	p3 = plt.scatter( info_ysos[i13,9], info_ysos[i13,33] - info_ysos[i13,32], marker='o', color = color[3] )
-	plt.xlabel('mean i2')
-	plt.ylabel('i2$_{max}$ - i2$_{min}$  ')
-	plt.legend([p0, p1, p2, p3, p4], ['XYSOs', 'class 1', 'class 2', 'class 3', 'stars'], 'upper left')
-	plt.savefig(outroot_overview + 'delta_mag_45.eps')
-	
-	# chisquared plot for m1
-	i1 = np.where(info_ysos[:,28] > -99999)[0]
-	i10 = np.where( (info_ysos[:,28] > -99999) & (info_ysos[:,1] == 0) )[0]
-	i11 = np.where( (info_ysos[:,28] > -99999) & (info_ysos[:,1] == 1) )[0]
-	i12 = np.where( (info_ysos[:,28] > -99999) & (info_ysos[:,1] == 2) )[0]
-	i13 = np.where( (info_ysos[:,28] > -99999) & (info_ysos[:,1] == 3) )[0]
-	i14 = np.where( (info_stars[:,28] > -99999))[0]
-	color = [(1,0.35,0.35), (1,0.95,0.35), (0.5,0.9,0.25), (0.25,0.45,1), (0.9,0.35,1)]
-	plt.clf()
-	p4 = plt.scatter( info_stars[i14,4], log10(info_stars[i14,28]), marker='.', color = color[4] )
-	p0 = plt.scatter( info_ysos[i10,4], log10(info_ysos[i10,28]), marker='o', color = color[0] )
-	p1 = plt.scatter( info_ysos[i11,4], log10(info_ysos[i11,28]), marker='o', color = color[1] )
-	p2 = plt.scatter( info_ysos[i12,4], log10(info_ysos[i12,28]), marker='o', color = color[2] )
-	p3 = plt.scatter( info_ysos[i13,4], log10(info_ysos[i13,28]), marker='o', color = color[3] )
-	plt.xlabel('mean [3.6] mag')
-	plt.ylabel('log ( $\chi^2_{reduced}$ ) [3.6] ')
-	plt.legend([p0, p1, p2, p3, p4], ['XYSOs', 'class 1', 'class 2', 'class 3', 'stars'])
-	plt.savefig(outroot_overview + 'chisq_mag_36.eps')
-	
-	# chisquared plot for m2
-	i1 = np.where(info_ysos[:,29] > -99999)[0]
-	i10 = np.where( (info_ysos[:,29] > -99999) & (info_ysos[:,1] == 0) )[0]
-	i11 = np.where( (info_ysos[:,29] > -99999) & (info_ysos[:,1] == 1) )[0]
-	i12 = np.where( (info_ysos[:,29] > -99999) & (info_ysos[:,1] == 2) )[0]
-	i13 = np.where( (info_ysos[:,29] > -99999) & (info_ysos[:,1] == 3) )[0]
-	i14 = np.where( (info_stars[:,29] > -99999))[0]
-	color = [(1,0.35,0.35), (1,0.95,0.35), (0.5,0.9,0.25), (0.25,0.45,1), (0.9,0.35,1)]
-	plt.clf()
-	p4 = plt.scatter( info_stars[i14,9], log10(info_stars[i14,29]), marker='.', color = color[4] )
-	p0 = plt.scatter( info_ysos[i10,9], log10(info_ysos[i10,29]), marker='o', color = color[0] )
-	p1 = plt.scatter( info_ysos[i11,9], log10(info_ysos[i11,29]), marker='o', color = color[1] )
-	p2 = plt.scatter( info_ysos[i12,9], log10(info_ysos[i12,29]), marker='o', color = color[2] )
-	p3 = plt.scatter( info_ysos[i13,9], log10(info_ysos[i13,29]), marker='o', color = color[3] )
-	plt.xlabel('mean [4.5] mag')
-	plt.ylabel('log ( $\chi^2_{reduced}$ ) [4.5] ')
-	plt.legend([p0, p1, p2, p3, p4], ['XYSOs', 'class 1', 'class 2', 'class 3', 'stars'])
-	plt.savefig(outroot_overview + 'chisq_mag_45.eps')
-	
-	# Stetson plot vs. m1
-	i1 = np.where(info_ysos[:,12] > -99999)[0]
-	i10 = np.where( (info_ysos[:,12] > -99999) & (info_ysos[:,1] == 0) )[0]
-	i11 = np.where( (info_ysos[:,12] > -99999) & (info_ysos[:,1] == 1) )[0]
-	i12 = np.where( (info_ysos[:,12] > -99999) & (info_ysos[:,1] == 2) )[0]
-	i13 = np.where( (info_ysos[:,12] > -99999) & (info_ysos[:,1] == 3) )[0]
-	i14 = np.where( (info_stars[:,12] > -99999))[0]
-	color = [(1,0.35,0.35), (1,0.95,0.35), (0.5,0.9,0.25), (0.25,0.45,1), (0.9,0.35,1)]
-	plt.clf()
-	p4 = plt.scatter( info_stars[i14,4], info_stars[i14,12], marker='.', color = color[4] )
-	p0 = plt.scatter( info_ysos[i10,4], info_ysos[i10,12], marker='o', color = color[0] )
-	p1 = plt.scatter( info_ysos[i11,4], info_ysos[i11,12], marker='o', color = color[1] )
-	p2 = plt.scatter( info_ysos[i12,4], info_ysos[i12,12], marker='o', color = color[2] )
-	p3 = plt.scatter( info_ysos[i13,4], info_ysos[i13,12], marker='o', color = color[3] )
-	#plt.yscale('log')
-	plt.xlabel('mean [3.6] mag')
-	plt.ylabel('Stetson index [3.6]/[4.5] ')
-	#plt.axis([6,18,-3, 50])
-	plt.axis([6,18,-3, 5])
-	plt.show()
-	plt.legend([p0, p1, p2, p3, p4], ['XYSOs', 'class 1', 'class 2', 'class 3', 'stars'], 'upper left')
-	#plt.savefig('stetson_mag_36.eps')
-	plt.savefig(outroot_overview + 'stetson_mag_36_zoom.eps')
-	
-	# stetson vs. chisquared plot
-	i1 = np.where(info_ysos[:,12] > -99999)[0]
-	i10 = np.where( (info_ysos[:,12] > -99999) & (info_ysos[:,1] == 0) )[0]
-	i11 = np.where( (info_ysos[:,12] > -99999) & (info_ysos[:,1] == 1) )[0]
-	i12 = np.where( (info_ysos[:,12] > -99999) & (info_ysos[:,1] == 2) )[0]
-	i13 = np.where( (info_ysos[:,12] > -99999) & (info_ysos[:,1] == 3) )[0]
-	i14 = np.where( (info_stars[:,12] > -99999))[0]
-	color = [(1,0.35,0.35), (1,0.95,0.35), (0.5,0.9,0.25), (0.25,0.45,1), (0.9,0.35,1)]
-	plt.clf()
-	p4 = plt.scatter( log10(info_stars[i14,28]), info_stars[i14,12], marker='.', color = color[4] )
-	p0 = plt.scatter( log10(info_ysos[i10,28]), info_ysos[i10,12], marker='o', color = color[0] )
-	p1 = plt.scatter( log10(info_ysos[i11,28]), info_ysos[i11,12], marker='o', color = color[1] )
-	p2 = plt.scatter( log10(info_ysos[i12,28]), info_ysos[i12,12], marker='o', color = color[2] )
-	p3 = plt.scatter( log10(info_ysos[i13,28]), info_ysos[i13,12], marker='o', color = color[3] )
-	#plt.yscale('log')
-	plt.xlabel('log ( $\chi^2_{reduced}$ ) [3.6] ')
-	plt.ylabel('Stetson index of [3.6] and [4.5] ')
-	#plt.axis([-1,4,-3, 50])
-	plt.axis([-0.5,1.5,-3, 10])
-	plt.show()
-	plt.legend([p0, p1, p2, p3, p4], ['XYSOs', 'class 1', 'class 2', 'class 3', 'stars'])
-	#plt.savefig('stetson_chisq_36.eps')
-	plt.savefig(outroot_overview + 'stetson_chisq_36_zoom.eps')
-	
-	# stetson vs. chisquared plot in logscale
-	i1 = np.where(info_ysos[:,12] > -99999)[0]
-	i10 = np.where( (info_ysos[:,12] > -99999) & (info_ysos[:,1] == 0) )[0]
-	i11 = np.where( (info_ysos[:,12] > -99999) & (info_ysos[:,1] == 1) )[0]
-	i12 = np.where( (info_ysos[:,12] > -99999) & (info_ysos[:,1] == 2) )[0]
-	i13 = np.where( (info_ysos[:,12] > -99999) & (info_ysos[:,1] == 3) )[0]
-	i14 = np.where( (info_stars[:,12] > -99999))[0]
-	color = [(1,0.35,0.35), (1,0.95,0.35), (0.5,0.9,0.25), (0.25,0.45,1), (0.9,0.35,1)]
-	plt.clf()
-	p4 = plt.scatter( log10(info_stars[i14,28]), log10(info_stars[i14,12]), marker='.', color = color[4] )
-	p0 = plt.scatter( log10(info_ysos[i10,28]), log10(info_ysos[i10,12]), marker='o', color = color[0] )
-	p1 = plt.scatter( log10(info_ysos[i11,28]), log10(info_ysos[i11,12]), marker='o', color = color[1] )
-	p2 = plt.scatter( log10(info_ysos[i12,28]), log10(info_ysos[i12,12]), marker='o', color = color[2] )
-	p3 = plt.scatter( log10(info_ysos[i13,28]), log10(info_ysos[i13,12]), marker='o', color = color[3] )
-	#plt.yscale('log')
-	plt.xlabel('log ( $\chi^2_{reduced}$ ) [3.6] ')
-	plt.ylabel('log (Stetson index) of [3.6] and [4.5] ')
-	#plt.axis([-1,4,-3, 50])
-	#plt.axis([-0.5,1.5,-3, 10])
-	plt.show()
-	plt.legend([p0, p1, p2, p3, p4], ['XYSOs', 'class 1', 'class 2', 'class 3', 'stars'])
-	#plt.savefig('stetson_chisq_36.eps')
-	plt.savefig(outroot_overview + 'stetson_chisq_36_log.eps')
+    
+    # m1 min/max plot
+    i1 = np.where(info_ysos[:,30] > -99999)[0]
+    i10 = np.where( (info_ysos[:,30] > -99999) & (info_ysos[:,1] == 0) )[0]
+    i11 = np.where( (info_ysos[:,30] > -99999) & (info_ysos[:,1] == 1) )[0]
+    i12 = np.where( (info_ysos[:,30] > -99999) & (info_ysos[:,1] == 2) )[0]
+    i13 = np.where( (info_ysos[:,30] > -99999) & (info_ysos[:,1] == 3) )[0]
+    i14 = np.where( (info_stars[:,30] > -99999))[0]
+    color = [(1,0.35,0.35), (1,0.95,0.35), (0.5,0.9,0.25), (0.25,0.45,1), (0.9,0.35,1)]
+    plt.clf()
+    p4 = plt.scatter( info_stars[i14,4], info_stars[i14,31] - info_stars[i14,30], marker='.', color = color[4] )
+    p0 = plt.scatter( info_ysos[i10,4], info_ysos[i10,31] - info_ysos[i10,30], marker='o', color = color[0] )
+    p1 = plt.scatter( info_ysos[i11,4], info_ysos[i11,31] - info_ysos[i11,30], marker='o', color = color[1] )
+    p2 = plt.scatter( info_ysos[i12,4], info_ysos[i12,31] - info_ysos[i12,30], marker='o', color = color[2] )
+    p3 = plt.scatter( info_ysos[i13,4], info_ysos[i13,31] - info_ysos[i13,30], marker='o', color = color[3] )
+    plt.xlabel('mean i1')
+    plt.ylabel('i1$_{max}$ - i1$_{min}$  ')
+    plt.legend([p0, p1, p2, p3, p4], ['XYSOs', 'class 1', 'class 2', 'class 3', 'stars'], 'upper left')
+    plt.savefig(outroot_overview + 'delta_mag_36.eps')
+    
+    # m2 min/max plot
+    i1 = np.where(info_ysos[:,32] > -99999)[0]
+    i10 = np.where( (info_ysos[:,32] > -99999) & (info_ysos[:,1] == 0) )[0]
+    i11 = np.where( (info_ysos[:,32] > -99999) & (info_ysos[:,1] == 1) )[0]
+    i12 = np.where( (info_ysos[:,32] > -99999) & (info_ysos[:,1] == 2) )[0]
+    i13 = np.where( (info_ysos[:,32] > -99999) & (info_ysos[:,1] == 3) )[0]
+    i14 = np.where( (info_stars[:,32] > -99999))[0]
+    color = [(1,0.35,0.35), (1,0.95,0.35), (0.5,0.9,0.25), (0.25,0.45,1), (0.9,0.35,1)]
+    plt.clf()
+    p4 = plt.scatter( info_stars[i14,9], info_stars[i14,33] - info_stars[i14,32], marker='.', color = color[4] )
+    p0 = plt.scatter( info_ysos[i10,9], info_ysos[i10,33] - info_ysos[i10,32], marker='o', color = color[0] )
+    p1 = plt.scatter( info_ysos[i11,9], info_ysos[i11,33] - info_ysos[i11,32], marker='o', color = color[1] )
+    p2 = plt.scatter( info_ysos[i12,9], info_ysos[i12,33] - info_ysos[i12,32], marker='o', color = color[2] )
+    p3 = plt.scatter( info_ysos[i13,9], info_ysos[i13,33] - info_ysos[i13,32], marker='o', color = color[3] )
+    plt.xlabel('mean i2')
+    plt.ylabel('i2$_{max}$ - i2$_{min}$  ')
+    plt.legend([p0, p1, p2, p3, p4], ['XYSOs', 'class 1', 'class 2', 'class 3', 'stars'], 'upper left')
+    plt.savefig(outroot_overview + 'delta_mag_45.eps')
+    
+    # chisquared plot for m1
+    i1 = np.where(info_ysos[:,28] > -99999)[0]
+    i10 = np.where( (info_ysos[:,28] > -99999) & (info_ysos[:,1] == 0) )[0]
+    i11 = np.where( (info_ysos[:,28] > -99999) & (info_ysos[:,1] == 1) )[0]
+    i12 = np.where( (info_ysos[:,28] > -99999) & (info_ysos[:,1] == 2) )[0]
+    i13 = np.where( (info_ysos[:,28] > -99999) & (info_ysos[:,1] == 3) )[0]
+    i14 = np.where( (info_stars[:,28] > -99999))[0]
+    color = [(1,0.35,0.35), (1,0.95,0.35), (0.5,0.9,0.25), (0.25,0.45,1), (0.9,0.35,1)]
+    plt.clf()
+    p4 = plt.scatter( info_stars[i14,4], log10(info_stars[i14,28]), marker='.', color = color[4] )
+    p0 = plt.scatter( info_ysos[i10,4], log10(info_ysos[i10,28]), marker='o', color = color[0] )
+    p1 = plt.scatter( info_ysos[i11,4], log10(info_ysos[i11,28]), marker='o', color = color[1] )
+    p2 = plt.scatter( info_ysos[i12,4], log10(info_ysos[i12,28]), marker='o', color = color[2] )
+    p3 = plt.scatter( info_ysos[i13,4], log10(info_ysos[i13,28]), marker='o', color = color[3] )
+    plt.xlabel('mean [3.6] mag')
+    plt.ylabel('log ( $\chi^2_{reduced}$ ) [3.6] ')
+    plt.legend([p0, p1, p2, p3, p4], ['XYSOs', 'class 1', 'class 2', 'class 3', 'stars'])
+    plt.savefig(outroot_overview + 'chisq_mag_36.eps')
+    
+    # chisquared plot for m2
+    i1 = np.where(info_ysos[:,29] > -99999)[0]
+    i10 = np.where( (info_ysos[:,29] > -99999) & (info_ysos[:,1] == 0) )[0]
+    i11 = np.where( (info_ysos[:,29] > -99999) & (info_ysos[:,1] == 1) )[0]
+    i12 = np.where( (info_ysos[:,29] > -99999) & (info_ysos[:,1] == 2) )[0]
+    i13 = np.where( (info_ysos[:,29] > -99999) & (info_ysos[:,1] == 3) )[0]
+    i14 = np.where( (info_stars[:,29] > -99999))[0]
+    color = [(1,0.35,0.35), (1,0.95,0.35), (0.5,0.9,0.25), (0.25,0.45,1), (0.9,0.35,1)]
+    plt.clf()
+    p4 = plt.scatter( info_stars[i14,9], log10(info_stars[i14,29]), marker='.', color = color[4] )
+    p0 = plt.scatter( info_ysos[i10,9], log10(info_ysos[i10,29]), marker='o', color = color[0] )
+    p1 = plt.scatter( info_ysos[i11,9], log10(info_ysos[i11,29]), marker='o', color = color[1] )
+    p2 = plt.scatter( info_ysos[i12,9], log10(info_ysos[i12,29]), marker='o', color = color[2] )
+    p3 = plt.scatter( info_ysos[i13,9], log10(info_ysos[i13,29]), marker='o', color = color[3] )
+    plt.xlabel('mean [4.5] mag')
+    plt.ylabel('log ( $\chi^2_{reduced}$ ) [4.5] ')
+    plt.legend([p0, p1, p2, p3, p4], ['XYSOs', 'class 1', 'class 2', 'class 3', 'stars'])
+    plt.savefig(outroot_overview + 'chisq_mag_45.eps')
+    
+    # Stetson plot vs. m1
+    i1 = np.where(info_ysos[:,12] > -99999)[0]
+    i10 = np.where( (info_ysos[:,12] > -99999) & (info_ysos[:,1] == 0) )[0]
+    i11 = np.where( (info_ysos[:,12] > -99999) & (info_ysos[:,1] == 1) )[0]
+    i12 = np.where( (info_ysos[:,12] > -99999) & (info_ysos[:,1] == 2) )[0]
+    i13 = np.where( (info_ysos[:,12] > -99999) & (info_ysos[:,1] == 3) )[0]
+    i14 = np.where( (info_stars[:,12] > -99999))[0]
+    color = [(1,0.35,0.35), (1,0.95,0.35), (0.5,0.9,0.25), (0.25,0.45,1), (0.9,0.35,1)]
+    plt.clf()
+    p4 = plt.scatter( info_stars[i14,4], info_stars[i14,12], marker='.', color = color[4] )
+    p0 = plt.scatter( info_ysos[i10,4], info_ysos[i10,12], marker='o', color = color[0] )
+    p1 = plt.scatter( info_ysos[i11,4], info_ysos[i11,12], marker='o', color = color[1] )
+    p2 = plt.scatter( info_ysos[i12,4], info_ysos[i12,12], marker='o', color = color[2] )
+    p3 = plt.scatter( info_ysos[i13,4], info_ysos[i13,12], marker='o', color = color[3] )
+    #plt.yscale('log')
+    plt.xlabel('mean [3.6] mag')
+    plt.ylabel('Stetson index [3.6]/[4.5] ')
+    #plt.axis([6,18,-3, 50])
+    plt.axis([6,18,-3, 5])
+    plt.show()
+    plt.legend([p0, p1, p2, p3, p4], ['XYSOs', 'class 1', 'class 2', 'class 3', 'stars'], 'upper left')
+    #plt.savefig('stetson_mag_36.eps')
+    plt.savefig(outroot_overview + 'stetson_mag_36_zoom.eps')
+    
+    # stetson vs. chisquared plot
+    i1 = np.where(info_ysos[:,12] > -99999)[0]
+    i10 = np.where( (info_ysos[:,12] > -99999) & (info_ysos[:,1] == 0) )[0]
+    i11 = np.where( (info_ysos[:,12] > -99999) & (info_ysos[:,1] == 1) )[0]
+    i12 = np.where( (info_ysos[:,12] > -99999) & (info_ysos[:,1] == 2) )[0]
+    i13 = np.where( (info_ysos[:,12] > -99999) & (info_ysos[:,1] == 3) )[0]
+    i14 = np.where( (info_stars[:,12] > -99999))[0]
+    color = [(1,0.35,0.35), (1,0.95,0.35), (0.5,0.9,0.25), (0.25,0.45,1), (0.9,0.35,1)]
+    plt.clf()
+    p4 = plt.scatter( log10(info_stars[i14,28]), info_stars[i14,12], marker='.', color = color[4] )
+    p0 = plt.scatter( log10(info_ysos[i10,28]), info_ysos[i10,12], marker='o', color = color[0] )
+    p1 = plt.scatter( log10(info_ysos[i11,28]), info_ysos[i11,12], marker='o', color = color[1] )
+    p2 = plt.scatter( log10(info_ysos[i12,28]), info_ysos[i12,12], marker='o', color = color[2] )
+    p3 = plt.scatter( log10(info_ysos[i13,28]), info_ysos[i13,12], marker='o', color = color[3] )
+    #plt.yscale('log')
+    plt.xlabel('log ( $\chi^2_{reduced}$ ) [3.6] ')
+    plt.ylabel('Stetson index of [3.6] and [4.5] ')
+    #plt.axis([-1,4,-3, 50])
+    plt.axis([-0.5,1.5,-3, 10])
+    plt.show()
+    plt.legend([p0, p1, p2, p3, p4], ['XYSOs', 'class 1', 'class 2', 'class 3', 'stars'])
+    #plt.savefig('stetson_chisq_36.eps')
+    plt.savefig(outroot_overview + 'stetson_chisq_36_zoom.eps')
+    
+    # stetson vs. chisquared plot in logscale
+    i1 = np.where(info_ysos[:,12] > -99999)[0]
+    i10 = np.where( (info_ysos[:,12] > -99999) & (info_ysos[:,1] == 0) )[0]
+    i11 = np.where( (info_ysos[:,12] > -99999) & (info_ysos[:,1] == 1) )[0]
+    i12 = np.where( (info_ysos[:,12] > -99999) & (info_ysos[:,1] == 2) )[0]
+    i13 = np.where( (info_ysos[:,12] > -99999) & (info_ysos[:,1] == 3) )[0]
+    i14 = np.where( (info_stars[:,12] > -99999))[0]
+    color = [(1,0.35,0.35), (1,0.95,0.35), (0.5,0.9,0.25), (0.25,0.45,1), (0.9,0.35,1)]
+    plt.clf()
+    p4 = plt.scatter( log10(info_stars[i14,28]), log10(info_stars[i14,12]), marker='.', color = color[4] )
+    p0 = plt.scatter( log10(info_ysos[i10,28]), log10(info_ysos[i10,12]), marker='o', color = color[0] )
+    p1 = plt.scatter( log10(info_ysos[i11,28]), log10(info_ysos[i11,12]), marker='o', color = color[1] )
+    p2 = plt.scatter( log10(info_ysos[i12,28]), log10(info_ysos[i12,12]), marker='o', color = color[2] )
+    p3 = plt.scatter( log10(info_ysos[i13,28]), log10(info_ysos[i13,12]), marker='o', color = color[3] )
+    #plt.yscale('log')
+    plt.xlabel('log ( $\chi^2_{reduced}$ ) [3.6] ')
+    plt.ylabel('log (Stetson index) of [3.6] and [4.5] ')
+    #plt.axis([-1,4,-3, 50])
+    #plt.axis([-0.5,1.5,-3, 10])
+    plt.show()
+    plt.legend([p0, p1, p2, p3, p4], ['XYSOs', 'class 1', 'class 2', 'class 3', 'stars'])
+    #plt.savefig('stetson_chisq_36.eps')
+    plt.savefig(outroot_overview + 'stetson_chisq_36_log.eps')
 
 
 def extraplots_2(data, infos, outroot_overview):
