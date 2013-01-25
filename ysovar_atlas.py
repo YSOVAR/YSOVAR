@@ -21,13 +21,13 @@ import ysovar_lombscargle
 from great_circle_dist import dist_radec, dist_radec_fast
 
 def readdata(filename1, filename2):  
-	# outdated routine, not used anymore
-	print 'reading ysovar data...'
-	ysovar1raw = scipy.io.readsav(filename1) # this is the 3.6 mu data
-	ysovar1 = ysovar1raw['ch1lightcurves']
-	ysovar2raw = scipy.io.readsav(filename2) # this is the 4.5 mu data
-	ysovar2 = ysovar2raw['ch2lightcurves']
-	return (ysovar1, ysovar2)
+    # outdated routine, not used anymore
+    print 'reading ysovar data...'
+    ysovar1raw = scipy.io.readsav(filename1) # this is the 3.6 mu data
+    ysovar1 = ysovar1raw['ch1lightcurves']
+    ysovar2raw = scipy.io.readsav(filename2) # this is the 4.5 mu data
+    ysovar2 = ysovar2raw['ch2lightcurves']
+    return (ysovar1, ysovar2)
 
 def radec_from_dict(data, RA = 'ra', DEC = 'dec'):
     '''return ra dec numpy array for list of dicts
@@ -50,54 +50,54 @@ def radec_from_dict(data, RA = 'ra', DEC = 'dec'):
 
 
 def test_crossmatch_irac(yso1, yso2):
-	# outdated routine, not used anymore
-	crossid_test = np.ones(len(yso1), int)*-99999
-	id_dist = 1./3600. # = 1 arcsec
-	for i in np.arange(0,len(yso1)):
-		distance = np.sqrt((yso1['ra'][i] - yso2['ra'])**2 + (yso1['dec'][i] - yso2['dec'])**2)
-		min_ind = np.where(distance == min(distance))[0]
-		if min(distance) <= id_dist:
-			crossid_test[i] = min_ind
-	return crossid_test
+    # outdated routine, not used anymore
+    crossid_test = np.ones(len(yso1), int)*-99999
+    id_dist = 1./3600. # = 1 arcsec
+    for i in np.arange(0,len(yso1)):
+        distance = np.sqrt((yso1['ra'][i] - yso2['ra'])**2 + (yso1['dec'][i] - yso2['dec'])**2)
+        min_ind = np.where(distance == min(distance))[0]
+        if min(distance) <= id_dist:
+            crossid_test[i] = min_ind
+    return crossid_test
 
 
 def readguentherlist(filename):  
-	# reads the data from Table 3 in Guenther+ 2012 and returns both (a) all data and (b) only ysos and stars as one subset. The data from the paper needs to be stored locally as ascii file.
-	print 'reading data from Guenther+ 2012 ...'
-	a = asciitable.read(filename)
-	guenther_data = a.data
-	
-	guenther_data_subset = guenther_data[np.where( (guenther_data['Class'] == 'XYSO') | (guenther_data['Class'] == 'I*') | (guenther_data['Class'] == 'I') | (guenther_data['Class'] == 'II*') | (guenther_data['Class'] == 'II') | (guenther_data['Class'] == 'III') | (guenther_data['Class'] == 'III*')  | (guenther_data['Class'] == 'star')  )[0]]
-	
-	return (guenther_data, guenther_data_subset)
+    # reads the data from Table 3 in Guenther+ 2012 and returns both (a) all data and (b) only ysos and stars as one subset. The data from the paper needs to be stored locally as ascii file.
+    print 'reading data from Guenther+ 2012 ...'
+    a = asciitable.read(filename)
+    guenther_data = a.data
+    
+    guenther_data_subset = guenther_data[np.where( (guenther_data['Class'] == 'XYSO') | (guenther_data['Class'] == 'I*') | (guenther_data['Class'] == 'I') | (guenther_data['Class'] == 'II*') | (guenther_data['Class'] == 'II') | (guenther_data['Class'] == 'III') | (guenther_data['Class'] == 'III*')  | (guenther_data['Class'] == 'star')  )[0]]
+    
+    return (guenther_data, guenther_data_subset)
 
 
 def makeclassinteger(guenther_data_yso):
-	# assigns an integer to the Guenther+ 2012 classes. 0=XYSO, 1=I+I*, 2=II+II*, 3=III, 4=star
-	guenther_class = np.ones(len(guenther_data_yso),int)*-9
-	guenther_class[np.where(guenther_data_yso['Class'] == 'XYSO' )[0]] = 0
-	guenther_class[np.where((guenther_data_yso['Class'] == 'I*') | (guenther_data_yso['Class'] == 'I'))[0]] = 1
-	guenther_class[np.where((guenther_data_yso['Class'] == 'II*') | (guenther_data_yso['Class'] == 'II'))[0]] = 2
-	guenther_class[np.where((guenther_data_yso['Class'] == 'III') | (guenther_data_yso['Class'] == 'III*'))[0]] = 3
-	guenther_class[np.where(guenther_data_yso['Class'] == 'star')[0]] = 4
-	return guenther_class
+    # assigns an integer to the Guenther+ 2012 classes. 0=XYSO, 1=I+I*, 2=II+II*, 3=III, 4=star
+    guenther_class = np.ones(len(guenther_data_yso),int)*-9
+    guenther_class[np.where(guenther_data_yso['Class'] == 'XYSO' )[0]] = 0
+    guenther_class[np.where((guenther_data_yso['Class'] == 'I*') | (guenther_data_yso['Class'] == 'I'))[0]] = 1
+    guenther_class[np.where((guenther_data_yso['Class'] == 'II*') | (guenther_data_yso['Class'] == 'II'))[0]] = 2
+    guenther_class[np.where((guenther_data_yso['Class'] == 'III') | (guenther_data_yso['Class'] == 'III*'))[0]] = 3
+    guenther_class[np.where(guenther_data_yso['Class'] == 'star')[0]] = 4
+    return guenther_class
 
 
 
 
 def makecrossids(data1, data2, radius, ra1='RAdeg', dec1='DEdeg', ra2='ra', dec2='dec'):
-	# outdated function, no longer used
-	# make cross-ids (using the coordinates) between Spiter lcs and Guenther2012.
-	# use 1 arcsec as radius.
-	cross_ids = np.ones(len(data1),int) * -99999
-	
-	for i in np.arange(0,len(data1)):
-		distance = dist_radec(data1[ra1][i], data1[dec1][i], data2[ra2], data2[dec2], unit ='deg') 
-		if min(distance) <= radius:
-			cross_ids[i] = np.argmin(distance)
-		
-	print len(np.where(cross_ids != -99999)[0])
-	return cross_ids
+    # outdated function, no longer used
+    # make cross-ids (using the coordinates) between Spiter lcs and Guenther2012.
+    # use 1 arcsec as radius.
+    cross_ids = np.ones(len(data1),int) * -99999
+    
+    for i in np.arange(0,len(data1)):
+        distance = dist_radec(data1[ra1][i], data1[dec1][i], data2[ra2], data2[dec2], unit ='deg') 
+        if min(distance) <= radius:
+            cross_ids[i] = np.argmin(distance)
+        
+    print len(np.where(cross_ids != -99999)[0])
+    return cross_ids
 
 ''' Format:
     dictionary of bands, where the name of the band mag is the key
@@ -119,6 +119,7 @@ def get_sed(data, sed_bands = sed_bands):
         keys must be the name of the field that contains the magnitudes in each band
         entries are lists of [name of error field, wavelength in micron,
         zero_magnitude_flux_freq in Jy]
+        
     Returns
     -------
     wavelen : np.ndarray
@@ -304,6 +305,7 @@ def Isoy2radec(isoy):
     ----------
     isoy : string
         ISOY Name 
+
     Returns
     -------
     ra, dec : float
@@ -434,14 +436,14 @@ def make_onecolor_stats(datalist, datalist_error):
         array of statistical values (median, MAD, mean, stddev, chi**2 with respect to mean, maximum value, minimum value, "delta" (0.5 * (90th percentile - 1-th percentile)) )
         
     '''
-	median = np.median(datalist)
-	mad = np.median(abs(datalist - median))
-	mean = np.mean(datalist)
-	stddev = np.std(datalist)
-	chisq_to_mean = np.sum( (datalist - mean)**2/(datalist_error**2) )/(len(datalist)-1)
-	delta = (scipy.stats.mstats.mquantiles(datalist, prob=0.9) - scipy.stats.mstats.mquantiles(datalist, prob=0.1))/2.
-	stats = np.array([median, mad, mean, stddev, chisq_to_mean, np.max(datalist), np.min(datalist), delta])
-	return stats
+    median = np.median(datalist)
+    mad = np.median(abs(datalist - median))
+    mean = np.mean(datalist)
+    stddev = np.std(datalist)
+    chisq_to_mean = np.sum( (datalist - mean)**2/(datalist_error**2) )/(len(datalist)-1)
+    delta = (scipy.stats.mstats.mquantiles(datalist, prob=0.9) - scipy.stats.mstats.mquantiles(datalist, prob=0.1))/2.
+    stats = np.array([median, mad, mean, stddev, chisq_to_mean, np.max(datalist), np.min(datalist), delta])
+    return stats
 
 def make_twocolor_stats(datalist1, datalist1_error,datalist2, datalist2_error, verbose = True):
     '''Calculates the Stetson index for a two-band light curve. Uses only near-simultaneous data points as defined in dict_cleanup.
@@ -525,42 +527,42 @@ def make_stats(data, info, verbose = True):
 
 
 def calc_reddening():
-	# this is basically from Rieke & Lebofsky 1984.
-	# I take the extinctions from the L and M band (3.5, 5.0).
-	A36 = 0.058
-	A45 = 0.023
-	R36 = - A36/(A45 - A36)
-	return np.array([R36, A36])
+    # this is basically from Rieke & Lebofsky 1984.
+    # I take the extinctions from the L and M band (3.5, 5.0).
+    A36 = 0.058
+    A45 = 0.023
+    R36 = - A36/(A45 - A36)
+    return np.array([R36, A36])
 
 
 
 
 def fit_twocolor(data):
-	# measures the slope of the data points in the color-magnitude diagram.
-	# this is just fitted with ordinary least squares, using the analytic formula.
-	# this is then used as a first guess for an orthogonal least squares fit with simultaneous treatment of errors in x and y (see fit_twocolor_odr)
-	x = data['m36'] - data['m45']
-	y = data['m36']
-	x_error = np.sqrt( data['m36_error']**2 + data['m45_error']**2 )
-	y_error = data['m36_error']
-	N = float(len(data['m36']))
-	# calculate the different sums:
-	sum_x = np.sum(x)
-	sum_y = np.sum(y)
-	sum_xx = np.sum(x**2)
-	sum_xy = np.sum(x*y)
-	# now get b and m from analytic formula:
-	m = (-sum_x*sum_y + N*sum_xy) / (N*sum_xx - sum_x*sum_x)
-	b = (-sum_x*sum_xy + sum_xx*sum_y) / (N*sum_xx - sum_x*sum_x)
-	# now calculate chisquared for this line:
-	reduced_chisq = sum( (y - (m*x+b))**2/ y_error**2)/N
-	
-	# now fit theoretical reddening vector to data, for plotting purposes (i.e. just shifting it in y:)
-	m2 = calc_reddening()[0] # the sign is okay, because the y axis is inverted in the plots
-	b2 = 1/N * ( sum_y - m2 * sum_x )
-	reduced_chisq2 = sum( (y - (m2*x+b2))**2/y_error**2 )/N
-	
-	return np.array([m,b,m2,b2,reduced_chisq,reduced_chisq2])
+    # measures the slope of the data points in the color-magnitude diagram.
+    # this is just fitted with ordinary least squares, using the analytic formula.
+    # this is then used as a first guess for an orthogonal least squares fit with simultaneous treatment of errors in x and y (see fit_twocolor_odr)
+    x = data['m36'] - data['m45']
+    y = data['m36']
+    x_error = np.sqrt( data['m36_error']**2 + data['m45_error']**2 )
+    y_error = data['m36_error']
+    N = float(len(data['m36']))
+    # calculate the different sums:
+    sum_x = np.sum(x)
+    sum_y = np.sum(y)
+    sum_xx = np.sum(x**2)
+    sum_xy = np.sum(x*y)
+    # now get b and m from analytic formula:
+    m = (-sum_x*sum_y + N*sum_xy) / (N*sum_xx - sum_x*sum_x)
+    b = (-sum_x*sum_xy + sum_xx*sum_y) / (N*sum_xx - sum_x*sum_x)
+    # now calculate chisquared for this line:
+    reduced_chisq = sum( (y - (m*x+b))**2/ y_error**2)/N
+    
+    # now fit theoretical reddening vector to data, for plotting purposes (i.e. just shifting it in y:)
+    m2 = calc_reddening()[0] # the sign is okay, because the y axis is inverted in the plots
+    b2 = 1/N * ( sum_y - m2 * sum_x )
+    reduced_chisq2 = sum( (y - (m2*x+b2))**2/y_error**2 )/N
+    
+    return np.array([m,b,m2,b2,reduced_chisq,reduced_chisq2])
 
 
 
@@ -726,111 +728,111 @@ def calc_ls(data, infos, maxper, oversamp = 4, maxfreq = 1.):
                 infos.peak_45[i] = sig2
     
     return infos
-	
+    
 
 
 
 def is_there_a_good_period(data,infos, power, minper, maxper):
-	'''check if a strong periodogram peak is found; if yes, this is saved to the info structure.
-	
-	Parameters
-	----------
-	data : np.ndarray
-	    which contains the input lightcurves
-	infos : np.rec.array
-	    info structure with refined object information
-	power : float
-	    required power threshold for "good" period
-	minper : float
-	    lowest period which is considered
-	maxper : float
-	    maximum period which is considered
-        Returns
-        -------
-        infos : np.rec.array
-            structure with the updated object properties ("good" period and power of peak)
-        
-        '''
-	
-	for i in np.arange(0, len(data)):
-		per = -99999.
-		peak = -99999.
-		peak1 = infos.peak_36[i]
-		peak2 = infos.peak_45[i]
-		per1 = infos.period_36[i]
-		per2 = infos.period_45[i]
-		A = ( (peak1 > power) & (per1 > minper) & (per1 < maxper) ) # take periods between 2 and 20 d with power > 10
-		B = ( (peak2 > power) & (per2 > minper) & (per2 < maxper) )
-		if (A & B): # take higher peak period.
-			if peak1 > peak2:
-				per = per1
-				peak = peak1
-			if peak <= peak2:
-				per = per2
-				peak = peak2
-		else:
-			if A:
-				per = per1
-				peak = peak1
-			if B:
-				per = per2
-				peak = peak2
-		infos.good_period[i] = per
-		infos.good_peak[i] = peak
-	return infos
+    '''check if a strong periodogram peak is found; if yes, this is saved to the info structure.
+    
+    Parameters
+    ----------
+    data : np.ndarray
+        which contains the input lightcurves
+    infos : np.rec.array
+        info structure with refined object information
+    power : float
+        required power threshold for "good" period
+    minper : float
+        lowest period which is considered
+    maxper : float
+        maximum period which is considered
+    
+    Returns
+    -------
+    infos : np.rec.array
+        structure with the updated object properties ("good" period and power of peak)
+   '''
+    
+    for i in np.arange(0, len(data)):
+        per = -99999.
+        peak = -99999.
+        peak1 = infos.peak_36[i]
+        peak2 = infos.peak_45[i]
+        per1 = infos.period_36[i]
+        per2 = infos.period_45[i]
+        A = ( (peak1 > power) & (per1 > minper) & (per1 < maxper) ) # take periods between 2 and 20 d with power > 10
+        B = ( (peak2 > power) & (per2 > minper) & (per2 < maxper) )
+        if (A & B): # take higher peak period.
+            if peak1 > peak2:
+                per = per1
+                peak = peak1
+            if peak <= peak2:
+                per = per2
+                peak = peak2
+        else:
+            if A:
+                per = per1
+                peak = peak1
+            if B:
+                per = per2
+                peak = peak2
+        infos.good_period[i] = per
+        infos.good_peak[i] = peak
+    return infos
 
 
 def phase_fold_data(data,infos):
-	# take data sets for which a strong periodogram peak is found and fold these data by period.
-	for i in np.arange(0,len(data)):
-		period = infos.good_period[i]
-		if period > 0: # if there's a good period
-			if 't1' in data[i].keys():
-				data[i]['p1'] = np.mod(data[i]['t1'],period)/period
-			if 't2' in data[i].keys():
-				data[i]['p2'] = np.mod(data[i]['t2'],period)/period
-			if 't' in data[i].keys():
-				data[i]['p'] = np.mod(data[i]['t'],period)/period
-	return(data)
+    # take data sets for which a strong periodogram peak is found and fold these data by period.
+    for i in np.arange(0,len(data)):
+        period = infos.good_period[i]
+        if period > 0: # if there's a good period
+            if 't1' in data[i].keys():
+                data[i]['p1'] = np.mod(data[i]['t1'],period)/period
+            if 't2' in data[i].keys():
+                data[i]['p2'] = np.mod(data[i]['t2'],period)/period
+            if 't' in data[i].keys():
+                data[i]['p'] = np.mod(data[i]['t'],period)/period
+    return(data)
 
 
 
 def spectra_coordinates(filename):
-	# only for IRAS 20050: read ascii file with info about hectospec data.
-	a = asciitable.read(filename)
-	ra_string = a['RA']
-	dec_string = a['DEC']
-	ra = np.array([])
-	dec = np.array([])
-	for i in np.arange(0,len(ra_string)):
-		ra_split = string.split(ra_string[i],':')
-		print ra_split
-		ra_new = float(ra_split[0])*15. + float(ra_split[1])*15./60. + float(ra_split[2])*15./3600.
-		print ra_new
-		ra = np.append(ra,ra_new)
-		dec_split = string.split(dec_string[i],':')
-		#print dec_split
-		dec_new = float(dec_split[0]) + float(dec_split[1])/60. + float(dec_split[2])/3600.
-		#print dec_new
-		dec = np.append(dec,dec_new)
-	filenames = a['FILENAME']
-	
-	return (ra, dec, filenames)
+    # only for IRAS 20050: read ascii file with info about hectospec data.
+    a = asciitable.read(filename)
+    ra_string = a['RA']
+    dec_string = a['DEC']
+    ra = np.array([])
+    dec = np.array([])
+    for i in np.arange(0,len(ra_string)):
+        ra_split = string.split(ra_string[i],':')
+        print ra_split
+        ra_new = float(ra_split[0])*15. + float(ra_split[1])*15./60. + float(ra_split[2])*15./3600.
+        print ra_new
+        ra = np.append(ra,ra_new)
+        dec_split = string.split(dec_string[i],':')
+        #print dec_split
+        dec_new = float(dec_split[0]) + float(dec_split[1])/60. + float(dec_split[2])/3600.
+        #print dec_new
+        dec = np.append(dec,dec_new)
+    filenames = a['FILENAME']
+    
+    return (ra, dec, filenames)
 
 
 
 def spectra_check(infos, ra, dec, files, night_id, radius):
-	# only for IRAS 20050: check if there's a hectospec spectrum available for the sources, and if yes, add the filename of the spectrum to the info array.
-	for i in np.arange(0,len(infos)):
-		distance = np.sqrt((infos.ra_guenther[i] - ra)**2 + (infos.dec_guenther[i] - dec)**2)
-		min_ind = np.where(distance == min(distance))[0]
-		if min(distance) <= radius:
-			if night_id == 1:
-				infos.hectospec_night1[i] = str(files[min_ind][0])
-			if night_id == 2:
-				infos.hectospec_night2[i] = str(files[min_ind][0])
-		
-	return infos
+    # only for IRAS 20050: check if there's a hectospec spectrum available for the sources, and if yes, add the filename of the spectrum to the info array.
+    for i in np.arange(0,len(infos)):
+        distance = np.sqrt((infos.ra_guenther[i] - ra)**2 + (infos.dec_guenther[i] - dec)**2)
+        min_ind = np.where(distance == min(distance))[0]
+        if min(distance) <= radius:
+            if night_id == 1:
+                infos.hectospec_night1[i] = str(files[min_ind][0])
+            if night_id == 2:
+                infos.hectospec_night2[i] = str(files[min_ind][0])
+        
+    return infos
 
 
 
@@ -986,287 +988,286 @@ def make_latexfile(data, infos, outroot, name, ind, pdflatex = True):
 
 
 def fit_twocolor_odr(dataset, index, p_guess, outroot, n_bootstrap, ifplot, ifbootstrap, xyswitch):
-	'''Fits a straight line to a single CMD, using a weighted orthogonal least squares algorithm (ODR).
-	
-	Parameters
-	----------
-	dataset : np.ndarray
-	    data collection for one detected source
-	index : integer
-	    the index of the dataset within the data structure
-	p_guess : tuple
-	    initial fit parameters derived from fit_twocolor
-	outroot : string
-	    dictionary where to save the plot
-	n_bootstrap : integer
-	    how many bootstrap trials
-	ifplot : boolean
-	    if you want a residual plot or not
-	ifbootstrap : boolean
-	    if you want to bootstrap or not
-	xyswitch : boolean
-	    if the X and Y axis will be switched for the fit or not. This has nothing to do with bisector fitting! The fitting algorithm used here takes care of errors in x and y simultaneously; the xyswitch is only for taking care of pathological cases where a vertical fitted line would occur without coordinate switching.
-        Returns
-        -------
-        result : tuple
-            contains output = fit parameters, bootstrap_output = results from the bootstrap, bootstrap_raw = the actual bootstrapped data, alpha = the fitted slope angle, sd_alpha = the error on the fitted slope angle, x_spread = the spread of the data along the fitted line (0.5*(90th percentile - 10th percentile)))
+    '''Fits a straight line to a single CMD, using a weighted orthogonal least squares algorithm (ODR).
+    
+    Parameters
+    ----------
+    dataset : np.ndarray
+        data collection for one detected source
+    index : integer
+        the index of the dataset within the data structure
+    p_guess : tuple
+        initial fit parameters derived from fit_twocolor
+    outroot : string
+        dictionary where to save the plot
+    n_bootstrap : integer
+        how many bootstrap trials
+    ifplot : boolean
+        if you want a residual plot or not
+    ifbootstrap : boolean
+        if you want to bootstrap or not
+    xyswitch : boolean
+        if the X and Y axis will be switched for the fit or not. This has nothing to do with bisector fitting! The fitting algorithm used here takes care of errors in x and y simultaneously; the xyswitch is only for taking care of pathological cases where a vertical fitted line would occur without coordinate switching.
+    
+    Returns
+    -------
+    result : tuple
+        contains output = fit parameters, bootstrap_output = results from the bootstrap, bootstrap_raw = the actual bootstrapped data, alpha = the fitted slope angle, sd_alpha = the error on the fitted slope angle, x_spread = the spread of the data along the fitted line (0.5*(90th percentile - 10th percentile)))
+    '''
+    
+    #define the fitting function (in this case a straight line)
+    def fitfunc(p, x):
+        return p[0]*x + p[1]
+    
+    # define what the x and y data is:
+    if not(xyswitch):
+        x_data = dataset['m36'] - dataset['m45']
+        y_data = dataset['m36']
+        x_error = np.sqrt( (dataset['m36_error'])**2 + (dataset['m45_error'])**2 )
+        y_error = dataset['m36_error']
+    else:
+        y_data = dataset['m36'] - dataset['m45']
+        x_data = dataset['m36']
+        y_error = np.sqrt( (dataset['m36_error'])**2 + (dataset['m45_error'])**2 )
+        x_error = dataset['m36_error']
+    
+    # load data into ODR
+    data = scipy.odr.RealData(x=x_data, y=y_data, sx=x_error, sy=y_error)
+    # tell ODR what the fitting function is:
+    model = scipy.odr.Model(fitfunc)
+    # now do the fit:
+    fit = scipy.odr.ODR(data, model, p_guess, maxit=1000) 
+    output = fit.run()
+    
+    p = output.beta # the fitted function parameters
+    delta = output.delta # array of estimated errors in input variables
+    eps   = output.eps # array of estimated errors in response variables
+    #print output.stopreason[0]
+    bootstrap_output = np.array([np.NaN, np.NaN, np.NaN, np.NaN])
+    bootstrap_raw = (np.NaN, np.NaN, np.NaN)
+    # calculate slope angle. This is vs. horizontal axis.
+    hyp = np.sqrt(output.beta[0]**2 + 1**2)
+    alpha = math.asin(output.beta[0]/hyp)
+    # calculate error on slope angle by taking the mean difference of the angles derived from m+m_error and m-m_error.
+    alpha_plus  = math.asin((output.beta[0]+output.sd_beta[0])/np.sqrt((output.beta[0]+output.sd_beta[0])**2 + 1**2))
+    alpha_minus = math.asin((output.beta[0]-output.sd_beta[0])/np.sqrt((output.beta[0]-output.sd_beta[0])**2 + 1**2))
+    sd_alpha = 0.5*( np.abs(alpha - alpha_plus) + np.abs(alpha - alpha_minus) ) 
+    # define the spread along the fitted line. Use 90th and 10th quantile.
+    # output.xplus and output.y are the x and y values of the projection of the original data onto the fit.
+    # okay, first transform coordinate system so that x axis is along fit. To do this, first shift everything by -p[1] (this is -b), then rotate by -alpha. New x and y coordinates are then:
+    #
+    # |x'|   |cos(-alpha) -sin(-alpha)| | x |
+    # |  | = |                        | |   |
+    # |y'|   |sin(-alpha)  cos(-alpha)| |y-b|
+    #
+    x_new = math.cos(-alpha) * output.xplus - math.sin(-alpha)*(output.y - p[1])
+    y_new = math.sin(-alpha) * output.xplus + math.cos(-alpha)*(output.y - p[1])
+    # The y_new values are now essentially zero. (As they should.)
+    # Now sort x_new and get 90th and 10th quantile:
+    x_new.sort()
+    x_spread = scipy.stats.mstats.mquantiles(x_new, prob=0.9)[0] - scipy.stats.mstats.mquantiles(x_new, prob=0.1)[0]
+    #print x_spread
+    
+    
+    if ifplot:
+        # I got the following from a python script from http://www.physics.utoronto.ca/~phy326/python/odr_fit_to_data.py, I have to check this properly.
+        # This does a residual plot, and some bootstrapping if desired.
+        # error ellipses:
+        xstar = x_error*np.sqrt( ((y_error*delta)**2) / ( (y_error*delta)**2 + (x_error*eps)**2 ) )
+        ystar = y_error*np.sqrt( ((x_error*eps)**2) / ( (y_error*delta)**2 + (x_error*eps)**2 ) )
+        adjusted_err = np.sqrt(xstar**2 + ystar**2)
+        residual = np.sign(y_data - fitfunc(p,x_data))*np.sqrt(delta**2 + eps**2)
+        fig = plt.figure()
+        fit = fig.add_subplot(211)
+        fit.set_xticklabels( () ) 
+        plt.ylabel("[3.6]")
+        plt.title("Orthogonal Distance Regression Fit to Data")
+        # plot data as circles and model as line
+        x_model = np.arange(min(x_data),max(x_data),(max(x_data)-min(x_data))/1000.)
+        fit.plot(x_data,y_data,'ro', x_model, fitfunc(p,x_model))
+        fit.errorbar(x_data, y_data, xerr=x_error, yerr=y_error, fmt='r+')
+        fit.set_yscale('linear')
         
-        '''
-	
-	#define the fitting function (in this case a straight line)
-	def fitfunc(p, x):
-		return p[0]*x + p[1]
-	
-	# define what the x and y data is:
-	if not(xyswitch):
-		x_data = dataset['m36'] - dataset['m45']
-		y_data = dataset['m36']
-		x_error = np.sqrt( (dataset['m36_error'])**2 + (dataset['m45_error'])**2 )
-		y_error = dataset['m36_error']
-	else:
-		y_data = dataset['m36'] - dataset['m45']
-		x_data = dataset['m36']
-		y_error = np.sqrt( (dataset['m36_error'])**2 + (dataset['m45_error'])**2 )
-		x_error = dataset['m36_error']
-	
-	# load data into ODR
-	data = scipy.odr.RealData(x=x_data, y=y_data, sx=x_error, sy=y_error)
-	# tell ODR what the fitting function is:
-	model = scipy.odr.Model(fitfunc)
-	# now do the fit:
-	fit = scipy.odr.ODR(data, model, p_guess, maxit=1000) 
-	output = fit.run()
-	
-	p = output.beta # the fitted function parameters
-	delta = output.delta # array of estimated errors in input variables
-	eps   = output.eps # array of estimated errors in response variables
-	#print output.stopreason[0]
-	bootstrap_output = np.array([np.NaN, np.NaN, np.NaN, np.NaN])
-	bootstrap_raw = (np.NaN, np.NaN, np.NaN)
-	# calculate slope angle. This is vs. horizontal axis.
-	hyp = np.sqrt(output.beta[0]**2 + 1**2)
-	alpha = math.asin(output.beta[0]/hyp)
-	# calculate error on slope angle by taking the mean difference of the angles derived from m+m_error and m-m_error.
-	alpha_plus  = math.asin((output.beta[0]+output.sd_beta[0])/np.sqrt((output.beta[0]+output.sd_beta[0])**2 + 1**2))
-	alpha_minus = math.asin((output.beta[0]-output.sd_beta[0])/np.sqrt((output.beta[0]-output.sd_beta[0])**2 + 1**2))
-	sd_alpha = 0.5*( np.abs(alpha - alpha_plus) + np.abs(alpha - alpha_minus) ) 
-	# define the spread along the fitted line. Use 90th and 10th quantile.
-	# output.xplus and output.y are the x and y values of the projection of the original data onto the fit.
-	# okay, first transform coordinate system so that x axis is along fit. To do this, first shift everything by -p[1] (this is -b), then rotate by -alpha. New x and y coordinates are then:
-	#
-	# |x'|   |cos(-alpha) -sin(-alpha)| | x |
-	# |  | = |                        | |   |
-	# |y'|   |sin(-alpha)  cos(-alpha)| |y-b|
-	#
-	x_new = math.cos(-alpha) * output.xplus - math.sin(-alpha)*(output.y - p[1])
-	y_new = math.sin(-alpha) * output.xplus + math.cos(-alpha)*(output.y - p[1])
-	# The y_new values are now essentially zero. (As they should.)
-	# Now sort x_new and get 90th and 10th quantile:
-	x_new.sort()
-	x_spread = scipy.stats.mstats.mquantiles(x_new, prob=0.9)[0] - scipy.stats.mstats.mquantiles(x_new, prob=0.1)[0]
-	#print x_spread
-	
-	
-	if ifplot:
-		# I got the following from a python script from http://www.physics.utoronto.ca/~phy326/python/odr_fit_to_data.py, I have to check this properly.
-		# This does a residual plot, and some bootstrapping if desired.
-		# error ellipses:
-		xstar = x_error*np.sqrt( ((y_error*delta)**2) / ( (y_error*delta)**2 + (x_error*eps)**2 ) )
-		ystar = y_error*np.sqrt( ((x_error*eps)**2) / ( (y_error*delta)**2 + (x_error*eps)**2 ) )
-		adjusted_err = np.sqrt(xstar**2 + ystar**2)
-		residual = np.sign(y_data - fitfunc(p,x_data))*np.sqrt(delta**2 + eps**2)
-		fig = plt.figure()
-		fit = fig.add_subplot(211)
-		fit.set_xticklabels( () ) 
-		plt.ylabel("[3.6]")
-		plt.title("Orthogonal Distance Regression Fit to Data")
-		# plot data as circles and model as line
-		x_model = np.arange(min(x_data),max(x_data),(max(x_data)-min(x_data))/1000.)
-		fit.plot(x_data,y_data,'ro', x_model, fitfunc(p,x_model))
-		fit.errorbar(x_data, y_data, xerr=x_error, yerr=y_error, fmt='r+')
-		fit.set_yscale('linear')
-		
-		a = np.array([output.xplus,x_data])   # output.xplus: x-values of datapoints projected onto fit
-		b = np.array([output.y,y_data])  # output.y: y-values of datapoints projected onto fit
-		fit.plot(np.array([a[0][0],a[1][0]]), np.array([b[0][0],b[1][0]]), 'k-', label = 'Residuals')
-		print np.array([a[0][0],a[1][0]])
-		print np.array([b[0][0],b[1][0]])
-		for i in range(1,len(y_data)):
-			fit.plot(np.array([a[0][i],a[1][i]]), np.array([b[0][i],b[1][i]]),'k-')
-		
-		fit.set_ylim([min(y_data)-0.05, max(y_data)+0.05])
-		fit.set_ylim(fit.get_ylim()[::-1])
-		fit.legend(loc='lower left')
-		# separate plot to show residuals
-		residuals = fig.add_subplot(212) # 3 rows, 1 column, subplot 2
-		residuals.errorbar(x=a[0][:],y=residual,yerr=adjusted_err, fmt="r+", label = "Residuals")
-		# make sure residual plot has same x axis as fit plot
-		residuals.set_xlim(fit.get_xlim())
-		residuals.set_ylim(residuals.get_ylim()[::-1])
-		# Draw a horizontal line at zero on residuals plot
-		plt.axhline(y=0, color='b')
-		# Label axes
-		plt.xlabel("[3.6] - [4.5]")
-		plt.ylabel("Residuals")
-		plt.savefig(outroot + str(index) + '_odrfit.eps')
-	
-	if ifbootstrap:
-		print 'bootstrapping...'
-		# take a random half of the data and do the fit (choosing without replacement, standard bootstrap). Do this a lot of times and construct a cumulative distribution function for the slope and the intercept of the fitted line.
-		# now what I actually want is the slope angle a, not m.
-		m = np.array([])
-		b = np.array([])
-		for i in np.arange(0, n_bootstrap):
-			indices = np.arange(0,len(x_data))
-			np.random.shuffle(indices)
-			ind = indices[0:len(x_data)/2] # dividing by integer on purpose.
-			dat = scipy.odr.RealData(x=x_data[ind], y=y_data[ind], sx=x_error[ind], sy=y_error[ind])
-			fit = scipy.odr.ODR(dat, model, p_guess, maxit=5000,job=10) 
-			out = fit.run()
-			m = np.append(m, out.beta[0])
-			b = np.append(b, out.beta[1])
-		
-		a = np.arctan(m) # in radian
-		# plot histograms for m and b:
-		plt.clf()
-		n_m, bins_m, patches_m = plt.hist(m, 100, normed=True )
-		plt.savefig('m_hist.eps')
-		plt.clf()
-		n_b, bins_b, patches_b = plt.hist(b, 100, normed=True)
-		plt.savefig('b_hist.eps')
-		plt.clf()
-		n_a, bins_a, patches_a = plt.hist(a, 100, normed=True)
-		plt.savefig('a_hist.eps')
-		plt.clf()
-		# get median and symmetric 68% interval for m, b and alpha:
-		m_median = np.median(m)
-		m_down = np.sort(m)[ int(round(0.16*len(m))) ]
-		m_up   = np.sort(m)[ int(round(0.84*len(m))) ]
-		m_error = np.mean([abs(m_down-m_median), abs(m_up-m_median)])
-		#print (m_median, m_up, m_down, m_error)
-		b_median = np.median(b)
-		b_down = np.sort(b)[ int(round(0.16*len(b))) ]
-		b_up   = np.sort(b)[ int(round(0.84*len(b))) ]
-		b_error = np.mean([abs(b_down-b_median), abs(b_up-b_median)])
-		#print (b_median, b_up, b_down, b_error)
-		a_median = np.median(a)
-		a_down = np.sort(a)[ int(round(0.16*len(a))) ]
-		a_up   = np.sort(a)[ int(round(0.84*len(a))) ]
-		a_error = np.mean([abs(a_down-a_median), abs(a_up-a_median)])
-		#print (b_median, b_up, b_down, b_error)
-		
-		bootstrap_output = np.array([m_median, m_error, b_median, b_error, a_median, a_error])
-		bootstrap_raw = (m, b, a)
-	
-	if xyswitch:
-		# re-transform slope and intercept to original xy system
-		# x = m * y + b
-		# y = 1/m * x - b/m
-		output.beta[1] = -output.beta[1]/output.beta[0] # b
-		output.beta[0] = 1./output.beta[0] # m
-		alpha = np.pi/2 - alpha
-	
-	result = (output, bootstrap_output, bootstrap_raw, alpha, sd_alpha, x_spread)
-	return result
+        a = np.array([output.xplus,x_data])   # output.xplus: x-values of datapoints projected onto fit
+        b = np.array([output.y,y_data])  # output.y: y-values of datapoints projected onto fit
+        fit.plot(np.array([a[0][0],a[1][0]]), np.array([b[0][0],b[1][0]]), 'k-', label = 'Residuals')
+        print np.array([a[0][0],a[1][0]])
+        print np.array([b[0][0],b[1][0]])
+        for i in range(1,len(y_data)):
+            fit.plot(np.array([a[0][i],a[1][i]]), np.array([b[0][i],b[1][i]]),'k-')
+        
+        fit.set_ylim([min(y_data)-0.05, max(y_data)+0.05])
+        fit.set_ylim(fit.get_ylim()[::-1])
+        fit.legend(loc='lower left')
+        # separate plot to show residuals
+        residuals = fig.add_subplot(212) # 3 rows, 1 column, subplot 2
+        residuals.errorbar(x=a[0][:],y=residual,yerr=adjusted_err, fmt="r+", label = "Residuals")
+        # make sure residual plot has same x axis as fit plot
+        residuals.set_xlim(fit.get_xlim())
+        residuals.set_ylim(residuals.get_ylim()[::-1])
+        # Draw a horizontal line at zero on residuals plot
+        plt.axhline(y=0, color='b')
+        # Label axes
+        plt.xlabel("[3.6] - [4.5]")
+        plt.ylabel("Residuals")
+        plt.savefig(outroot + str(index) + '_odrfit.eps')
+    
+    if ifbootstrap:
+        print 'bootstrapping...'
+        # take a random half of the data and do the fit (choosing without replacement, standard bootstrap). Do this a lot of times and construct a cumulative distribution function for the slope and the intercept of the fitted line.
+        # now what I actually want is the slope angle a, not m.
+        m = np.array([])
+        b = np.array([])
+        for i in np.arange(0, n_bootstrap):
+            indices = np.arange(0,len(x_data))
+            np.random.shuffle(indices)
+            ind = indices[0:len(x_data)/2] # dividing by integer on purpose.
+            dat = scipy.odr.RealData(x=x_data[ind], y=y_data[ind], sx=x_error[ind], sy=y_error[ind])
+            fit = scipy.odr.ODR(dat, model, p_guess, maxit=5000,job=10) 
+            out = fit.run()
+            m = np.append(m, out.beta[0])
+            b = np.append(b, out.beta[1])
+        
+        a = np.arctan(m) # in radian
+        # plot histograms for m and b:
+        plt.clf()
+        n_m, bins_m, patches_m = plt.hist(m, 100, normed=True )
+        plt.savefig('m_hist.eps')
+        plt.clf()
+        n_b, bins_b, patches_b = plt.hist(b, 100, normed=True)
+        plt.savefig('b_hist.eps')
+        plt.clf()
+        n_a, bins_a, patches_a = plt.hist(a, 100, normed=True)
+        plt.savefig('a_hist.eps')
+        plt.clf()
+        # get median and symmetric 68% interval for m, b and alpha:
+        m_median = np.median(m)
+        m_down = np.sort(m)[ int(round(0.16*len(m))) ]
+        m_up   = np.sort(m)[ int(round(0.84*len(m))) ]
+        m_error = np.mean([abs(m_down-m_median), abs(m_up-m_median)])
+        #print (m_median, m_up, m_down, m_error)
+        b_median = np.median(b)
+        b_down = np.sort(b)[ int(round(0.16*len(b))) ]
+        b_up   = np.sort(b)[ int(round(0.84*len(b))) ]
+        b_error = np.mean([abs(b_down-b_median), abs(b_up-b_median)])
+        #print (b_median, b_up, b_down, b_error)
+        a_median = np.median(a)
+        a_down = np.sort(a)[ int(round(0.16*len(a))) ]
+        a_up   = np.sort(a)[ int(round(0.84*len(a))) ]
+        a_error = np.mean([abs(a_down-a_median), abs(a_up-a_median)])
+        #print (b_median, b_up, b_down, b_error)
+        
+        bootstrap_output = np.array([m_median, m_error, b_median, b_error, a_median, a_error])
+        bootstrap_raw = (m, b, a)
+    
+    if xyswitch:
+        # re-transform slope and intercept to original xy system
+        # x = m * y + b
+        # y = 1/m * x - b/m
+        output.beta[1] = -output.beta[1]/output.beta[0] # b
+        output.beta[0] = 1./output.beta[0] # m
+        alpha = np.pi/2 - alpha
+    
+    result = (output, bootstrap_output, bootstrap_raw, alpha, sd_alpha, x_spread)
+    return result
 
 
 def add_twocolor_fits_to_infos(data, infos, outroot, n_bootstrap, ifplot, ifbootstrap, xyswitch):
-	'''Performs straight line fit to CMD for all sources. Adds fitted parameters to info structure.
-	
-	Parameters
-	----------
-	data : np.ndarray
-	    data collection for all sources
-	infos : np.rec.array
-	    info structure for all sources
-	outroot : string
-	    directory for plots
-	n_bootstrap : integer
-	    how many bootstrap trials
-	ifplot : boolean
-	    if you want a residual plot or not
-	ifbootstrap : boolean
-	    if you want to bootstrap or not
-	xyswitch : boolean
-	    if the X and Y axis will be switched for the fit or not. This has nothing to do with bisector fitting! The fitting algorithm used here takes care of errors in x and y simultaneously; the xyswitch is only for taking care of pathological cases where a vertical fitted line would occur without coordinate switching.
-        Returns
-        -------
-        infos : np.rec.array
-            updated info structure
-        
-        '''
-	for i in np.arange(0, len(data)):
-		if 't' in data[i].keys() : 
-			# use the result of the plain least squares fitting as a first parameter guess.
-			p_guess = (infos[i].cmd_m_plain, infos[i].cmd_b_plain)
-			
-			(fit_output, bootstrap_output, bootstrap_raw, alpha, alpha_error, x_spread) = fit_twocolor_odr(data[i], i, p_guess, outroot, n_bootstrap, ifplot, ifbootstrap, xyswitch)
+    '''Performs straight line fit to CMD for all sources. Adds fitted parameters to info structure.
+    
+    Parameters
+    ----------
+    data : np.ndarray
+        data collection for all sources
+    infos : np.rec.array
+        info structure for all sources
+    outroot : string
+        directory for plots
+    n_bootstrap : integer
+        how many bootstrap trials
+    ifplot : boolean
+        if you want a residual plot or not
+    ifbootstrap : boolean
+        if you want to bootstrap or not
+    xyswitch : boolean
+        if the X and Y axis will be switched for the fit or not. This has nothing to do with bisector fitting! The fitting algorithm used here takes care of errors in x and y simultaneously; the xyswitch is only for taking care of pathological cases where a vertical fitted line would occur without coordinate switching.
+    
+    Returns
+    -------
+    infos : np.rec.array
+        updated info structure
+    '''
+    for i in np.arange(0, len(data)):
+        if 't' in data[i].keys() : 
+            # use the result of the plain least squares fitting as a first parameter guess.
+            p_guess = (infos[i].cmd_m_plain, infos[i].cmd_b_plain)
+            
+            (fit_output, bootstrap_output, bootstrap_raw, alpha, alpha_error, x_spread) = fit_twocolor_odr(data[i], i, p_guess, outroot, n_bootstrap, ifplot, ifbootstrap, xyswitch)
 
-			if xyswitch:
-				infos[i].cmd_alpha2 = alpha
-				infos[i].cmd_alpha2_error = alpha_error
-				infos[i].cmd_m2 = fit_output.beta[0]
-				infos[i].cmd_b2 = fit_output.beta[1]
-				infos[i].cmd_m2_error = fit_output.sd_beta[0]
-				infos[i].cmd_b2_error = fit_output.sd_beta[1]
-				infos[i].cmd_x_spread = x_spread
-			else:
-				infos[i].cmd_alpha1 = alpha
-				infos[i].cmd_alpha1_error = alpha_error
-				infos[i].cmd_m = fit_output.beta[0]
-				infos[i].cmd_b = fit_output.beta[1]
-				infos[i].cmd_m_error = fit_output.sd_beta[0]
-				infos[i].cmd_b_error = fit_output.sd_beta[1]
-				infos[i].cmd_x_spread = x_spread
-	
-	return infos
+            if xyswitch:
+                infos[i].cmd_alpha2 = alpha
+                infos[i].cmd_alpha2_error = alpha_error
+                infos[i].cmd_m2 = fit_output.beta[0]
+                infos[i].cmd_b2 = fit_output.beta[1]
+                infos[i].cmd_m2_error = fit_output.sd_beta[0]
+                infos[i].cmd_b2_error = fit_output.sd_beta[1]
+                infos[i].cmd_x_spread = x_spread
+            else:
+                infos[i].cmd_alpha1 = alpha
+                infos[i].cmd_alpha1_error = alpha_error
+                infos[i].cmd_m = fit_output.beta[0]
+                infos[i].cmd_b = fit_output.beta[1]
+                infos[i].cmd_m_error = fit_output.sd_beta[0]
+                infos[i].cmd_b_error = fit_output.sd_beta[1]
+                infos[i].cmd_x_spread = x_spread
+    
+    return infos
 
 def good_slope_angle(infos):
-	'''Checks if the ODR fit with switched X and Y axes yields a more constrained fit than the original axes. This basically catches the pathological cases with a (nearly) vertical fit with large nominal errors.
-	
-	Parameters
-	----------
-	infos : np.rec.array
-	    info structure for all sources
+    '''Checks if the ODR fit with switched X and Y axes yields a more constrained fit than the original axes. This basically catches the pathological cases with a (nearly) vertical fit with large nominal errors.
+    
+    Parameters
+    ----------
+    infos : np.rec.array
+        info structure for all sources
 
-	Returns
-        -------
-        infos : np.rec.array
-            updated info structure
-        
-        '''
-	for i in np.arange(0, len(infos)):
-		if infos[i]['cmd_alpha1'] > -99999.:
-			if infos[i]['cmd_alpha1_error']/infos[i]['cmd_alpha1'] < infos[i]['cmd_alpha2_error']/infos[i]['cmd_alpha2']:
-				infos[i]['cmd_alpha'] = infos[i]['cmd_alpha1']
-				infos[i]['cmd_alpha_error'] = infos[i]['cmd_alpha1_error']
-			else:
-				infos[i]['cmd_alpha'] = infos[i]['cmd_alpha2']
-				infos[i]['cmd_alpha_error'] = infos[i]['cmd_alpha2_error']
-	return infos
+    Returns
+    -------
+    infos : np.rec.array
+        updated info structure
+    '''
+    for i in np.arange(0, len(infos)):
+        if infos[i]['cmd_alpha1'] > -99999.:
+            if infos[i]['cmd_alpha1_error']/infos[i]['cmd_alpha1'] < infos[i]['cmd_alpha2_error']/infos[i]['cmd_alpha2']:
+                infos[i]['cmd_alpha'] = infos[i]['cmd_alpha1']
+                infos[i]['cmd_alpha_error'] = infos[i]['cmd_alpha1_error']
+            else:
+                infos[i]['cmd_alpha'] = infos[i]['cmd_alpha2']
+                infos[i]['cmd_alpha_error'] = infos[i]['cmd_alpha2_error']
+    return infos
 
 
 def cmd_dominated_by(infos):
-	# this is some crude classification of the cmd slope.
-	# anything that goes up and has a relative slope error of <40% is "accretion-dominated",
-	# anythin that is within some cone around the theoratical reddening and has error <40% is "extinction-dominated",
-	# anything else is "other".
-	# if slope is classified as extinction, the spread in the CMD is converted to AV and stored in infos.
-	alpha_red = math.asin(calc_reddening()[0]/np.sqrt(calc_reddening()[0]**2 + 1**2)) # angle of standard reddening
-	for i in np.arange(0, len(infos)):
-		if ((infos[i]['cmd_alpha'] > -99999.) & (infos[i]['cmd_alpha'] < 0.) & (infos[i]['cmd_alpha_error']/infos[i]['cmd_alpha'] <= 0.3) ):
-			infos[i]['cmd_dominated'] = 'accr.'
-		elif ((infos[i]['cmd_alpha'] > -99999.) & (np.abs(infos[i]['cmd_alpha'] - alpha_red) <= np.pi/18.) & (infos[i]['cmd_alpha_error']/infos[i]['cmd_alpha'] <= 0.3) ):
-			infos[i]['cmd_dominated'] = 'extinc.'
-			infos[i]['AV'] = infos[i]['cmd_x_spread']/calc_reddening()[1]
-		elif ((infos[i]['cmd_alpha'] > -99999.) & (infos[i]['cmd_alpha_error']/infos[i]['cmd_alpha'] <= 0.3)):
-			infos[i]['cmd_dominated'] = 'other'
-		elif (infos[i]['cmd_alpha'] > -99999.):
-			infos[i]['cmd_dominated'] = 'bad'
-		else:
-			infos[i]['cmd_dominated'] = 'no data'
-	
-	return infos
+    # this is some crude classification of the cmd slope.
+    # anything that goes up and has a relative slope error of <40% is "accretion-dominated",
+    # anythin that is within some cone around the theoratical reddening and has error <40% is "extinction-dominated",
+    # anything else is "other".
+    # if slope is classified as extinction, the spread in the CMD is converted to AV and stored in infos.
+    alpha_red = math.asin(calc_reddening()[0]/np.sqrt(calc_reddening()[0]**2 + 1**2)) # angle of standard reddening
+    for i in np.arange(0, len(infos)):
+        if ((infos[i]['cmd_alpha'] > -99999.) & (infos[i]['cmd_alpha'] < 0.) & (infos[i]['cmd_alpha_error']/infos[i]['cmd_alpha'] <= 0.3) ):
+            infos[i]['cmd_dominated'] = 'accr.'
+        elif ((infos[i]['cmd_alpha'] > -99999.) & (np.abs(infos[i]['cmd_alpha'] - alpha_red) <= np.pi/18.) & (infos[i]['cmd_alpha_error']/infos[i]['cmd_alpha'] <= 0.3) ):
+            infos[i]['cmd_dominated'] = 'extinc.'
+            infos[i]['AV'] = infos[i]['cmd_x_spread']/calc_reddening()[1]
+        elif ((infos[i]['cmd_alpha'] > -99999.) & (infos[i]['cmd_alpha_error']/infos[i]['cmd_alpha'] <= 0.3)):
+            infos[i]['cmd_dominated'] = 'other'
+        elif (infos[i]['cmd_alpha'] > -99999.):
+            infos[i]['cmd_dominated'] = 'bad'
+        else:
+            infos[i]['cmd_dominated'] = 'no data'
+    
+    return infos
 
 
 

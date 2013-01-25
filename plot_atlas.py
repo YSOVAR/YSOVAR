@@ -59,28 +59,28 @@ def get_stamps(data, outroot, verbose = True):
             f.close()
 
 def make_reddeningvector_for_plot(x1, x2, y1, y2):
-	# calculates the coordinates of the reddening evctor in convenient plot coordinates.
-	slope = calc_reddening()
-	
-	if (x2-x1 <= 0.1):
-		AV = 0.25
-		vec_ylength = slope[1]*AV
-	elif (x2-x1 > 0.1) & (x2-x1 <= 0.2):
-		AV = 0.5
-		vec_ylength = slope[1]*AV
-	elif (x2-x1 > 0.2) & (x2-x1 <= 0.4):
-		AV = 1.
-		vec_ylength = slope[1]*AV
-	elif (x2-x1 > 0.4):
-		AV = 2.
-		vec_ylength = slope[1]*AV
-	
-	vec_startpoint = np.array([ x1 + 0.55*np.abs(x2-x1) , y1 + 0.1*np.abs(y2-y1) ]) # note: y-axis is inverted in plots!
-	vec_endpoint = vec_startpoint + np.array([ vec_ylength/slope[0] , vec_ylength ])
-	vec_info = np.array([ vec_startpoint[0], vec_startpoint[1], vec_endpoint[0], vec_endpoint[1], vec_ylength, AV ])
-	#print vec_info
-	
-	return vec_info
+    # calculates the coordinates of the reddening evctor in convenient plot coordinates.
+    slope = calc_reddening()
+    
+    if (x2-x1 <= 0.1):
+        AV = 0.25
+        vec_ylength = slope[1]*AV
+    elif (x2-x1 > 0.1) & (x2-x1 <= 0.2):
+        AV = 0.5
+        vec_ylength = slope[1]*AV
+    elif (x2-x1 > 0.2) & (x2-x1 <= 0.4):
+        AV = 1.
+        vec_ylength = slope[1]*AV
+    elif (x2-x1 > 0.4):
+        AV = 2.
+        vec_ylength = slope[1]*AV
+    
+    vec_startpoint = np.array([ x1 + 0.55*np.abs(x2-x1) , y1 + 0.1*np.abs(y2-y1) ]) # note: y-axis is inverted in plots!
+    vec_endpoint = vec_startpoint + np.array([ vec_ylength/slope[0] , vec_ylength ])
+    vec_info = np.array([ vec_startpoint[0], vec_startpoint[1], vec_endpoint[0], vec_endpoint[1], vec_ylength, AV ])
+    #print vec_info
+    
+    return vec_info
 
 
 
@@ -330,6 +330,8 @@ def make_info_plots(infos, outroot):
 	plt.show()
 	plt.savefig(outroot + 'ysovar_period.eps')
 	plt.savefig(outroot + 'ysovar_period.png')
+
+
 
 def plot_lc(ax, data):
     ''' plot lc in a given axes container
@@ -587,6 +589,7 @@ def check_time_obs(outroot, ysovar1):
 
 
 
+
 def make_plot_skyview(outroot, ysovar1, ysovar2, infos):
 	# only for IRAS 20050: plots positions of identified YSOs over all detected sources
 	plt.clf()
@@ -611,6 +614,7 @@ def make_plot_skyview(outroot, ysovar1, ysovar2, infos):
 	
 	plt.savefig(outroot + 'skyview_iras20050.pdf')
 	plt.clf()
+
 
 
 def make_ls_plots(data, outroot, maxper, oversamp, maxfreq):

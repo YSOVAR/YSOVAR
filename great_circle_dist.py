@@ -9,7 +9,8 @@ def simple_decorator(decorator):
     eligible to use this. Simply apply @simple_decorator to
     your decorator and it will automatically preserve the
     docstring and function attributes of functions to which
-    it is applied."""
+    it is applied.
+    """
     def new_decorator(f):
         g = decorator(f)
         g.__name__ = f.__name__
@@ -34,7 +35,7 @@ def unitchecked(func):
     This decorator transforms units of angle, before they are fed into 
     any a function to calculate the angular distance. It expects the 
     unit as a keyword and transforms two sets of angular coordinates
-        phi_0, lam_0, phi_1, lam_1
+    (phi_0, lam_0, phi_1, lam_1)
     to radian, calls the function and converts the output (in radian)
     into the unit of choice.
     '''
@@ -59,16 +60,23 @@ def simple(phi_0, lam_0, phi_1, lam_1):
     '''Calculates the angular distance between point 0 and point 1
     
     uses a very simple formula, prone to numeric inaccuracies
-    see
-        http://en.wikipedia.org/wiki/Great-circle_distance
-    :param phi_0: lattitude phi of point 0
-    :type phi_0: float or numpy array
-    :param lam_0: longitude lambda of point 0
-    :type lam_0: float or numpy array
-    :param phi_1: lattitude phi of point 1
-    :type phi_1: float or numpy array
-    :param lam_1: longitude lambda of point 1
-    :type lam_1: float or numpy array
+    see http://en.wikipedia.org/wiki/Great-circle_distance
+    
+    Parameters
+    ----------
+    phi_0 : float or numpy array
+        lattitude phi of point 0
+    lam_0 : float or numpy array
+        longitude lambda of point 0
+    phi_1 : float or numpy array
+        lattitude phi of point 1
+    lam_1 : float or numpy array
+        longitude lambda of point 1
+
+    Returns
+    -------
+    dist : float or numpy array
+        angluar distance on great circle
     '''
     return np.arccos(np.sin(phi_0)*np.sin(phi_1) + np.cos(phi_0)*np.cos(phi_1)*np.cos(lam_1-lam_0) )
 
@@ -76,16 +84,23 @@ def Haversine(phi_0, lam_0, phi_1, lam_1):
     '''Calculates the angular distance between point 0 and point 1
     
     uses the Haversine function, is numerically stable, except
-    for antipodal points
-        http://en.wikipedia.org/wiki/Great-circle_distance
-    :param phi_0: lattitude phi of point 0
-    :type phi_0: float or numpy array
-    :param lam_0: longitude lambda of point 0
-    :type lam_0: float or numpy array
-    :param phi_1: lattitude phi of point 1
-    :type phi_1: float or numpy array
-    :param lam_1: longitude lambda of point 1
-    :type lam_1: float or numpy array
+    for antipodal points http://en.wikipedia.org/wiki/Great-circle_distance
+
+    Parameters
+    ----------
+    phi_0 : float or numpy array
+        lattitude phi of point 0
+    lam_0 : float or numpy array
+        longitude lambda of point 0
+    phi_1 : float or numpy array
+        lattitude phi of point 1
+    lam_1 : float or numpy array
+        longitude lambda of point 1
+
+    Returns
+    -------
+    dist : float or numpy array
+        angular distance on great circle
     '''
 
     return 2. * np.arcsin(np.sqrt((np.sin((phi_1-phi_0)/2.))**2. + (np.cos(phi_0)*np.cos(phi_1)*(np.sin((lam_1-lam_0)/2.))**2.)))
@@ -95,15 +110,23 @@ def Vincenty(phi_0, lam_0, phi_1, lam_1):
     
     uses a special case of the Vincenty formula (which is for ellipsoides)
     numerically accurate, but computationally intensive
-        http://en.wikipedia.org/wiki/Great-circle_distance
-    :param phi_0: lattitude phi of point 0
-    :type phi_0: float or numpy array
-    :param lam_0: longitude lambda of point 0
-    :type lam_0: float or numpy array
-    :param phi_1: lattitude phi of point 1
-    :type phi_1: float or numpy array
-    :param lam_1: longitude lambda of point 1
-    :type lam_1: float or numpy array
+    see http://en.wikipedia.org/wiki/Great-circle_distance
+
+    Parameters
+    ----------
+    phi_0 : float or numpy array
+        lattitude phi of point 0
+    lam_0 : float or numpy array
+        longitude lambda of point 0
+    phi_1 : float or numpy array
+        lattitude phi of point 1
+    lam_1 : float or numpy array
+        longitude lambda of point 1
+
+    Returns
+    -------
+    dist : float or numpy array
+        angular distance on great circle
     '''
 
     d_lam = lam_1-lam_0
@@ -127,15 +150,23 @@ def Vincenty(phi_0, lam_0, phi_1, lam_1):
 def dist(phi_0, lam_0, phi_1, lam_1):
     '''Calculates the angular distance between point 0 and point 1
     
-        http://en.wikipedia.org/wiki/Great-circle_distance
-    :param phi_0: lattitude phi of point 0
-    :type phi_0: float or numpy array
-    :param lam_0: longitude lambda of point 0
-    :type lam_0: float or numpy array
-    :param phi_1: lattitude phi of point 1
-    :type phi_1: float or numpy array
-    :param lam_1: longitude lambda of point 1
-    :type lam_1: float or numpy array
+    see http://en.wikipedia.org/wiki/Great-circle_distance
+
+    Parameters
+    ----------
+    phi_0 : float or numpy array
+        lattitude phi of point 0
+    lam_0 : float or numpy array
+        longitude lambda of point 0
+    phi_1 : float or numpy array
+        lattitude phi of point 1
+    lam_1 : float or numpy array
+        longitude lambda of point 1
+
+    Returns
+    -------
+    dist : float or numpy array
+        angular distance on great circle
     '''
     return Vincenty(phi_0, lam_0, phi_1, lam_1)
 
@@ -143,15 +174,23 @@ def dist(phi_0, lam_0, phi_1, lam_1):
 def dist_radec(ra0,dec0,ra1,dec1):
     '''Calculates the angular distance between point 0 and point 1
     
-        http://en.wikipedia.org/wiki/Great-circle_distance
-    :param ra0: RA of position 0
-    :type ra0: float or numpy array
-    :param dec0: DEC of position 0
-    :type dec0: float or numpy array
-    :param ra1: RA of position 1
-    :type ra1: float or numpy array
-    :param dec1: DEC of position 1
-    :type dec1: float or numpy array
+    see http://en.wikipedia.org/wiki/Great-circle_distance
+    
+    Parameters
+    ----------
+    ra0 : float or numpy array
+        RA of point 0
+    dec0 : float or numpy array
+        DEC of point 0
+    ra1 : float or numpy array
+        RA of point 1
+    dec1 : float or numpy array
+        DEC of point 1
+
+    Returns
+    -------
+    dist : float or numpy array
+        angluar distance on great circle
     '''
     return Vincenty(dec0,ra0,dec1,ra1)
 
@@ -161,20 +200,29 @@ def dist_radec_fast(ra0,dec0,ra,dec, scale = np.inf, *arg, **kwargs):
     Only if delta_dec  is < scale, the full trigonometric
     calculation is done, otherwise return np.inf
     
-        http://en.wikipedia.org/wiki/Great-circle_distance
-    :param ra0: RA of position 0
-    :type ra0: float
-    :param dec0: DEC of position 0
-    :type dec0: float
-    :param ra1: RA of position 1
-    :type ra1: float or numpy array
-    :param dec1: DEC of position 1
-    :type dec1: float or numpy array
-    :param scale amx scale of interest:
+    see http://en.wikipedia.org/wiki/Great-circle_distance
     
-    TBD: do cut on RA as well, but that requires knowledge of scale and
-    the decorator transforms ra, dec only
-    TBD: merge this with ra_dec_dist and do fast verion if scale != None
+    Parameters
+    ----------
+    ra0 : float or numpy array
+        RA of point 0
+    dec0 : float or numpy array
+        DEC of point 0
+    ra1 : float or numpy array
+        RA of point 1
+    dec1 : float or numpy array
+        DEC of point 1
+
+    Returns
+    -------
+    dist : float or numpy array
+        angluar distance on great circle
+    
+    ..note::
+        To be done:
+            - cut on RA as well, but that requires knowledge of scale and
+              the decorator transforms ra, dec only
+            - merge this with ra_dec_dist and do fast verion if scale != None
     '''
     if len(ra) != len(dec):
         raise ValueError('RA and DEC arrays must have same length')
