@@ -210,7 +210,7 @@ def dict_cleanup(data, t_simul = 0.002, min_number_of_times = 0, floor_error = [
         as obtained from :func:`add_ysovar_mags`
     t_simul : float
         max distance in days to accept datapoints in band 1 and 2 as simultaneous
-        In L1688 and IRAS 20050+2720 the distance between band 1 an d 2 coverage
+        In L1688 and IRAS 20050+2720 the distance between band 1 and 2 coverage
         is within a few minutes, so a small number is sufficent to catch 
         everything and to avoid false matches.
     min_number_of_times : integer

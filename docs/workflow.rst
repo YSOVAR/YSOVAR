@@ -19,7 +19,15 @@ Reading the data
 ----------------
 We start with the csv file that we downlaod from the YSOVAR2 database.
 ``match_dist = 0.`` means that no source merging will be performed at this stage,
-i.e. we assume that this was done to the data in the database already::
+i.e. we assume that this was done to the data in the database already.
+The routine reads two csv files (one for each IRAC band). 
+Also, it calls :func:`ysovar_atlas.dict_cleanup`, which performs three important tasks:
+
+1. It throws out sources with few entries
+2. It constrcts a merged lightcurve with IRAC 1 and IRAC 2 values that are close in time.
+3. It adds Scotts error floor value to all errors in the data.
+
+All this is done as part of the read in::
 
     stars = atlas.dict_from_csv('myinputfile.csv', match_dist = 0.)
 
