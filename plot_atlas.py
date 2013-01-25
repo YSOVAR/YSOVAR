@@ -83,8 +83,79 @@ def make_reddeningvector_for_plot(x1, x2, y1, y2):
 	return vec_info
 
 
+
+def make_slope_plot(infos, outroot):
+	# makes plot of slopes in CMDs, one panel for each object class
+	#color definition:
+	color = [(1,0.35,0.35), (1,0.95,0.35), (0.5,0.9,0.25), (0.25,0.45,1), (0.9,0.35,1)]
+	plt.clf()
+	ind0 = np.where((infos.cmd_alpha > -99999) & (infos.ysoclass == 0))[0]
+	ind1 = np.where((infos.cmd_alpha > -99999) & (infos.ysoclass == 1))[0]
+	ind2 = np.where((infos.cmd_alpha > -99999) & (infos.ysoclass == 2))[0]
+	ind3 = np.where((infos.cmd_alpha > -99999) & (infos.ysoclass == 3))[0]
+	ind4 = np.where((infos.cmd_alpha > -99999) & (infos.ysoclass == 4))[0]
+	binning = np.arange(0,180,8)
+	
+	alpha_shift = deepcopy(infos.cmd_alpha)
+        bad = (alpha_shift < 0) & (alpha_shift > -99999)
+        alpha_shift[bad] = (alpha_shift[bad] + np.pi)
+        
+        alpha_red = 58.891
+        alpha_accr = 90.
+        
+	f = plt.figure()
+	plt.subplots_adjust(hspace=0.001)
+	ax1 = plt.subplot(511)
+	n0, bins, patches = plt.hist(alpha_shift[ind0]/(2*np.pi) * 360, bins=binning, facecolor = color[0], alpha = 1)
+	plt.legend(['XYSOs'], 'upper right')
+	plt.yticks(np.arange(1,max(n0),max(np.trunc(max(n0)/4),1) ))
+	plt.plot([alpha_red,alpha_red],[0,max(n0)],"k--", lw=2)
+	plt.plot([alpha_accr,alpha_accr],[0,max(n0)],"k", lw=2, ls='dotted')
+	plt.annotate('standard \nreddening', xy =(alpha_red, 0.7), xytext=(15,1.1), arrowprops=dict(facecolor='black', shrink=0.1, width=1., frac=0.1))
+	plt.text(118,0.4,'accretion-like')
+	plt.annotate('', xy =(90, 0.5), xytext=(116,0.5), arrowprops=dict(facecolor='black', shrink=0.1, width=1., frac=0.1))
+	plt.annotate('', xy =(180, 0.5), xytext=(154,0.5), arrowprops=dict(facecolor='black', shrink=0.1, width=1., frac=0.1))
+	
+	ax2 = plt.subplot(512, sharex=ax1)
+	n1, bins, patches = plt.hist(alpha_shift[ind1]/(2*np.pi) * 360, bins=binning, facecolor = color[1], alpha = 1)
+	plt.legend(['class 1'], 'upper right')
+	plt.yticks(np.arange(1,max(n1),max(np.trunc(max(n1)/4),1) ))
+	plt.plot([alpha_red,alpha_red],[0,max(n1)],"k--", lw=2)
+	plt.plot([alpha_accr,alpha_accr],[0,max(n1)],"k", lw=2, ls='dotted')
+	
+	ax3 = plt.subplot(513, sharex=ax1)
+	n2, bins, patches = plt.hist(alpha_shift[ind2]/(2*np.pi) * 360, bins=binning, facecolor = color[2], alpha = 1)
+	plt.legend(['class 2'], 'upper right')
+	plt.ylabel('number of objects')
+	plt.yticks(np.arange(1,max(n2),max(np.trunc(max(n2)/4),1) ))
+	plt.plot([alpha_red,alpha_red],[0,max(n2)],"k--", lw=2)
+	plt.plot([alpha_accr,alpha_accr],[0,max(n2)],"k", lw=2, ls='dotted')
+	
+	ax4 = plt.subplot(514, sharex=ax1)
+	n3, bins, patches = plt.hist(alpha_shift[ind3]/(2*np.pi) * 360, bins=binning, facecolor = color[3], alpha = 1)
+	plt.legend(['class 3'], 'upper right')
+	plt.yticks(np.arange(1,max(n3),max(np.trunc(max(n3)/4),1) ))
+	plt.plot([alpha_red,alpha_red],[0,max(n3)],"k--", lw=2)
+	plt.plot([alpha_accr,alpha_accr],[0,max(n3)],"k", lw=2, ls='dotted')
+	
+	ax5 = plt.subplot(515, sharex=ax1)
+	n4, bins, patches = plt.hist(alpha_shift[ind4]/(2*np.pi) * 360, bins=binning, facecolor = color[4], alpha = 1)
+	plt.legend(['stars'], 'upper right')
+	plt.yticks(np.arange(1,max(n4),max(np.trunc(max(n4)/4),1) ))
+	plt.plot([alpha_red,alpha_red],[0,max(n4)],"k--", lw=2)
+	plt.plot([alpha_accr,alpha_accr],[0,max(n4)],"k", lw=2, ls='dotted')
+	
+	xticklabels = ax1.get_xticklabels()+ax2.get_xticklabels()+ax3.get_xticklabels()+ax4.get_xticklabels()
+	plt.setp(xticklabels, visible=False)
+	
+	plt.xlabel('CMD slope angle (degrees)')
+	plt.savefig(outroot + 'ysovar_slope_new.png')
+	plt.clf()
+
+
+
 def make_info_plots(infos, outroot):
-	# makes overview statistics plots
+	# makes some overview histograms of object properties
 	#color definition:
 	color = [(1,0.35,0.35), (1,0.95,0.35), (0.5,0.9,0.25), (0.25,0.45,1), (0.9,0.35,1)]
 	
@@ -227,59 +298,6 @@ def make_info_plots(infos, outroot):
 	plt.xlabel('Stetson index of [3.6], [4.5]')
 	
 	plt.savefig(outroot + 'ysovar_stetson.eps')
-	
-	
-	# SLOPE PLOT
-	plt.clf()
-	ind0 = np.where((infos.cmd_m > -99999) & (infos.ysoclass == 0))[0]
-	ind1 = np.where((infos.cmd_m > -99999) & (infos.ysoclass == 1))[0]
-	ind2 = np.where((infos.cmd_m > -99999) & (infos.ysoclass == 2))[0]
-	ind3 = np.where((infos.cmd_m > -99999) & (infos.ysoclass == 3))[0]
-	ind4 = np.where((infos.cmd_m > -99999) & (infos.ysoclass == 4))[0]
-	binning = np.arange(-3,4,0.25)
-	
-	f = plt.figure()
-	plt.subplots_adjust(hspace=0.001)
-	ax1 = plt.subplot(511)
-	n0, bins, patches = plt.hist(infos.cmd_m[ind0], bins=binning, facecolor = color[0], alpha = 1)
-	plt.legend(['XYSOs'], 'upper left')
-	plt.yticks(np.arange(1,max(n0),max(np.trunc(max(n0)/4),1) ))
-	plt.plot([1.65,1.65],[0,max(n0)],"k--", lw=3)
-	
-	ax2 = plt.subplot(512, sharex=ax1)
-	n1, bins, patches = plt.hist(infos.cmd_m[ind1], bins=binning, facecolor = color[1], alpha = 1)
-	plt.legend(['class 1'], 'upper left')
-	plt.yticks(np.arange(1,max(n1),max(np.trunc(max(n1)/4),1) ))
-	plt.plot([1.65,1.65],[0,max(n1)],"k--", lw=3)
-	
-	ax3 = plt.subplot(513, sharex=ax1)
-	n2, bins, patches = plt.hist(infos.cmd_m[ind2], bins=binning, facecolor = color[2], alpha = 1)
-	plt.legend(['class 2'], 'upper left')
-	plt.ylabel('number of objects')
-	plt.yticks(np.arange(1,max(n2),max(np.trunc(max(n2)/4),1) ))
-	plt.plot([1.65,1.65],[0,max(n2)],"k--", lw=3)
-	
-	ax4 = plt.subplot(514, sharex=ax1)
-	n3, bins, patches = plt.hist(infos.cmd_m[ind3], bins=binning, facecolor = color[3], alpha = 1)
-	plt.legend(['class 3'], 'upper left')
-	plt.yticks(np.arange(1,max(n3),max(np.trunc(max(n3)/4),1) ))
-	plt.plot([1.65,1.65],[0,max(n3)],"k--", lw=3)
-	
-	ax5 = plt.subplot(515, sharex=ax1)
-	n4, bins, patches = plt.hist(infos.cmd_m[ind4], bins=binning, facecolor = color[4], alpha = 1)
-	plt.legend(['stars'], 'upper left')
-	plt.yticks(np.arange(1,max(n4),max(np.trunc(max(n4)/4),1) ))
-	plt.plot([1.65,1.65],[0,max(n4)],"k--", lw=3)
-	
-	xticklabels = ax1.get_xticklabels()+ax2.get_xticklabels()+ax3.get_xticklabels()+ax4.get_xticklabels()
-	plt.setp(xticklabels, visible=False)
-	
-	plt.xlabel('color-magnitude slope')
-	plt.annotate('standard reddening', xy = (1.69, 10), xytext=(2.0,20), arrowprops=dict(facecolor='black', shrink=0.1, width=2, frac=0.25))
-	plt.text(-2,10,'accretion-like')
-	plt.text(-0.5,20,'colorless')
-	plt.savefig(outroot + 'ysovar_slope.eps')
-	plt.clf()
 	
 	
 	# Periodicity plot:
@@ -551,7 +569,7 @@ def plot_polys(data, outroot, verbose = True):
             plt.close(fig)
 
 def check_time_obs(outroot, ysovar1):
-	
+	# outdated function, no longer used
 	plt.clf()
 	x = np.array(ysovar1['ra'])
 	y = np.array(ysovar1['dec'])
@@ -570,16 +588,15 @@ def check_time_obs(outroot, ysovar1):
 
 
 def make_plot_skyview(outroot, ysovar1, ysovar2, infos):
+	# only for IRAS 20050: plots positions of identified YSOs over all detected sources
 	plt.clf()
-	p1, = plt.plot(ysovar1['ra'], ysovar1['dec'], '.', color='0.75', markeredgecolor='0.75')
-	p2, = plt.plot(ysovar2['ra'], ysovar2['dec'], '.', color='0.75', markeredgecolor='0.75')
+	p1, = plt.plot(infos.ra_spitzer, infos.dec_spitzer, '.', color='0.75', markeredgecolor='0.75')
 	
 	i0 = np.where(infos.ysoclass == 0)[0]
 	i1 = np.where(infos.ysoclass == 1)[0]
 	i2 = np.where(infos.ysoclass == 2)[0]
 	i3 = np.where(infos.ysoclass == 3)[0]
 	
-	#p7, = plt.plot(guenther_data_stars['ra'], guenther_data_stars['dec'], 'mo')
 	p5, = plt.plot(infos.ra_spitzer[i2], infos.dec_spitzer[i2], 'o', markersize=5, color=(0.5,0.9,0.25))
 	p6, = plt.plot(infos.ra_spitzer[i3], infos.dec_spitzer[i3], 'o', markersize=5, color=(0.25,0.45,1))
 	p4, = plt.plot(infos.ra_spitzer[i1], infos.dec_spitzer[i1], 'o', markersize=5, color=(1,1,0.25))
@@ -587,59 +604,61 @@ def make_plot_skyview(outroot, ysovar1, ysovar2, infos):
 	
 	plt.legend([p1,p3,p4,p5,p6],['time-resolved data','Guenther+ 2012 XYSOs','Guenther+ 2012 class 1', 'Guenther+ 2012 class 2', 'Guenther+ 2012 class 3'], 'lower right',prop={'size':10})
 	
+	ax = plt.gca()
+	plt.axis([ax.get_xlim()[1], ax.get_xlim()[0], ax.get_ylim()[0], ax.get_ylim()[1]])
 	plt.xlabel('RA')
 	plt.ylabel('DEC')
 	
-	plt.savefig(outroot + 'skyview_iras20050.eps')
+	plt.savefig(outroot + 'skyview_iras20050.pdf')
 	plt.clf()
 
 
-def make_ls_plots(ysos, outroot, maxper, oversamp, maxfreq):
+def make_ls_plots(data, outroot, maxper, oversamp, maxfreq):
+    '''calculates & plots Lomb-Scargle periodogram for each source 
+    
+    Parameters
+    ----------
+    data : list of dictionary
+        each dict contains 't1' and / or 't2' as time for lightcurves and 
+        'm1' and / or 'm2' as magnitues for lightcurves
+    outroot : string
+        data path for saving resulting files
+    maxper : float
+        maximum period to be used for periodogram
+    oversamp : integer
+        oversampling factor
+    maxfreq : float
+        maximum frequency to be used for periodogram
+    '''
     fig = plt.figure()
-    for i in np.arange(0,len(ysos)):
+    for i in np.arange(0,len(data)):
         print 'LS plot: ' + str(i)
         fig.clf()
         ax = fig.add_subplot(111)
-        if 't1' in ysos[i].keys():
-            t1 = ysos[i]['t1']
-            m1 = ysos[i]['m1']
+        if 't1' in data[i].keys():
+            t1 = data[i]['t1']
+            m1 = data[i]['m1']
             if len(t1) > 2:
                 test1 = ysovar_lombscargle.fasper(t1,m1,oversamp,maxfreq)
-                max1 = np.where(test1[1] == np.max(test1[1][np.where(test1[0] > 1/maxper)]))[0] # be sensitive only to periods shorter than maxper
-                sig1 = test1[1][max1]
-                period1 = 1/test1[0][max1]
-                ysos[i]['period_36'] = period1
-                ysos[i]['peak_36'] = sig1
                 ax.plot(1/test1[0],test1[1],linewidth=2, label = r'3.6 $\mu$m')
-        if 't2' in  ysos[i].keys():
-            t2 = ysos[i]['t2']
-            m2 = ysos[i]['m2']
+        if 't2' in  data[i].keys():
+            t2 = data[i]['t2']
+            m2 = data[i]['m2']
             if len(t2) > 2:
                 test2 = ysovar_lombscargle.fasper(t2,m2,oversamp,maxfreq)
-                max2 = np.where(test2[1] == np.max(test2[1][np.where(test2[0] > 1/maxper)]))[0] # be sensitive only to periods shorter than maxper
-                sig2 = test2[1][max2]
-                period2 = 1/test2[0][max2]
-                ysos[i]['period_45'] = period2
-                ysos[i]['peak_45'] = sig2
                 ax.plot(1/test2[0],test2[1],linewidth=2, label = r'4.5 $\mu$m')
         
         ax.legend(loc = 'upper right')
         ax.set_xscale('log')
-        #plt.xlim([1./maxfreq,maxper,0])
-        #plt.axis([1./maxfreq,maxper,0,1.2*np.max(np.array([test1[1][max1], test2[1][max2]]))])
         ax.set_xlabel('Period (d)')
         ax.set_ylabel('Periodogram power')
-        #plt.text(1.1*x1, 0.9*y2, 'period [3.6]: ' + str( ("%.2f" % period1) ) + ' d' )
-        #plt.text(1.1*x1, 0.85*y2, 'FAP [3.6]: ' + str( ("%.2e" % test1[4]) ) )
-        #plt.text(1.1*x1, 0.8*y2, 'period [4.5]: ' + str( ("%.2f" % period2) ) + ' d' )
-        #plt.text(1.1*x1, 0.75*y2, 'FAP [4.5]: ' + str( ("%.2e" % test2[4]) ) )
         ax.set_title('Lomb-Scargle Periodogram')
         multisave(fig, outroot + str(i) + '_ls')
 
 
 
 def make_phased_lc_cmd_plots(data, infos, outroot):
-    # make phase-folded light curve plots
+    # make phase-folded light curve plots for sources with "good" detected periods
     fig = plt.figure()
     for i in np.arange(0,len(data)):
         print 'phase plots: ' + str(i)
@@ -684,29 +703,6 @@ def make_phased_lc_cmd_plots(data, infos, outroot):
                 y2 = ax.get_ylim()[1]
                 ax.set_ylim([y2, y1]) # invert y axis!
                 
-                ## plot line for fit to data:
-                #m = data[i]['fit_twocolor'][0]
-                #b = data[i]['fit_twocolor'][1]
-                #line_x = np.array([x1, x2])
-                #line_y = np.array([m*x1+b, m*x2+b])
-                #plt.plot(line_x, line_y, 'k-')
-                
-                ## plot line for shifted reddening vector to data:
-                #m = data[i]['fit_twocolor'][2]
-                #b = data[i]['fit_twocolor'][3]
-                #line_x = np.array([x1, x2])
-                #line_y = np.array([m*x1+b, m*x2+b])
-                #plt.plot(line_x, line_y, 'k--')
-                #plt.legend(['measured slope','standard reddening'])
-                
-                ## plot reddening vector:
-                #vector = make_reddeningvector_for_plot(x1, x2, y1, y2)
-                #print vector
-                #plt.arrow(vector[0],m*vector[0]+b, vector[2]-vector[0],vector[3]-vector[1],fc="k", ec="k", head_width=0.025*(x2-x1))
-                #plot_angle = - np.atan( vector[4]*(x2-x1)*3.2 / ((vector[2]-vector[0])*(y2-y1)*4) )/(2*np.pi)*360 # the 3.2 and the 4 comes from the actual size of the figure (angle does not work in data coordinates)
-                ##print plot_angle
-                #plt.text(vector[0],m*vector[0]+b, "$A_V = $ " + str(vector[5]) , rotation = plot_angle   )
-                
                 ax.set_title('CMD color-coded by phase, period = ' + str( ("%.2f" % infos.good_period[i]) ) + ' d')
                 
                 filename = outroot + str(i) + '_color_phased'
@@ -733,12 +729,6 @@ def make_sed_plots(infos, outroot, title = 'SED (data from Guenther+ 2012)'):
         m36 = 2.5**(-np.array([infos.median_36[i], infos.min_36[i], infos.max_36[i]])) * 6.50231481e-08
         m45 = 2.5**(-np.array([infos.median_45[i], infos.min_45[i], infos.max_45[i]])) * 2.66222222e-08
         ax.errorbar([3.6,4.5], [m36[0],m45[0]], yerr = [[m36[0]-m36[2], m45[0]-m45[2]],[m36[1]-m36[0], m45[1]-m45[0]]], fmt='^')
-        #if (np.isnan(plot_sed[8]) & (infos.median_36[i] > -99999) ):
-            #plot_sed[8] = 2.5**(-infos.median_36[i]) * 6.50231481e-08 # zero point flux for 3.6mu
-            #plt.plot(lambdas[8], plot_sed[8], '^')
-        #if (np.isnan(plot_sed[9]) & (infos.median_45[i] > -99999) ):
-            #plot_sed[9] = 2.5**(-infos.median_45[i]) * 2.66222222e-08 # zero point flux for 4.5mu
-            #plt.plot(lambdas[9], plot_sed[9], '^')
         ax.set_xlabel('wavelength ($\mu m$)')
         ax.set_ylabel('flux (erg s$^{-1}$ cm$^{-2}$ $\mu$m$^{-1}$)')
         ax.set_xlim(0.3,30)
@@ -749,7 +739,7 @@ def make_sed_plots(infos, outroot, title = 'SED (data from Guenther+ 2012)'):
 
 
 def extraplots_1():
-	
+	# some random plots I was interested in; may or may not be relevant to others.
 	# m1 min/max plot
 	i1 = np.where(info_ysos[:,30] > -99999)[0]
 	i10 = np.where( (info_ysos[:,30] > -99999) & (info_ysos[:,1] == 0) )[0]
@@ -900,7 +890,7 @@ def extraplots_1():
 
 
 def extraplots_2(data, infos, outroot_overview):
-    
+    # some more random plots I was interested in; may or may not be relevant to others.
     # delta plot
     plt.clf()
     i1 = np.where(infos.delta_36 > -99999)[0]
@@ -920,7 +910,6 @@ def extraplots_2(data, infos, outroot_overview):
     plt.ylabel('$3.6\mu\mathrm{m}$ variability (mag)')
     plt.legend([p0, p1, p2, p3, p4], ['XYSOs', 'class 1', 'class 2', 'class 3', 'stars'], 'upper left')
     plt.axis([6,18,0,0.3])
-    #plt.title('')
     plt.savefig(outroot_overview + 'delta_mag_36.pdf')
     
     # stetson plot
@@ -942,7 +931,6 @@ def extraplots_2(data, infos, outroot_overview):
     plt.ylabel('Stetson index of $3.6\mu\mathrm{m}$ and $4.5\mu\mathrm{m}$')
     plt.legend([p0, p1, p2, p3, p4], ['XYSOs', 'class 1', 'class 2', 'class 3', 'stars'], 'upper left')
     plt.axis([6,18,-10,60])
-    #plt.title('')
     plt.savefig(outroot_overview + 'stetson_mag_36.pdf')
      
     # stetson plot (logarithmic of absolute)
@@ -963,9 +951,7 @@ def extraplots_2(data, infos, outroot_overview):
     plt.xlabel('median $3.6\mu\mathrm{m}$ flux (mag)')
     plt.ylabel('|Stetson index| of $3.6\mu\mathrm{m}$ and $4.5\mu\mathrm{m}$')
     plt.legend([p0, p1, p2, p3, p4], ['XYSOs', 'class 1', 'class 2', 'class 3', 'stars'], 'upper left')
-    #plt.axis([6,18,-10,60])
     plt.yscale('log')
-    #plt.title('')
     plt.savefig(outroot_overview + 'stetson_log_mag_36.pdf')
     
     # periods plot
@@ -987,8 +973,6 @@ def extraplots_2(data, infos, outroot_overview):
     plt.ylabel('Detected period in light curve (d)')
     plt.legend([p0, p1, p2, p3, p4], ['XYSOs', 'class 1', 'class 2', 'class 3', 'stars'], 'lower left')
     plt.axis([6,17,1,25])
-    #plt.title('')
-    #plt.yscale('log')
     plt.savefig(outroot_overview + 'period_mag_36.pdf')
     
     # slope plot
@@ -1012,20 +996,18 @@ def extraplots_2(data, infos, outroot_overview):
     plt.xlabel('median $3.6\mu\mathrm{m}$ flux (mag)')
     plt.ylabel('Slope angle in color-magnitude diagram (deg)')
     plt.legend([p0, p1, p2, p3, p4], ['XYSOs', 'class 1', 'class 2', 'class 3', 'stars'], 'upper left')
-    #plt.legend([p0, p1, p2, p3, p4], ['XYSOs', 'class 1', 'class 2', 'class 3'], 'upper left')
     plt.axis([6,22,0,180])
-    #plt.title('')
-    #plt.yscale('log')
     plt.plot([16.8,16.8],[53,63],'k-')
     plt.text(17,56,'extinction dominated')
-    plt.plot([16.8,16.8],[75,85],'k-')
-    plt.text(17,77,'hot & cool spots')
+    plt.plot([16.8,16.8],[20,50],'k-')
+    plt.text(17,40,'hot & cool spots')
     plt.plot([16.8,16.8],[95,175],'k-')
     plt.text(17,135,'accretion dominated')
     plt.plot([16.5,16.5],[5,95],'k-')
-    plt.text(16.7,30,'mix of processes')
-    plt.text(16.7,22,'(accr./extinc./spots)')
+    plt.text(16.7,83,'mix of processes')
+    plt.text(16.7,75,'(accr./extinc./spots)')
     plt.savefig(outroot_overview + 'alpha_mag_36.pdf')
+    
     
     # slope plot (without stars)
     plt.clf()
@@ -1040,27 +1022,23 @@ def extraplots_2(data, infos, outroot_overview):
     i14 = np.where( (infos.cmd_alpha > -99999) & (infos.ysoclass == 4) )[0]
     color = [(1,0.35,0.35), (1,0.95,0.35), (0.5,0.9,0.25), (0.25,0.45,1), (0.9,0.35,1)]
     plt.clf()
-    #p4 = plt.scatter( infos.median_36[i14], alpha_shift[i14]/(2*np.pi) * 360, marker='.', color = color[4] )
     p0 = plt.scatter( infos.median_36[i10], alpha_shift[i10]/(2*np.pi) * 360, marker='o', color = color[0] )
     p1 = plt.scatter( infos.median_36[i11], alpha_shift[i11]/(2*np.pi) * 360, marker='o', color = color[1] )
     p2 = plt.scatter( infos.median_36[i12], alpha_shift[i12]/(2*np.pi) * 360, marker='o', color = color[2] )
     p3 = plt.scatter( infos.median_36[i13], alpha_shift[i13]/(2*np.pi) * 360, marker='o', color = color[3] )
     plt.xlabel('median $3.6\mu\mathrm{m}$ flux (mag)')
     plt.ylabel('Slope angle in color-magnitude diagram (deg)')
-    #plt.legend([p0, p1, p2, p3, p4], ['XYSOs', 'class 1', 'class 2', 'class 3', 'stars'], 'upper left')
     plt.legend([p0, p1, p2, p3, p4], ['XYSOs', 'class 1', 'class 2', 'class 3'], 'upper left')
     plt.axis([6,22,0,180])
-    #plt.title('')
-    #plt.yscale('log')
     plt.plot([16.8,16.8],[53,63],'k-')
     plt.text(17,56,'extinction dominated')
-    plt.plot([16.8,16.8],[75,85],'k-')
-    plt.text(17,77,'hot & cool spots')
+    plt.plot([16.8,16.8],[20,50],'k-')
+    plt.text(17,40,'hot & cool spots')
     plt.plot([16.8,16.8],[95,175],'k-')
     plt.text(17,135,'accretion dominated')
     plt.plot([16.5,16.5],[5,95],'k-')
-    plt.text(16.7,30,'mix of processes')
-    plt.text(16.7,22,'(accr./extinc./spots)')
+    plt.text(16.7,83,'mix of processes')
+    plt.text(16.7,75,'(accr./extinc./spots)')
     plt.savefig(outroot_overview + 'alpha_mag_36_new.pdf')
     
     # Periodicity plot:
