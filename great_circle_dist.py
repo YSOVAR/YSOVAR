@@ -9,7 +9,8 @@ def simple_decorator(decorator):
     eligible to use this. Simply apply @simple_decorator to
     your decorator and it will automatically preserve the
     docstring and function attributes of functions to which
-    it is applied."""
+    it is applied.
+    """
     def new_decorator(f):
         g = decorator(f)
         g.__name__ = f.__name__
@@ -34,7 +35,7 @@ def unitchecked(func):
     This decorator transforms units of angle, before they are fed into 
     any a function to calculate the angular distance. It expects the 
     unit as a keyword and transforms two sets of angular coordinates
-        phi_0, lam_0, phi_1, lam_1
+    (phi_0, lam_0, phi_1, lam_1)
     to radian, calls the function and converts the output (in radian)
     into the unit of choice.
     '''
