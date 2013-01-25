@@ -119,6 +119,7 @@ def get_sed(data, sed_bands = sed_bands):
         keys must be the name of the field that contains the magnitudes in each band
         entries are lists of [name of error field, wavelength in micron,
         zero_magnitude_flux_freq in Jy]
+        
     Returns
     -------
     wavelen : np.ndarray
@@ -304,6 +305,7 @@ def Isoy2radec(isoy):
     ----------
     isoy : string
         ISOY Name 
+
     Returns
     -------
     ra, dec : float

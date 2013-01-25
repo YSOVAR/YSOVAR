@@ -85,6 +85,7 @@ def delta_corr_points(x, data1, data2):
     
     ..note::
         Essentially, this is a correltation function for irregularly sampled data
+    
     '''
     #if not np.all(np.diff(data1) >= 0):
         #raise ValueError('Independent inputarray must by monotonically increasing.')
@@ -152,6 +153,7 @@ def fit_poly(x, y, yerr, degree):
     ..note:: 
         For numerical stability the `x` values will be shifted, such that
         x[0] = 0!
+    
     Thus, the parameters describe a fit to this shifted dataset! 
     
     Parameters
