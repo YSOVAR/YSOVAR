@@ -584,6 +584,7 @@ def initialize_info_array(data, guenther_data, guenther_class):
     print len(allsets)
     infos = np.rec.array(allsets, dtype=[
         ('id', '|f4'), # ID number
+        ('YSOVAR2_ID', '|f4'), # ID in YSOVAR2 database
         ('id_guenther', '|f4'), # ID as in Guenther+ 2012
         ('index_guenther', '|f4'), # index where to find this in the Guenther data array ( = id_guenther - 1)
         ('ysoclass', '|f4'), # class from Guenther+ 2012 (0='XYSO', 1='I+I*', 2='II+II*', 3='III', 4='star')
@@ -658,6 +659,7 @@ def initialize_info_array(data, guenther_data, guenther_class):
     for i in np.arange(0,len(data)):
         print 'collecting info: ' + str(i)
         infos.id[i] = data[i]['id']
+        infos.YSOVAR2_ID[i] = data[i]['YSOVAR2_id']
         infos.id_guenther[i] = data[i]['id_guenther']
         infos.index_guenther[i] = data[i]['index_guenther']
         infos.ra_spitzer[i] = data[i]['ra']
