@@ -101,15 +101,36 @@ def delta_corr_points(x, data1, data2):
     return diff_x[ind], diff_2[ind]
 
 def slotting(xbins, x, y, kernel = None, normalize = True):
-    '''
+    '''Add up all the y values in each x bin
+    
+    `xbins` defines a (possible non-uniform) bin grid. For each bin, find all
+    (x,y) pairs that belong in the x bin and add up all the y values in that bin.
+    Optiaonally, the y values can be convolved with a kernel before, so that
+    each y can contribute to more than one bin.
+    
     Parameters
     ----------
+    xbins : np.ndarray
+        edges of the x bins. There are `len(xbins)-1` bins.
+    x, y : np.ndarry
+        x and y value to be binned
+    kernel : function
+        Kernel input is binedges, kernel output bin values: 
+        Thus, len(kernelout) must be len(kernelin)-1!
+        The kernal output should be normalized to 1.
     normalize : bool
         If false, get the usual correlation function. For a regularly sampled
-        tim series, this is the same as zero-padding on the edges.
+        time series, this is the same as zero-padding on the edges.
         For `normalize = true` divide by the number of entries in a time bin.
-        This avoids zero-padding, be leads to a irragular "noise" distribution
+        This avoids zero-padding, but leads to a irragular "noise" distribution
         over the bins.
+    
+    Returns
+    -------
+    out : np.ndarray
+        resulting array of added y values
+    n : np.ndarray
+        number of entries in wach bin. If `kernel` is used, this can be non-integer.
     '''
     if kernel == None:
         dig = np.digitize(x, xbins) -1 # counts start with bin 1
@@ -122,11 +143,24 @@ def slotting(xbins, x, y, kernel = None, normalize = True):
         for valx, valy in zip(x, y):
             k = kernel(valx, xbins)
             if len(k) != len(out):
-                raise ValueError('Kernel input is binedges, kernal output bin values: Thus, len(kernelout) must be len(kernelin)-1!')
+                raise ValueError('Kernel input is binedges, kernel output bin values: Thus, len(kernelout) must be len(kernelin)-1!')
             out += valy * k
     return out, n
 
 def gauss_kernel(scale = 1):
+    '''return a Gauss kernel
+    
+    Parameters
+    ----------
+    scale : float
+        width (sigma) of the Gauss function
+        
+    Returns
+    -------
+    kernel : function
+        `kernel(x, loc)`, where `loc` is the center of the Gauss and `x` are
+        the bin boundaries.
+    '''
     def kernel(x, loc):
         temp = scipy.stats.norm.cdf(x, loc = loc, scale = scale)
         return temp[1:] - temp[:-1]
@@ -139,6 +173,7 @@ def normalize(data):
     ----------
     data : np.array
         input data
+        
     Returns
     -------
     data : np.array
@@ -214,6 +249,28 @@ def plot_all_polys(x, y, yerr, title = ''):
     return fig
 
 def calc_poly_chi(data, infos, verbose = True):
+    '''Fits polynoms of degree 1..6 to all lightcurves in data
+    
+    One way to adress if a lightcurve is "smooth" is to fit a low-order
+    polynomial. This routine fits polynomial of degree 1 to 6  to each IRAC1 and
+    IRAC 2 lightcurve and calculates the chi^2 value for each fit.
+    
+    Parameters
+    ----------
+    data : np.ndarray
+        structure with all the raw object information
+    info : np.rec.array
+        structure with the refined object properties. Must have fields
+        `chi2poly1_36`, `chi2poly2_36` etc.
+    verbose : bool
+        Switch for extra verbosity.
+        
+    Returns
+    -------
+    info : np.rec.array
+        structure with the refined object properties, modified from input
+    
+    '''
     for i in range(len(data)):
         if verbose and (np.mod(i, 100) == 0):
             print 'Fitting polynomials to dataset: ', i, ' of ', len(data)
