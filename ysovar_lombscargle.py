@@ -92,28 +92,28 @@ def fasper(x,y,ofac,hifac, MACC=4):
 
     Parameters
     ----------
-    X   : 
-        Abscissas array, (e.g. an array of times).
-    Y   : 
-        Ordinates array, (e.g. corresponding counts).
-    Ofac :
+    X   : array
+        Abscissas (e.g. an array of times).
+    Y   : array
+        Ordinates (e.g. corresponding counts).
+    Ofac : integer
         Oversampling factor.
-    Hifac : 
+    Hifac : float
         Hifac * "average" Nyquist frequency = highest frequency
         for which values of the Lomb normalized periodogram will
         be calculated.
       
     Returns
     -------
-    Wk1 : 
-        An array of Lomb periodogram frequencies.
-    Wk2 : 
-        An array of corresponding values of the Lomb periodogram.
-    Nout : 
+    Wk1 : array
+        Lomb periodogram frequencies.
+    Wk2 : array
+        corresponding values of the Lomb periodogram.
+    Nout : tuple
         Wk1 & Wk2 dimensions (number of calculated frequencies)
-    Jmax : 
+    Jmax : integer
         The array index corresponding to the MAX( Wk2 ).
-    Prob : 
+    Prob : float
         False Alarm Probability of the largest Periodogram value
     MACC :
         Number of interpolation points per 1/4 cycle of highest frequency

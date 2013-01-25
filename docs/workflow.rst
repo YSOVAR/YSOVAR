@@ -20,7 +20,7 @@ Reading the data
 We start with the csv file that we downlaod from the YSOVAR2 database.
 ``match_dist = 0.`` means that no source merging will be performed at this stage,
 i.e. we assume that this was done to the data in the database already.
-The routine reads two csv files (one for each IRAC band). 
+The routine reads a csv files (with data for both IRAC bands). 
 Also, it calls :func:`ysovar_atlas.dict_cleanup`, which performs three important tasks:
 
 1. It throws out sources with few entries
@@ -86,7 +86,7 @@ Try fitting x vs. y (this is NOT like bisector, because I always use both x and 
     atlas.add_twocolor_fits_to_infos(stars, infos, outroot_stars, 1000, ifplot=False, ifbootstrap=False, xyswitch=True)
     atlas.good_slope_angle(infos)
 
-Then, we search for periods. The paramters in the call are the maximum period in days, the oversampling factor, and the maximum frequency (not angular frequency)::
+Then, we search for periods. The paramters in the call are the maximum period in days, the oversampling factor, and a multiplier for the maximum frequncy (see :func:`atlas.calc_ls` for details)::
     
     atlas.calc_ls(stars, infos, 40, 4, 1)
 

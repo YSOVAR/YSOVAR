@@ -196,7 +196,7 @@ def add_ysovar_mags(data, ysovar, channel, match_dist = 0.5 /3600.):
         dict_temp['m'+channel+'_error'].extend((yso['EMAG'+channel][good1]).tolist())
     return data
 
-def dict_cleanup(data, t_simul = 0.002, min_number_of_times = 0, floor_error = [0.01, 0.008]):
+def dict_cleanup(data, t_simul = 0.01, min_number_of_times = 0, floor_error = [0.01, 0.008]):
     '''Clean up dictionaries after add_ysovar_mags
     
     Each object in the `data` list can be constructed from multiple sources per
@@ -271,7 +271,7 @@ def dict_cleanup(data, t_simul = 0.002, min_number_of_times = 0, floor_error = [
                     d[i] = np.array(d[i])
     return data
 
-def make_dict(ysovar1, ysovar2, match_dist = 0.5 /3600., min_number_of_times = 0):
+def make_dict(ysovar1, ysovar2, match_dist = 0.5 /3600., t_simul = 0.01, min_number_of_times = 0, floor_error = [0.01, 0.008]):
     '''Build YSOVAR lightcurves form Louisa's IDL structures
     
     Parameters
@@ -282,8 +282,16 @@ def make_dict(ysovar1, ysovar2, match_dist = 0.5 /3600., min_number_of_times = 0
         IRAC 2 data obtained from reading in ysovar .idlsav files with readsav
     match_dist : float
         maximum distance to match two positions as one sorce
+    t_simul : float
+        max distance in days to accept datapoints in band 1 and 2 as simultaneous
+        In L1688 and IRAS 20050+2720 the distance between band 1 and 2 coverage
+        is within a few minutes, so a small number is sufficent to catch 
+        everything and to avoid false matches.
     min_number_of_times : integer
         Remove all sources with less than min_number_of_times datapoints from the list
+    floor_error : list of 2 floats
+        Floor error for IRAC1 and IRAC2. Will be added in quadrature to all error
+        values.
         
     Returns
     -------
@@ -295,7 +303,7 @@ def make_dict(ysovar1, ysovar2, match_dist = 0.5 /3600., min_number_of_times = 0
     data = add_ysovar_mags(data, ysovar2, '2', match_dist = match_dist)
     # some dictionaries contain multiple original entries
     # so some clean up is required
-    data = dict_cleanup(data, min_number_of_times = min_number_of_times)
+    data = dict_cleanup(data, t_simul = t_simul, min_number_of_times = min_number_of_times, floor_error = floor_error)
     return data
 
 def Isoy2radec(isoy):
@@ -690,7 +698,8 @@ def calc_ls(data, infos, maxper, oversamp = 4, maxfreq = 1.):
     oversamp : integer
         oversampling factor
     maxfreq : float
-        maximum frequency for the LS periodogram
+        max freq of LS periodogram is maxfeq * "average" Nyquist frequency
+        For very inhomogenously sampled data, values > 1 can be useful
     '''
     for i in np.arange(0,len(data)):
         #print i
