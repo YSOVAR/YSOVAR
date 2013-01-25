@@ -19,7 +19,7 @@ Reading the data
 ----------------
 We start with the csv file that we downlaod from the YSOVAR2 database.
 ``match_dist = 0.`` means that no source merging will be performed at this stage,
-i.e. we assume that this was done to the data in the database already.
+i.e. we assume that this was done to the data in the database already::
 
     stars = atlas.dict_from_csv('myinputfile.csv', match_dist = 0.)
 

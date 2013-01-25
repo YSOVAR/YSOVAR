@@ -11,6 +11,7 @@ analysis of the YSOVAR data of those two clusters we are currently working on.
 While we attempt to write things general and applicable to more datasets, in 
 some cases it's still very specific to our two clusters. So, don't be surprised
 if it does not work out-of-the-box for you, but feel free to try.
+You find the entire code on https://github.com/YSOVAR/YSOVAR .
 
 First, we show how we process one of our clusters:
 
@@ -20,7 +21,7 @@ First, we show how we process one of our clusters:
    workflow
 
 Here is a detailed documentation and API for all modules (possibly incomplete,
-since the document methods only after we know they work):
+since we document methods only after we know they work):
 
 .. toctree::
    :maxdepth: 2
