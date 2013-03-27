@@ -4,13 +4,14 @@ import numpy as np
 import scipy
 import scipy.odr as odr
 import matplotlib.pylab as plt
+import astropy.table
 
 import ysovar_atlas as atlas
 
 
 def combinations_with_replacement(iterable, r):
     '''defined here for backwards compatibility
-    From python 2.7 on it's included in itertools
+    From python 2.7 on its included in itertools
     '''
     # combinations_with_replacement('ABC', 2) --> AA AB AC BB BC CC
     pool = tuple(iterable)
@@ -251,7 +252,7 @@ def plot_all_polys(x, y, yerr, title = ''):
     ax.set_ylim(ylim[1], ylim[0])
     return fig
 
-def calc_poly_chi(data, infos, verbose = True):
+def calc_poly_chi(data, verbose = True, bands=['36','45']):
     '''Fits polynoms of degree 1..6 to all lightcurves in data
     
     One way to adress if a lightcurve is "smooth" is to fit a low-order
@@ -260,31 +261,31 @@ def calc_poly_chi(data, infos, verbose = True):
     
     Parameters
     ----------
-    data : np.ndarray
-        structure with all the raw object information
-    info : np.rec.array
-        structure with the refined object properties. Must have fields
-        `chi2poly1_36`, `chi2poly2_36` etc.
+    data : astropy.table.Table
+        structure with the defined object properties.
     verbose : bool
         Switch for extra verbosity.
-        
-    Returns
-    -------
-    info : np.rec.array
-        structure with the refined object properties, modified from input
-    
+    bands : list of strings
+        Band identifiers, e.g. ['36', '45'], can also be a list with one
+        entry, e.g. ['36']
+     
     '''
+    for deg in np.arange(1,6):
+        for band in bands:
+            if 'chi2poly_'+str(deg) + band not in data.colnames:
+                data.add_column(astropy.table.Column(name = 'chi2poly_'+str(deg) + band, dtype= np.float, length = len(data)))
+         
     for i in range(len(data)):
         if verbose and (np.mod(i, 100) == 0):
             print 'Fitting polynomials to dataset: ', i, ' of ', len(data)
         for deg in np.arange(1,6):
-            for band, bandi in zip(['1','2'], ['_36', '_45']):
-                if 't' + band in data[i].keys():
-                    shift, coeff, chi2 = fit_poly(data[i]['t'+band], data[i]['m'+band], data[i]['m'+band+'_error'], deg)
-                    infos['chi2poly'+str(deg) + bandi][i] = chi2
+            for band in bands:
+                if 't' + band in data.lclist[i].keys():
+                    shift, coeff, chi2 = fit_poly(data.lclist[i]['t'+band], data.lclist[i]['m'+band], data.lclist[i]['m'+band+'_error'], deg)
+                    data['chi2poly_'+str(deg) + band][i] = chi2
                 else:
-                    infos['chi2poly'+str(deg) + bandi][i] = np.nan
-    return infos
+                    data['chi2poly_'+str(deg) + band][i] = np.nan
+
 
 
 
