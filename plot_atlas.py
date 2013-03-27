@@ -2,6 +2,7 @@
 import urllib
 import urllib2
 import math
+import os.path
 
 import numpy as np
 from copy import deepcopy
@@ -25,8 +26,131 @@ def multisave(fig, filename):
     for t in filetype:
         fig.savefig(filename + t)
         
+def make_latexfile(atlas, outroot, name, ind = None, plotwidth = '0.45\\textwidth',
+                   output_figs = [['_lc', '_color'],
+                                  ['_ls', '_sed'],
+                                  ['_lc_phased', '_color_phased'],
+                                  ['_stamp', '_lcpoly']],
+                   output_cols = {'YSOVAR2_id': 'ID in YSOVAR 2 database',
+                                  'simbad_MAIN_ID': 'ID Simbad',
+                                  'simbad_SP_TYPE': 'Simbad Sp type',
+                                  'IRclass': 'Rob class',
+                                  'median_36': 'median [3.6]',
+                                  'mad_36': 'medium abs dev [3.6]',
+                                  'stddev_36': 'stddev [3.6]',
+                                  'median_45': 'median [4.5]',
+                                  'mad_45': 'medium abs dev [4.5]',
+                                  'stddev_35': 'stddev [4.5]',
+                                  'stetson_36_45': 'Stetson [3.6] vs. [4.5]'},
+                   pdflatex = True):
+    '''make output LeTeX file that produces an atlas
+
+    This procedure actually checks the directory `outroot` and only includes
+    Figures in the LaTeX document that are present there.
+    For some stars (e.g. if they only have one lightcurve) certain plots
+    may never be produced, so this strategy will ensure that the LaTeX
+    document compiles in any case. It also means that files, that are not
+    present because you forgot to produce them, will not be present.
+
+    Parameters
+    ----------
+    atlas : ysovar_atlas.YSOVAR_atlas
+        This is the atlas with the data to be plotted
+    outroot : string
+        path to directory where all figures are found. The LeTeX file will
+        be written in the same directory.
+    name : string
+        filename of the atlas file (without the `.tex`)
+    ind : index array
+        Only objects in this index array will be included in the LaTeX file.
+        Use `None` to output the entire atlas.
+    plotwidth : string
+        width of the plots in LeTeX notation. It is the users responsibility
+        to ensure that the plots chosen with `output_figs` fit on the page.
+    output_figs : list of lists
+        List of file extensions of plots to be included. Filenames will be of
+        format `i + fileextension`.
+        This is a list of lists in the form::
+
+            `[[fig1_row1, fig2_row1, fig3_row1], [fig1_row2, ...]]`
+            
+        Each row in the figure grid can have a different number of figures,
+        but it is the users responsibility to choose `plotwidth` so that they all
+        fit on a page.
+    output_cols : dictionary
+        Select columns in the table to print out below the figures.
+        Format is `{'colname': 'label'}`, where label is what will appear
+        in the LaTeX document.
+    pdflatex : bool
+        if `True` check for files that pdflatex uses (jpg, png, pdf), otherwise
+        for fiels LaTeX uses (ps, eps).
+    '''
+    def fig_if_exists(filename, figname, plotwidth, fileextensions):
+        filepresent = False
+        for ext in fileextensions:
+            print filepresent, figname + ext
+            if os.path.exists(figname+ext): filepresent = True
+        if filepresent: filename.write('\\includegraphics[width=' + plotwidth  + ']{' + figname + '}' + '\n')
+
+    if ind is None:
+        ind = np.arange(len(atlas), dtype = np.int)
+
+    if pdflatex:
+        fileextensions = ['.png','.jpg','.jepg','.pdf']
+    else:
+        fileextensions = ['.eps', '.ps']
+
+    # write selected data and figures for sources into latex file
+    with open(os.path.join(outroot, name + '.tex'), 'wb') as f:
+        f.write('\\documentclass[letterpaper,12pt]{article}\n')
+        f.write('\\usepackage{graphicx}\n')
+        f.write('\\begin{document}\n')
+        f.write('\\setlength{\parindent}{0pt}\n')
+        f.write('\\oddsidemargin 0.0in\n')
+        f.write('\\evensidemargin 0.0in\n')
+        f.write('\\textwidth 6.5in\n')
+        f.write('\\topmargin -0.5in\n')
+        f.write('\\textheight 9in\n')
+        f.write('\n')
+        f.write('\\newpage \n')
+        f.write('\n')
+        f.write('\\small \n')
+
+        for i in ind:
+            f.write('\\newpage \n')
+            f.write('\\begin{minipage}[l]{6.5in} \n')
+            for row in output_figs:
+                for fig in row:
+                    fig_if_exists(f, os.path.join(outroot, str(i) + fig), plotwidth, fileextensions)
+                f.write('~\\newline\n\n')
+
+            f.write('Index number in Atlas: ' + str(i) + '\\\ \n')
+            for col in output_cols:
+                f.write(output_cols[col]+': ' + str(atlas[col][i]) + '\\\ \n')
+
+            f.write('\\end{minipage} \n')
+
+        f.write('\\end{document}')
+        f.close()
+
+
 
 def get_stamps(data, outroot, verbose = True):
+    '''Retrieve stamp images from the YSOVAR2 database
+
+    The database requires a login. To get past that set the following variables
+    before calling this routine:
+    - plot_atlas.YSOVAR_USERNAME
+    - plot_atlas.YSOVARPASSWORD
+
+    Parameters
+    ----------
+    data : ysovar_atlas.YSOVAR_atlas
+        needs to contain a column called `YSOVAR2_id`
+    outroot : string
+        directory where the downloaded files will end up
+    
+    '''
     url = 'http://cosmos.physast.uga.edu/YSOVAR2/cgi/stamps.py'
     top_level_url = "http://cosmos.physast.uga.edu/YSOVAR2"
     # create a password manager
@@ -46,21 +170,21 @@ def get_stamps(data, outroot, verbose = True):
     # Now all calls to urllib2.urlopen use our opener.
     urllib2.install_opener(opener)
 
-    for i, d in enumerate(data):
+    for i in range(len(data)):
         if np.mod(i, 100) == 0:
             print 'Fetching stamp ' + str(i) + ' of ' + str(len(data)) + ' from YSOVAR2 Server.'
-        dat = urllib.urlencode({'source_id' : d['YSOVAR2_id'][0]})
+        dat = urllib.urlencode({'source_id' : data['YSOVAR2_id'][i]})
         req = urllib2.Request(url, dat)
         response = urllib2.urlopen(req)
         try:   # with statement would be shorter, but is not available in python 2.6
-            f = open(outroot + str(i)+'_stamp.png', 'w')
+            f = open(os.path.join(outroot, str(i)+'_stamp.png'), 'w')
             f.write(response.read())
         finally:
             f.close()
 
 def make_reddeningvector_for_plot(x1, x2, y1, y2):
     # calculates the coordinates of the reddening evctor in convenient plot coordinates.
-    slope = calc_reddening()
+    slope = redvec_36_45()
     
     if (x2-x1 <= 0.1):
         AV = 0.25
@@ -149,187 +273,146 @@ def make_slope_plot(infos, outroot):
 	plt.setp(xticklabels, visible=False)
 	
 	plt.xlabel('CMD slope angle (degrees)')
-	plt.savefig(outroot + 'ysovar_slope_new.png')
+	multisave(plt.gcf(), os.path.join(outroot, 'ysovar_slope_new.png'))
 	plt.clf()
 
 
 
-def make_info_plots(infos, outroot):
-	# makes some overview histograms of object properties
-	#color definition:
-	color = [(1,0.35,0.35), (1,0.95,0.35), (0.5,0.9,0.25), (0.25,0.45,1), (0.9,0.35,1)]
+def make_info_plots(infos, outroot, bands = ['36', '45'], bandlabels=['[3.6]', '[4.5]']):
+    # makes some overview histograms of object properties
+    #color definition:
+    color = [(1,0.35,0.35), (1,0.95,0.35), (0.5,0.9,0.25), (0.25,0.45,1), (0.9,0.35,1)]
+    ysoclass = infose['ysoclass']
+
+    for band, bandlabel in zip(bands, bandlabels):
+        mads = infos['mad_'+band]
+        ind0 = np.where((mads >= 0) & (ysoclass == 0))[0]
+        ind1 = np.where((mads >= 0) & (ysoclass == 1))[0]
+        ind2 = np.where((mads >= 0) & (ysoclass == 2))[0]
+        ind3 = np.where((mads >= 0) & (ysoclass == 3))[0]
+        ind4 = np.where((mads >= 0) & (ysoclass == 4))[0]
+        binning = np.arange(0,0.2,0.005)
+
+        plt.figure()
+        plt.subplots_adjust(hspace=0.001)
+        ax1 = plt.subplot(511)
+        n0, bins, patches = plt.hist(mads[ind0], bins=binning, facecolor = color[0])
+        plt.legend(['XYSOs'])
+        plt.yticks(np.arange(1,max(n0),max(np.trunc(max(n0)/4),1) ))
 	
-	# MAD 3.6 PLOT:
-	ind0 = np.where((infos.mad_36 > -99999) & (infos.ysoclass == 0))[0]
-	ind1 = np.where((infos.mad_36 > -99999) & (infos.ysoclass == 1))[0]
-	ind2 = np.where((infos.mad_36 > -99999) & (infos.ysoclass == 2))[0]
-	ind3 = np.where((infos.mad_36 > -99999) & (infos.ysoclass == 3))[0]
-	ind4 = np.where((infos.mad_36 > -99999) & (infos.ysoclass == 4))[0]
-	binning = np.arange(0,0.2,0.005)
+        ax2 = plt.subplot(512, sharex=ax1)
+        n1, bins, patches = plt.hist(mads[ind1], bins=binning, facecolor = color[1])
+        plt.legend(['class 1'])
+        plt.yticks(np.arange(1,max(n1),max(np.trunc(max(n1)/4),1) ))
 	
-	plt.figure()
-	plt.subplots_adjust(hspace=0.001)
-	ax1 = plt.subplot(511)
-	n0, bins, patches = plt.hist(infos.mad_36[ind0], bins=binning, facecolor = color[0])
-	plt.legend(['XYSOs'])
-	plt.yticks(np.arange(1,max(n0),max(np.trunc(max(n0)/4),1) ))
+        ax3 = plt.subplot(513, sharex=ax1)
+        n2, bins, patches = plt.hist(mads[ind2], bins=binning, facecolor = color[2])
+        plt.legend(['class 2'])
+        plt.ylabel('number of objects')
+        plt.yticks(np.arange(1,max(n2),max(np.trunc(max(n2)/4),1) ))
 	
-	ax2 = plt.subplot(512, sharex=ax1)
-	n1, bins, patches = plt.hist(infos.mad_36[ind1], bins=binning, facecolor = color[1])
-	plt.legend(['class 1'])
-	plt.yticks(np.arange(1,max(n1),max(np.trunc(max(n1)/4),1) ))
+        ax4 = plt.subplot(514, sharex=ax1)
+        n3, bins, patches = plt.hist(mads[ind3], bins=binning, facecolor = color[3])
+        plt.legend(['class 3'])
+        plt.yticks(np.arange(1,max(n3),max(np.trunc(max(n3)/4),1) ))
 	
-	ax3 = plt.subplot(513, sharex=ax1)
-	n2, bins, patches = plt.hist(infos.mad_36[ind2], bins=binning, facecolor = color[2])
-	plt.legend(['class 2'])
-	plt.ylabel('number of objects')
-	plt.yticks(np.arange(1,max(n2),max(np.trunc(max(n2)/4),1) ))
-	
-	ax4 = plt.subplot(514, sharex=ax1)
-	n3, bins, patches = plt.hist(infos.mad_36[ind3], bins=binning, facecolor = color[3])
-	plt.legend(['class 3'])
-	plt.yticks(np.arange(1,max(n3),max(np.trunc(max(n3)/4),1) ))
-	
-	ax5 = plt.subplot(515, sharex=ax1)
-	n4, bins, patches = plt.hist(infos.mad_36[ind4], bins=binning, facecolor = color[4])
-	plt.legend(['stars'])
-	plt.yticks(np.arange(1,max(n4),max(np.trunc(max(n4)/4),1) ))
-	
-	xticklabels = ax1.get_xticklabels()+ax2.get_xticklabels()+ax3.get_xticklabels()+ax4.get_xticklabels()
-	plt.setp(xticklabels, visible=False)
-	plt.xlabel('MAD in [3.6]')
-	plt.show()
-	plt.savefig(outroot + 'ysovar_mad36.eps')
-	
-	
-	
-	# MAD 4.5 PLOT:
-	ind0 = np.where((infos.mad_45 > -99999) & (infos.ysoclass == 0))[0]
-	ind1 = np.where((infos.mad_45 > -99999) & (infos.ysoclass == 1))[0]
-	ind2 = np.where((infos.mad_45 > -99999) & (infos.ysoclass == 2))[0]
-	ind3 = np.where((infos.mad_45 > -99999) & (infos.ysoclass == 3))[0]
-	ind4 = np.where((infos.mad_45 > -99999) & (infos.ysoclass == 4))[0]
-	binning = np.arange(0,0.2,0.005)
-	
-	plt.figure()
-	plt.subplots_adjust(hspace=0.001)
-	ax1 = plt.subplot(511)
-	n0, bins, patches = plt.hist(infos.mad_45[ind0], bins=binning, facecolor = color[0])
-	plt.legend(['XYSOs'])
-	plt.yticks(np.arange(1,max(n0),max(np.trunc(max(n0)/4),1) ))
-	
-	ax2 = plt.subplot(512, sharex=ax1)
-	n1, bins, patches = plt.hist(infos.mad_45[ind1], bins=binning, facecolor = color[1])
-	plt.legend(['class 1'])
-	plt.yticks(np.arange(1,max(n1),max(np.trunc(max(n1)/4),1) ))
-	
-	ax3 = plt.subplot(513, sharex=ax1)
-	n2, bins, patches = plt.hist(infos.mad_45[ind2], bins=binning, facecolor = color[2])
-	plt.legend(['class 2'])
-	plt.ylabel('number of objects')
-	plt.yticks(np.arange(1,max(n2),max(np.trunc(max(n2)/4),1) ))
-	
-	ax4 = plt.subplot(514, sharex=ax1)
-	n3, bins, patches = plt.hist(infos.mad_45[ind3], bins=binning, facecolor = color[3])
-	plt.legend(['class 3'])
-	plt.yticks(np.arange(1,max(n3),max(np.trunc(max(n3)/4),1) ))
-	
-	ax5 = plt.subplot(515, sharex=ax1)
-	n4, bins, patches = plt.hist(infos.mad_45[ind4], bins=binning, facecolor = color[4])
-	plt.legend(['stars'])
-	plt.yticks(np.arange(1,max(n4),max(np.trunc(max(n4)/4),1) ))
-	
-	xticklabels = ax1.get_xticklabels()+ax2.get_xticklabels()+ax3.get_xticklabels()+ax4.get_xticklabels()
-	plt.setp(xticklabels, visible=False)
-	plt.xlabel('MAD in [4.5]')
-	plt.show()
-	plt.savefig(outroot + 'ysovar_mad45.eps')
+        ax5 = plt.subplot(515, sharex=ax1)
+        n4, bins, patches = plt.hist(mads[ind4], bins=binning, facecolor = color[4])
+        plt.legend(['stars'])
+        plt.yticks(np.arange(1,max(n4),max(np.trunc(max(n4)/4),1) ))
+
+        xticklabels = ax1.get_xticklabels()+ax2.get_xticklabels()+ax3.get_xticklabels()+ax4.get_xticklabels()
+        plt.setp(xticklabels, visible=False)
+        plt.xlabel('MAD in '+bandlabel)
+        plt.show()
+        multisave(plt.gcf(), os.path.join(outroot, 'ysovar_mad'+band))
 	
 	
-	# STETSON PLOT:	
-	plt.clf()
-	ind0 = np.where((infos.stetson > -99999) & (infos.ysoclass == 0))[0]
-	ind1 = np.where((infos.stetson > -99999) & (infos.ysoclass == 1))[0]
-	ind2 = np.where((infos.stetson > -99999) & (infos.ysoclass == 2))[0]
-	ind3 = np.where((infos.stetson > -99999) & (infos.ysoclass == 3))[0]
-	ind4 = np.where((infos.stetson > -99999) & (infos.ysoclass == 4))[0]
-	binning = np.arange(-10,50,1)
+    # STETSON PLOT:	
+    plt.clf()
+    stetson = infos['stetson_36_45']
+    ind0 = np.where((stetson > -99999) & (ysoclass == 0))[0]
+    ind1 = np.where((stetson > -99999) & (ysoclass == 1))[0]
+    ind2 = np.where((stetson > -99999) & (ysoclass == 2))[0]
+    ind3 = np.where((stetson > -99999) & (ysoclass == 3))[0]
+    ind4 = np.where((stetson > -99999) & (ysoclass == 4))[0]
+    binning = np.arange(-10,50,1)
 	
-	plt.figure()
-	plt.subplots_adjust(hspace=0.001)
-	ax1 = plt.subplot(511)
-	n0, bins, patches = plt.hist(infos.stetson[ind0], bins=binning, facecolor = color[0], alpha = 1)
-	plt.legend(['XYSOs'])
-	plt.yticks(np.arange(1,max(n0),max(np.trunc(max(n0)/4),1) ))
-	plt.plot([1.,1.],[0,max(n0)],"k--", lw=3)
+    plt.figure()
+    plt.subplots_adjust(hspace=0.001)
+    ax1 = plt.subplot(511)
+    n0, bins, patches = plt.hist(stetson[ind0], bins=binning, facecolor = color[0], alpha = 1)
+    plt.legend(['XYSOs'])
+    plt.yticks(np.arange(1,max(n0),max(np.trunc(max(n0)/4),1) ))
+    plt.plot([1.,1.],[0,max(n0)],"k--", lw=3)
 	
-	ax2 = plt.subplot(512, sharex=ax1)
-	n1, bins, patches = plt.hist(infos.stetson[ind1], bins=binning, facecolor = color[1], alpha = 1)
-	plt.legend(['class 1'])
-	plt.yticks(np.arange(1,max(n1),max(np.trunc(max(n1)/4),1) ))
-	plt.plot([1.,1.],[0,max(n1)],"k--", lw=3)
-	plt.text(30, 1, 'has longer tail')
+    ax2 = plt.subplot(512, sharex=ax1)
+    n1, bins, patches = plt.hist(stetson[ind1], bins=binning, facecolor = color[1], alpha = 1)
+    plt.legend(['class 1'])
+    plt.yticks(np.arange(1,max(n1),max(np.trunc(max(n1)/4),1) ))
+    plt.plot([1.,1.],[0,max(n1)],"k--", lw=3)
+    plt.text(30, 1, 'has longer tail')
 	
-	ax3 = plt.subplot(513, sharex=ax1)
-	n2, bins, patches = plt.hist(infos.stetson[ind2], bins=binning, facecolor = color[2], alpha = 1)
-	plt.legend(['class 2'])
-	plt.ylabel('number of objects')
-	plt.yticks(np.arange(1,max(n2),max(np.trunc(max(n2)/4),1) ))
-	plt.plot([1.,1.],[0,max(n2)],"k--", lw=3)
-	plt.text(30, 1, 'has longer tail')
+    ax3 = plt.subplot(513, sharex=ax1)
+    n2, bins, patches = plt.hist(stetson[ind2], bins=binning, facecolor = color[2], alpha = 1)
+    plt.legend(['class 2'])
+    plt.ylabel('number of objects')
+    plt.yticks(np.arange(1,max(n2),max(np.trunc(max(n2)/4),1) ))
+    plt.plot([1.,1.],[0,max(n2)],"k--", lw=3)
+    plt.text(30, 1, 'has longer tail')
 	
-	ax4 = plt.subplot(514, sharex=ax1)
-	n3, bins, patches = plt.hist(infos.stetson[ind3], bins=binning, facecolor = color[3], alpha = 1)
-	plt.legend(['class 3'])
-	plt.yticks(np.arange(1,max(n3),max(np.trunc(max(n3)/4),1) ))
-	plt.plot([1.,1.],[0,max(n3)],"k--", lw=3)
+    ax4 = plt.subplot(514, sharex=ax1)
+    n3, bins, patches = plt.hist(stetson[ind3], bins=binning, facecolor = color[3], alpha = 1)
+    plt.legend(['class 3'])
+    plt.yticks(np.arange(1,max(n3),max(np.trunc(max(n3)/4),1) ))
+    plt.plot([1.,1.],[0,max(n3)],"k--", lw=3)
 	
-	ax5 = plt.subplot(515, sharex=ax1)
-	n4, bins, patches = plt.hist(infos.stetson[ind4], bins=binning, facecolor = color[4], alpha = 1)
-	plt.legend(['stars'])
-	plt.yticks(np.arange(1,max(n4),max(np.trunc(max(n4)/4),1) ))
-	plt.plot([1.,1.],[0,max(n4)],"k--", lw=3)
+    ax5 = plt.subplot(515, sharex=ax1)
+    n4, bins, patches = plt.hist(stetson[ind4], bins=binning, facecolor = color[4], alpha = 1)
+    plt.legend(['stars'])
+    plt.yticks(np.arange(1,max(n4),max(np.trunc(max(n4)/4),1) ))
+    plt.plot([1.,1.],[0,max(n4)],"k--", lw=3)
 	
-	xticklabels = ax1.get_xticklabels()+ax2.get_xticklabels()+ax3.get_xticklabels()+ax4.get_xticklabels()
-	plt.setp(xticklabels, visible=False)
+    xticklabels = ax1.get_xticklabels()+ax2.get_xticklabels()+ax3.get_xticklabels()+ax4.get_xticklabels()
+    plt.setp(xticklabels, visible=False)
 	
-	plt.text(3, 30,"varying (S.I. > 1)")
+    plt.text(3, 30,"varying (S.I. > 1)")
 	
-	plt.xlabel('Stetson index of [3.6], [4.5]')
+    plt.xlabel('Stetson index of [3.6], [4.5]')
 	
-	plt.savefig(outroot + 'ysovar_stetson.eps')
+    multisave(plt.gcf(), os.path.join(outroot, 'ysovar_stetson'))
 	
 	
-	# Periodicity plot:
-	i0 = len(np.where((infos.good_period > -99999) & (infos.ysoclass == 0))[0])
-	i00 = len(np.where( (infos.ysoclass == 0))[0])
-	i1 = len(np.where((infos.good_period > -99999) & (infos.ysoclass == 1))[0])
-	i01 = len(np.where( (infos.ysoclass == 1))[0])
-	i2 = len(np.where((infos.good_period > -99999) & (infos.ysoclass == 2))[0])
-	i02 = len(np.where( (infos.ysoclass == 2))[0])
-	i3 = len(np.where((infos.good_period > -99999) & (infos.ysoclass == 3))[0])
-	i03 = len(np.where((infos.ysoclass == 3))[0])
-	i4 = len(np.where((infos.good_period > -99999) & (infos.ysoclass == 4))[0])
-	i04 = len(np.where((infos.ysoclass == 4))[0])
+    # Periodicity plot:
+    good_period = infos['good_period']
+    i0 = len(np.where((good_period > -99999) & (ysoclass == 0))[0])
+    i00 = len(np.where( (ysoclass == 0))[0])
+    i1 = len(np.where((good_period > -99999) & (ysoclass == 1))[0])
+    i01 = len(np.where( (ysoclass == 1))[0])
+    i2 = len(np.where((good_period > -99999) & (ysoclass == 2))[0])
+    i02 = len(np.where( (ysoclass == 2))[0])
+    i3 = len(np.where((good_period > -99999) & (ysoclass == 3))[0])
+    i03 = len(np.where((ysoclass == 3))[0])
+    i4 = len(np.where((good_period > -99999) & (ysoclass == 4))[0])
+    i04 = len(np.where((ysoclass == 4))[0])
 	
-	f = plt.figure()
-	plt.clf()
-	x = np.arange(0,5)
-	n_var = np.array([float(i0), float(i1), float(i2), float(i3), float(i4)])
-	n_tot = np.array([float(i00), float(i01), float(i02), float(i03), float(i04)])
-	y = n_var/n_tot
-	print y
-	y_err = np.sqrt( n_var)/n_tot
-	print y_err
-	plt.bar(x,y, color=color, yerr=y_err)
-	plt.xlim(-0.5,5)
-	plt.xticks(x+0.4, ('XYSOs', 'class 1', 'class 2', 'class 3', 'stars' ))
-	plt.ylabel('fraction with significant periods*')
-	plt.text(0, 0.6, '*periods > 2d and < 20d')
-	plt.text(0, 0.57, 'with peak power > 10')
-	plt.show()
-	plt.savefig(outroot + 'ysovar_period.eps')
-	plt.savefig(outroot + 'ysovar_period.png')
+    f = plt.figure()
+    plt.clf()
+    x = np.arange(0,5)
+    n_var = np.array([float(i0), float(i1), float(i2), float(i3), float(i4)])
+    n_tot = np.array([float(i00), float(i01), float(i02), float(i03), float(i04)])
+    y = n_var/n_tot
+    print y
+    y_err = np.sqrt( n_var)/n_tot
+    print y_err
+    plt.bar(x,y, color=color, yerr=y_err)
+    plt.xlim(-0.5,5)
+    plt.xticks(x+0.4, ('XYSOs', 'class 1', 'class 2', 'class 3', 'stars' ))
+    plt.ylabel('fraction with significant periods*')
+    plt.text(0, 0.6, '*periods > 2d and < 20d')
+    plt.text(0, 0.57, 'with peak power > 10')
+    plt.show()
+    multisave(plt.gcf(), os.path.join(outroot, 'ysovar_period'))
 
 
 
@@ -339,23 +422,23 @@ def plot_lc(ax, data):
     Parameters
     ----------
     data : dictionary
-        contains 't1' and / or 't2' as time for lightcurves and 
-        'm1' and / or 'm2' as magnitues for lightcurves
+        contains 't36' and / or 't45' as time for lightcurves and 
+        'm36' and / or 'm45' as magnitues for lightcurves
     '''
-    if 't1' in data.keys():
-        ax.scatter(data['t1']-mjdoffset, data['m1'], lw=0, s=20, marker='o', color='k', label = '[3.6]')
-    if 't2' in data.keys():
-        ax.scatter(data['t2']-mjdoffset, data['m2'], lw=1, s=20, marker='+', color='k', label = '[4.5]')
+    if 't36' in data.keys():
+        ax.scatter(data['t36']-mjdoffset, data['m36'], lw=0, s=20, marker='o', color='k', label = '[3.6]')
+    if 't45' in data.keys():
+        ax.scatter(data['t45']-mjdoffset, data['m45'], lw=1, s=20, marker='+', color='k', label = '[4.5]')
     if len(data['t']) > 0:
         ax.scatter(data['t']-mjdoffset, data['m36'], lw=0, s=30, marker='o', c=data['t'])
         ax.scatter(data['t']-mjdoffset, data['m45'], lw=2, s=40, marker='+', c=data['t'])
 
-def lc_plot(data, xlim = None, twinx = True):
-    '''make the plot an one or two lcs for a single object
+def lc_plot(catalog, xlim = None, twinx = True):
+    '''plot one or two lcs for a single object
     
     Parameters
     ----------
-    data : dictionary
+    catalog : singe row from ysovar_atlas.YSOVAR_atlas
         contains 't1' and / or 't2' as time for lightcurves and 
         'm1' and / or 'm2' as magnitues for lightcurves
     xlim : None or list
@@ -366,21 +449,22 @@ def lc_plot(data, xlim = None, twinx = True):
     twinx : boolean
         if true make seperate y axes for IRAC1 and IRAC2 if both are present
     '''
+    data = catalog.lclist[0]
     # twin axis only if really t1 and t2 are present
-    if not(('t1' in data.keys()) and ('t2' in data.keys())): twinx=False
+    if not(('t36' in data.keys()) and ('t45' in data.keys())): twinx=False
     if xlim is None:
         # make an xlim for min(time) to max(time)
-        if ('t1' in data.keys()): xlim = [data['t1'][0], data['t1'][-1]]
-        if ('t2' in data.keys()): xlim = [data['t2'][0], data['t2'][-1]]
-        if ('t1' in data.keys()) and ('t2' in data.keys()):
-            xlim = [min(data['t1'][0], data['t2'][0]), max(data['t1'][-1], data['t2'][-1])]
+        if ('t36' in data.keys()): xlim = [data['t36'][0], data['t36'][-1]]
+        if ('t45' in data.keys()): xlim = [data['t45'][0], data['t45'][-1]]
+        if ('t36' in data.keys()) and ('t45' in data.keys()):
+            xlim = [min(data['t36'][0], data['t45'][0]), max(data['t36'][-1], data['t45'][-1])]
     # make an xlim for min(time) to max(time)
-    if ('t1' in data.keys()): ylim = [np.max(data['m1']), np.min(data['m1'])]
-    if ('t2' in data.keys()) and not twinx: ylim = [np.max(data['m2']), np.min(data['m2'])]
-    if ('t1' in data.keys()) and ('t2' in data.keys()) and not twinx:
-        allmagvals = np.hstack([data['m1'], data['m2']])
+    if ('t36' in data.keys()): ylim = [np.max(data['m36']), np.min(data['m36'])]
+    if ('t45' in data.keys()) and not twinx: ylim = [np.max(data['m45']), np.min(data['m45'])]
+    if ('t36' in data.keys()) and ('t45' in data.keys()) and not twinx:
+        allmagvals = np.hstack([data['m36'], data['m45']])
         ylim = [np.max(allmagvals), np.min(allmagvals)]
-    # test is xlim is a list of lists. If not, add one layer of [ ]
+    # test if xlim is a list of lists. If not, add one layer of [ ]
     try:  
         temp = xlim[0][0]
     except (TypeError, IndexError):
@@ -410,11 +494,12 @@ def lc_plot(data, xlim = None, twinx = True):
             tax.ticklabel_format(useOffset=False, axis='y') 
             tax.set_xlim(xl)
             taxes.append(tax)
-            ax.scatter(data['t1']-mjdoffset, data['m1'], lw=0, s=20, marker='o', color='k', label = '[3.6], symbol: o')
-            tax.scatter(data['t2']-mjdoffset, data['m2'], lw=1, s=20, marker='+', color='k', label = '[4.5], symbol: +')
-            if len(data['t']) > 0:
-                ax.scatter(data['t']-mjdoffset, data['m36'], lw=0, s=30, marker='o', c=data['t'])
-                tax.scatter(data['t']-mjdoffset, data['m45'], lw=2, s=30, marker='+', c=data['t'])
+            ax.scatter(data['t36']-mjdoffset, data['m36'], lw=0, s=20, marker='o', color='k', label = '[3.6], symbol: o')
+            tax.scatter(data['t45']-mjdoffset, data['m45'], lw=1, s=20, marker='+', color='k', label = '[4.5], symbol: +')
+            mergedlc = merge_lc(data, ['36','45'])
+            if len(mergedlc) > 0:
+                ax.scatter(mergedlc['t']-mjdoffset, mergedlc['m36'], lw=0, s=30, marker='o', c=mergedlc['t'])
+                tax.scatter(mergedlc['t']-mjdoffset, mergedlc['m45'], lw=2, s=30, marker='+', c= 'r')
             tax.tick_params(axis='y', colors='r')
         else:
             plot_lc(ax, data)
@@ -438,20 +523,20 @@ def lc_plot(data, xlim = None, twinx = True):
                 #tax.figure.canvas.draw()
 
         taxes[0].callbacks.connect("ylim_changed", update_twinx)
-        taxes[0].set_ylim([np.max(data['m2']), np.min(data['m2'])])
+        taxes[0].set_ylim([np.max(data['m45']), np.min(data['m45'])])
         taxes[-1].set_ylabel('[4.5]', color = 'r')
         axes[0].set_ylabel('[3.6]')
     return fig
 
 
-def make_lc_plots(data, outroot, verbose = True, xlim = None, twinx = False, ind = None):
-    '''plot lightcurves into files for all objects in data
+def make_lc_plots(atlas, outroot, verbose = True, xlim = None, twinx = False, ind = None):
+    '''plot lightcurves into files for all objects in `atlas`
     
     Parameters
     ----------
-    data : list of dictionary
-        each dict contains 't1' and / or 't2' as time for lightcurves and 
-        'm1' and / or 'm2' as magnitues for lightcurves
+    atlas : ysovar_atlas.YSOVAR_atlas
+        contains dict with 't36' and / or 't45' as time for lightcurves and 
+        'm36' and / or 'm45' as magnitues for lightcurves
     verbose : boolean
         if true print progress in processing
     xlim : None or list
@@ -465,23 +550,32 @@ def make_lc_plots(data, outroot, verbose = True, xlim = None, twinx = False, ind
         index numbers of elements, only for those elements a lightcurve is created.
         If None, make lightcurve for all sources.
     '''
-    if ind is None:
-        ind = np.arange(len(data))
+    if ind is None: ind = np.arange(len(atlas))
     for i in ind:
         print i
         if verbose and np.mod(i,100) == 0: 
-            print 'lightcurve plots: ' + str(i) + ' of ' + str(len(data))
+            print 'lightcurve plots: ' + str(i) + ' of ' + str(len(atlas))
             plt.close("all")
         # make light curve plot:
-        fig = lc_plot(data[i], xlim = xlim, twinx = twinx)
+        fig = lc_plot(atlas[i], xlim = xlim, twinx = twinx)
         filename = outroot + str(i) + '_lc'
         multisave(fig, filename)
-        plt.close(fig)
+        plt.close("all")
 
-def cmd_plot(data, infos):
+def cmd_plot(atlas, mergedlc, verbose = True):
+    '''
+    Parameters
+    ----------
+    atlas : ysovar_atlas.YSOVAR_atlas with one row only 
+    mergedlc : np.ndarray
+        contains 't' as time for merged lightcurves and 
+        'm36' and 'm45' as magnitues for lightcurves
+
+
+    '''
     fig = plt.figure()
     ax = fig.add_subplot(111)
-    p1 = ax.scatter(data['m36']-data['m45'], data['m36'], lw=0, s=40, marker='^', c=data['t'])
+    p1 = ax.scatter(mergedlc['m36']-mergedlc['m45'], mergedlc['m36'], lw=0, s=40, marker='^', c=mergedlc['t'])
     ax.set_xlabel('[3.6] - [4.5]')
     ax.set_ylabel('[3.6]')
     # get x and y coordinates of plot
@@ -492,22 +586,22 @@ def cmd_plot(data, infos):
     y1 = ax.get_ylim()[0]
     y2 = ax.get_ylim()[1]
     # plot line for fit to data:
-    m = infos['cmd_m']
-    b = infos['cmd_b']
+    m = atlas['cmd_m']
+    b = atlas['cmd_b']
     line_x = np.array([x1, x2])
     line_y = np.array([m*x1+b, m*x2+b])
     ax.plot(line_x, line_y, 'k-', label = 'measured slope')
     
     # plot line for shifted reddening vector to data:
-    m = infos['cmd_m_redvec']
-    b = infos['cmd_b_redvec']
+    m = atlas['cmd_m_redvec']
+    b = atlas['cmd_b_redvec']
     line_x = np.array([x1, x2])
     line_y = np.array([m*x1+b, m*x2+b])
     ax.plot(line_x, line_y, 'k--', label = 'standard reddening')
     
     # plot reddening vector: (with length somewhat adjusted to the plot size)
     vector = make_reddeningvector_for_plot(x1, x2, y1, y2)
-    print vector
+    if verbose: print vector
     ax.arrow(vector[0],m*vector[0]+b, vector[2]-vector[0],vector[3]-vector[1],fc="k", ec="k", head_width=0.025*(x2-x1))
     plot_angle = math.atan( vector[4]*(x2-x1)*3.2 / ((vector[2]-vector[0])*(y2-y1)*4) )/(2*np.pi)*360 # the 3.2 and the 4 comes from the actual size of the figure (angle does not work in data coordinates)
     #print plot_angle
@@ -516,8 +610,8 @@ def cmd_plot(data, infos):
     ax.set_title('CMD color-coded by time')
     
     # plot typical error bars in lower left corner
-    y_err = np.median(data['m36_error'])
-    x_err = np.sqrt( y_err**2 + (np.median(data['m45_error']))**2  )
+    y_err = np.median(mergedlc['m36_error'])
+    x_err = np.sqrt( y_err**2 + (np.median(mergedlc['m45_error']))**2  )
     x1 = ax.get_xlim()[0]
     y1 = ax.get_ylim()[0]
     pos_x = x1 + 1.5*x_err
@@ -527,85 +621,89 @@ def cmd_plot(data, infos):
     
     return fig
 
-def make_cmd_plots(data, infos, outroot, verbose = True):
-    for i, d in enumerate(data):
+def make_cmd_plots(atlas, outroot, verbose = True):
+    '''plot cmds into files for all objects in `atlas`
+    
+    Parameters
+    ----------
+    atlas : ysovar_atlas.YSOVAR_atlas
+        contains dict with 't36' and / or 't45' as time for lightcurves and 
+        'm36' and / or 'm45' as magnitues for lightcurves
+    '''
+    for i in range(len(atlas)):
         if verbose and np.mod(i,100) == 0: 
-            print 'cmd plot: ' + str(i) + ' of ' + str(len(data))
+            print 'cmd plot: ' + str(i) + ' of ' + str(len(atlas))
         # make cmd plot:
-        if ('t' in d.keys()) and (len(d['t']) > 5):
-            fig = cmd_plot(d, infos[i])
-            filename = outroot + str(i) + '_color'
+        mergedlc = merge_lc(atlas.lclist[i], ['36','45'])
+        if len(mergedlc) > 5:
+            fig = cmd_plot(atlas[i], mergedlc)
+            filename = os.path.join(outroot,str(i) + '_color')
             multisave(fig, filename)
             plt.close(fig)
 
-def make_lc_cmd_plots(data, infos, outroot, lc_xlim = None, lc_twinx = False):
-        # basic lc plots and CMD
-        make_lc_plots(data, outroot, verbose = True, xlim = lc_xlim)
-        make_cmd_plots(data, infos, outroot, verbose = True)
+def make_lc_cmd_plots(atlas, outroot, lc_xlim = None, lc_twinx = False):
+    '''plot cmds and lc
 
-def plot_polys(data, outroot, verbose = True):
+    See `meth:make_lc_plots` and `meth:make_cmd_plots` for documentation. 
+    
+    Parameters
+    ----------
+    atlas : ysovar_atlas.YSOVAR_atlas
+        contains dict with 't36' and / or 't45' as time for lightcurves and 
+        'm36' and / or 'm45' as magnitues for lightcurves
+    '''
+    # basic lc plots and CMD
+    make_lc_plots(atlas, outroot, verbose = True, xlim = lc_xlim)
+    make_cmd_plots(atlas, outroot, verbose = True)
+
+def plot_polys(atlas, outroot, verbose = True):
     '''plot lightcurves into files for all objects in data
     
     Parameters
     ----------
-    data : list of dictionary
-        each dict contains 't1' and / or 't2' as time for lightcurves and 
-        'm1' and / or 'm2' as magnitues for lightcurves
+    atlas : ysovar_atlas.YSOVAR_atlas
+        each ls in the atlas contains 't36' and / or 't45' as time
+        for lightcurves and 
+        'm36' and / or 'm45' as magnitues for lightcurves
     outroot : string
         data path for saving resulting files
     verbose : boolean
         if true print progress in processing
     '''
-    for i, d in enumerate(data):
+    for i, d in enumerate(atlas.lclist):
         if verbose and np.mod(i,100) == 0: print 'lightcurve plots: ' + str(i) + ' of ' + str(len(data))
         # make light curve plot:
-        if ('t1' in d.keys()) and (len(d['t1']) > 15):
-            fig = lc.plot_all_polys(d['t1'], d['m1'], d['m1_error'], 'IRAC 1')
+        if ('t36' in d.keys()) and (len(d['t36']) > 15):
+            fig = lc.plot_all_polys(d['t36'], d['m36'], d['m36_error'], 'IRAC 1')
             filename = outroot + str(i) + '_lcpoly'
             multisave(fig, filename)
             plt.close(fig)
-        elif ('t2' in d.keys()) and (len(d['t2']) > 15):
-            fig = lc.plot_all_polys(d['t2'], d['m2'], d['m2_error'], 'IRAC 2')
+        elif ('t45' in d.keys()) and (len(d['t45']) > 15):
+            fig = lc.plot_all_polys(d['t45'], d['m45'], d['m2_error'], 'IRAC 2')
             filename = outroot + str(i) + '_lcpoly'
             multisave(fig, filename)
             plt.close(fig)
 
-def check_time_obs(outroot, ysovar1):
-	# outdated function, no longer used
-	plt.clf()
-	x = np.array(ysovar1['ra'])
-	y = np.array(ysovar1['dec'])
-	t = np.array(ysovar1['hmjd1'])
-	t_max = np.zeros(len(x))
-	for i in np.arange(0,len(x)):
-		t_max[i] = max(t[i])
-	
-	plt.clf()
-	plt.scatter(x, y, lw=0, s=40, marker='.',  c=t_max)
-	plt.savefig(outroot + 'FOV_time.eps')
-	plt.clf()
 
 
-
-
-
-
-def make_plot_skyview(outroot, ysovar1, ysovar2, infos):
+def make_plot_skyview(outroot, infos):
 	# only for IRAS 20050: plots positions of identified YSOs over all detected sources
 	plt.clf()
-	p1, = plt.plot(infos.ra_spitzer, infos.dec_spitzer, '.', color='0.75', markeredgecolor='0.75')
+	p1, = plt.plot(infos['ra'], infos['dec'], '.', color='0.75', markeredgecolor='0.75')
 	
-	i0 = np.where(infos.ysoclass == 0)[0]
-	i1 = np.where(infos.ysoclass == 1)[0]
-	i2 = np.where(infos.ysoclass == 2)[0]
-	i3 = np.where(infos.ysoclass == 3)[0]
+	i0 = np.where(infos['ysoclass'] == 0)[0]
+	i1 = np.where(infos['ysoclass'] == 1)[0]
+	i2 = np.where(infos['ysoclass'] == 2)[0]
+	i3 = np.where(infos['ysoclass'] == 3)[0]
+
+        
 	
-	p5, = plt.plot(infos.ra_spitzer[i2], infos.dec_spitzer[i2], 'o', markersize=5, color=(0.5,0.9,0.25))
-	p6, = plt.plot(infos.ra_spitzer[i3], infos.dec_spitzer[i3], 'o', markersize=5, color=(0.25,0.45,1))
-	p4, = plt.plot(infos.ra_spitzer[i1], infos.dec_spitzer[i1], 'o', markersize=5, color=(1,1,0.25))
-	p3, = plt.plot(infos.ra_spitzer[i0], infos.dec_spitzer[i0], 'o', markersize=5, color=(1,0.35,0.35))
+	p5, = plt.plot(infos['ra'][i2], infos['dec'][i2], 'o', markersize=5, color=(0.5,0.9,0.25))
+	p6, = plt.plot(infos['ra'][i3], infos['dec'][i3], 'o', markersize=5, color=(0.25,0.45,1))
+	p4, = plt.plot(infos['ra'][i1], infos['dec'][i1], 'o', markersize=5, color=(1,1,0.25))
+	p3, = plt.plot(infos['ra'][i0], infos['dec'][i0], 'o', markersize=5, color=(1,0.35,0.35))
 	
-	plt.legend([p1,p3,p4,p5,p6],['time-resolved data','Guenther+ 2012 XYSOs','Guenther+ 2012 class 1', 'Guenther+ 2012 class 2', 'Guenther+ 2012 class 3'], 'lower right',prop={'size':10})
+	plt.legend([p1,p3,p4,p5,p6],['time-resolved data','XYSOs','class 1', 'class 2', 'class 3'], 'lower right',prop={'size':10})
 	
 	ax = plt.gca()
 	plt.axis([ax.get_xlim()[1], ax.get_xlim()[0], ax.get_ylim()[0], ax.get_ylim()[1]])
@@ -617,14 +715,13 @@ def make_plot_skyview(outroot, ysovar1, ysovar2, infos):
 
 
 
-def make_ls_plots(data, outroot, maxper, oversamp, maxfreq):
+def make_ls_plots(atlas, outroot, maxper, oversamp, maxfreq, verbose = True):
     '''calculates & plots Lomb-Scargle periodogram for each source 
     
     Parameters
     ----------
-    data : list of dictionary
-        each dict contains 't1' and / or 't2' as time for lightcurves and 
-        'm1' and / or 'm2' as magnitues for lightcurves
+    atlas : ysovar_atlas.YSOVAR_atlas
+        input atlas, which includes lightcurves
     outroot : string
         data path for saving resulting files
     maxper : float
@@ -633,21 +730,24 @@ def make_ls_plots(data, outroot, maxper, oversamp, maxfreq):
         oversampling factor
     maxfreq : float
         maximum frequency to be used for periodogram
+    verbose : bool
+        Show progress as output?
     '''
     fig = plt.figure()
-    for i in np.arange(0,len(data)):
-        print 'LS plot: ' + str(i)
+    for i in np.arange(0,len(atlas)):
+        if verbose and np.mod(i,100) == 0: print 'LS plot: ' + str(i) + ' of ' + str(len(atlas))
         fig.clf()
+        data = atlas.lclist[i]
         ax = fig.add_subplot(111)
-        if 't1' in data[i].keys():
-            t1 = data[i]['t1']
-            m1 = data[i]['m1']
+        if 't36' in data.keys():
+            t1 = data['t36']
+            m1 = data['m36']
             if len(t1) > 2:
                 test1 = ysovar_lombscargle.fasper(t1,m1,oversamp,maxfreq)
                 ax.plot(1/test1[0],test1[1],linewidth=2, label = r'3.6 $\mu$m')
-        if 't2' in  data[i].keys():
-            t2 = data[i]['t2']
-            m2 = data[i]['m2']
+        if 't45' in  data.keys():
+            t2 = data['t45']
+            m2 = data['m45']
             if len(t2) > 2:
                 test2 = ysovar_lombscargle.fasper(t2,m2,oversamp,maxfreq)
                 ax.plot(1/test2[0],test2[1],linewidth=2, label = r'4.5 $\mu$m')
@@ -657,14 +757,31 @@ def make_ls_plots(data, outroot, maxper, oversamp, maxfreq):
         ax.set_xlabel('Period (d)')
         ax.set_ylabel('Periodogram power')
         ax.set_title('Lomb-Scargle Periodogram')
-        multisave(fig, outroot + str(i) + '_ls')
+        multisave(fig, os.path.join(outroot, str(i) + '_ls'))
 
 
-
-def make_phased_lc_cmd_plots(data, infos, outroot):
+def make_phased_lc_cmd_plots(atlas, outroot, bands = ['36','45'], marker = ['o', '+'], lw = [0,1]):
+    '''cplots pahsed lightcurves and CMDs for all sources
+    
+    Parameters
+    ----------
+    atlas : ysovar_atlas.YSOVAR_atlas
+        input atlas, which includes lightcurves
+    outroot : string
+        data path for saving resulting files
+    bands : list of strings
+        band identifiers
+    marker : list of valid matplotlib markers (e.g. string)
+        marker for each band
+    lw : list of floats
+        linewidth for each band
+    '''
     # make phase-folded light curve plots for sources with "good" detected periods
+    if len(marker) < len(bands): raise ValueError('Need one marker type per band')
+    if len(lw) < len(bands): raise ValueError('Need to give linewidth for each band')
     fig = plt.figure()
-    for i in np.arange(0,len(data)):
+    for i in np.arange(0,len(atlas)):
+        data = atlas.lclist[i]
         print 'phase plots: ' + str(i)
         x1 = 0
         x2 = 0
@@ -672,32 +789,27 @@ def make_phased_lc_cmd_plots(data, infos, outroot):
         y2 = 0
         fig.clf()
         ax = fig.add_subplot(111)
-        if ('p1' in data[i].keys()) and ('p2' in data[i].keys()):
-            ax.scatter(data[i]['p1'], data[i]['m1'], marker='o', lw=0, s=40,  c=data[i]['p1'])
-            ax.scatter(data[i]['p2'], data[i]['m2'], marker='+', lw=1, s=40, c=data[i]['p2'])
-            ax.set_xlabel('phase')
-            ax.set_title('phase-folded light curve, period = ' + str( ("%.2f" % infos.good_period[i]) ) + ' d')
-            ax.set_ylim(ax.get_ylim()[::-1])
-            multisave(fig, outroot + str(i) + '_lc_phased')
-        elif ('p1' in data[i].keys()):
-            ax.scatter(data[i]['p1'], data[i]['m1'], marker='o', lw=0, s=40,  c=data[i]['p1'])
-            ax.set_xlabel('phase')
-            ax.set_title('phase-folded light curve, period = ' + str( ("%.2f" % infos.good_period[i]) ) + ' d')
-            ax.set_ylim(ax.get_ylim()[::-1])
-            multisave(fig, outroot + str(i) + '_lc_phased')
-        elif ('p2' in data[i].keys()):
-            ax.scatter(data[i]['p2'], data[i]['m2'], marker='+', lw=1, s=40, c=data[i]['p2'])
-            ax.set_xlabel('phase')
-            ax.set_title('phase-folded light curve, period = ' + str( ("%.2f" % infos.good_period[i]) ) + ' d')
-            ax.set_ylim(ax.get_ylim()[::-1])
-            multisave(fig, outroot + str(i) + '_lc_phased')
+        plotdone = False
+        if atlas['good_period'][i] > 0:
+            period = atlas['good_period'][i]
+            for j, band in enumerate(bands):
+                if atlas['n_'+band][i] > 0:
+                    plotdone = True
+                    p = phase_fold(atlas.lclist[i]['t'+band], period)
+                    ax.scatter(p, atlas.lclist[i]['m'+band], marker=marker[j], lw = lw[j], s=40, c=p)
+            if plotdone:
+                ax.set_xlabel('phase')
+                ax.set_title('phase-folded light curve, period = ' + str( ("%.2f" % period) ) + ' d')
+                ax.set_ylim(ax.get_ylim()[::-1])
+                multisave(fig, outroot + str(i) + '_lc_phased')
                 
-        # make phased color-magnitude plot
-        if 'p' in data[i].keys():
+            # make phased color-magnitude plot
             fig.clf()
             ax = fig.add_subplot(111)
-            if ( (len(data[i]['t']) > 1) & (infos.good_period[i] > 0) ):
-                p1 = plt.scatter(data[i]['m36']-data[i]['m45'], data[i]['m36'], lw=0, s=40, marker='^', c=data[i]['p'])
+            mergedlc = merge_lc(data, ['36','45'])
+            p = phase_fold(mergedlc['t'], period)
+            if len(mergedlc) > 1:
+                p1 = plt.scatter(mergedlc['m36']-mergedlc['m45'], mergedlc['m36'], lw=0, s=40, marker='^', c = p)
                 ax.set_xlabel('[3.6] - [4.5]')
                 ax.set_ylabel('[3.6]')
                 # get x and y coordinates of plot
@@ -707,9 +819,9 @@ def make_phased_lc_cmd_plots(data, infos, outroot):
                 y2 = ax.get_ylim()[1]
                 ax.set_ylim([y2, y1]) # invert y axis!
                 
-                ax.set_title('CMD color-coded by phase, period = ' + str( ("%.2f" % infos.good_period[i]) ) + ' d')
+                ax.set_title('CMD color-coded by phase, period = ' + str( ("%.2f" % atlas['good_period'][i]) ) + ' d')
                 
-                filename = outroot + str(i) + '_color_phased'
+                filename = os.path.join(outroot, str(i) + '_color_phased')
                 multisave(fig, filename)
 
 
@@ -730,8 +842,8 @@ def make_sed_plots(infos, outroot, title = 'SED (data from Guenther+ 2012)'):
         flag45 = 0
         ax.plot(lambdas, plot_sed, 'o')
         #Attenion: min(magnitude) = max(flux)
-        m36 = 2.5**(-np.array([infos.median_36[i], infos.min_36[i], infos.max_36[i]])) * 6.50231481e-08
-        m45 = 2.5**(-np.array([infos.median_45[i], infos.min_45[i], infos.max_45[i]])) * 2.66222222e-08
+        m36 = 2.5**(-np.array([infos['median_36'][i], infos['min_36'][i], infos['max_36'][i]])) * 6.50231481e-08
+        m45 = 2.5**(-np.array([infos['median_45'][i], infos['min_45'][i], infos['max_45'][i]])) * 2.66222222e-08
         ax.errorbar([3.6,4.5], [m36[0],m45[0]], yerr = [[m36[0]-m36[2], m45[0]-m45[2]],[m36[1]-m36[0], m45[1]-m45[0]]], fmt='^')
         ax.set_xlabel('wavelength ($\mu m$)')
         ax.set_ylabel('flux (erg s$^{-1}$ cm$^{-2}$ $\mu$m$^{-1}$)')

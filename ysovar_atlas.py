@@ -1,33 +1,202 @@
 # -*- coding: utf-8 -*-
 import os.path
-
-import numpy as np
-import scipy
-import scipy.io
-import scipy.odr
 from collections import defaultdict
 import math
 from copy import deepcopy
 import string
 
+import numpy as np
+import scipy
+import scipy.odr
 import scipy.stats
+import scipy.stats.mstats
 import matplotlib.pyplot as plt
-import pyfits
 import pylab
 
-import asciitable
+import astropy.io.fits as pyfits
+import astropy.io.ascii as asciitable
+import astropy.table
 
 import ysovar_lombscargle
 from great_circle_dist import dist_radec, dist_radec_fast
 
-def readdata(filename1, filename2):  
-    # outdated routine, not used anymore
-    print 'reading ysovar data...'
-    ysovar1raw = scipy.io.readsav(filename1) # this is the 3.6 mu data
-    ysovar1 = ysovar1raw['ch1lightcurves']
-    ysovar2raw = scipy.io.readsav(filename2) # this is the 4.5 mu data
-    ysovar2 = ysovar2raw['ch2lightcurves']
-    return (ysovar1, ysovar2)
+
+### Helper functions, simple one liners to do some math needed later on etc. ###
+
+            
+
+def coord_CDS2RADEC(dat):
+    '''transform RA and DEC from CDS table to degrees
+
+    CDS tables have a certain format of string columns to store coordinates
+    (`RAh`, `RAm`, `RAs`, `DE-`, `DEd`, `DEm`, `DEs`). This procedure
+    parses that and calculates new values for RA and DEC in degrees.
+    These are added to the Table as `RAdeg` and `DEdeg`.
+
+    Parameters
+    ----------
+    dat : astropy.table.Table
+        with columns in the CDS format (e.g. from reading a CDS table with
+        `astropy.io.ascii`)
+    '''
+    radeg = dat['RAh']*15. + dat['RAm'] / 4. + dat['RAs']/4./60.
+    dedeg = ((dat['DE-'] !='-')*2-1) * (dat['DEd'] + dat['DEm'] / 60. + dat['DEs']/3600.)
+    dat.add_column(astropy.table.MaskedColumn(name = 'RAdeg', data = radeg))
+    dat.add_column(astropy.table.MaskedColumn(name = 'DEdeg', data = dedeg))
+
+def coord_str2RADEC(dat, ra = 'RA', dec = 'DEC'):
+    '''transform RA in [hh:mm:ss] and DEC in ['dd:mm:ss'] from an table to degrees
+
+    Tables which have RA and DEC as ASCII values of the foom
+    `hh:mm:ss.sss` and `dd:mm:ss.sss` will be parsed by this procedure,
+    which calculates new values for RA and DEC in degrees.
+    These are added to the Table as `RAdeg` and `DEdeg`.
+
+    Parameters
+    ----------
+    dat : astropy.table.Table
+        with columns in the CDS format (e.g. from reading a CDS table with
+        `astropy.io.ascii`)
+    '''
+    t = asciitable.read(data[ra], delimiter=':', Reader = asciitable.NoHeader, names =  ['h','m','s'])
+    radeg = t['h']*15. + t['m'] / 4. + t['s']/4./60.
+    t = asciitable.read(data[dec], delimiter=':', Reader = asciitable.NoHeader, names =  ['d','m','s'])
+    dedeg = t['d'] + t['m'] / 60. + t['s']/3600.
+    dat.add_column(astropy.table.MaskedColumn(name = 'RAdeg', data = radeg))
+    dat.add_column(astropy.table.MaskedColumn(name = 'DEdeg', data = dedeg))
+
+
+
+def mad(data):
+    '''calculate median absolute deviation'''
+    return np.median(np.abs(data - np.median(data)))
+
+def chi2tomean(data, error):
+    '''chi^2 to mean'''
+    return np.sum( (data - np.mean(data))**2/(data_error**2) )/(len(data)-1)
+
+def delta(data):
+    '''with of distribution form 10%-90%'''
+    return (scipy.stats.mstats.mquantiles(data, prob=0.9) - scipy.stats.mstats.mquantiles(data, prob=0.1))/2.
+
+def wmean(data, error):
+    '''error weighted mean'''
+    return np.average(data, weights=1./error**2.)
+
+def stetson(data1, data1_error,data2, data2_error):
+    '''Calculates the Stetson index for a two-band light curve.
+
+    Parameters
+    ----------
+    data1 : np.array
+        single light curve of band 1 in magnitudes
+    data1_error : np.array
+        error on data points of band 1 in magnitudes    
+    data2 : np.array
+        single light curve of band 2 in magnitudes
+    data2_error : np.array
+        error on data points of band 2 in magnitudes          
+        
+    Returns
+    -------
+    stetson : float
+        Stetson value for the provided two-band light curve
+        
+    '''
+    # number of datapoints:
+    N = float(len(data1))
+    
+    if (len(data2) != N) or (len(data1_error) !=N) or (len(data2_error) !=n):
+        raise ValueError('All input arrays must have the same length')
+    if N > 1:
+        # weighted mean magnitudes in each passband:
+        wmean1 = wmean(data1, data1_error)
+        wmean2 = wmean(data2, data2_error)
+        # normalized residual from the weighted mean for each datapoint:
+        res_1 = (data1 - wmean2) / data1_error
+        res_2 = (data2 - wmean1) / data2_error
+        
+        return np.sqrt(1./(N*(N-1))) * np.sum( res_1 * res2 )
+    else:
+        return np.nan
+
+def redvec_36_45():
+    ''' Rieke & Lebofsky 1984:  I take the extinctions from the L and M band (3.5, 5.0).'''
+    A36 = 0.058
+    A45 = 0.023
+    R36 = - A36/(A45 - A36)
+    return np.array([R36, A36])
+
+
+def fit_cmdslope_simple(data1, data1_error,data2, data2_error, redvec):
+    '''measures the slope of the data points in the color-magnitude diagram
+    
+    This is just fitted with ordinary least squares, using the analytic formula.
+    This is then used as a first guess for an orthogonal least squares fit with simultaneous treatment of errors in x and y (see fit_twocolor_odr)
+
+    Parameters
+    ----------
+    data1 : np.array
+        single light curve of band 1 in magnitudes
+    data1_error : np.array
+        error on data points of band 1 in magnitudes    
+    data2 : np.array
+        single light curve of band 2 in magnitudes
+    data2_error : np.array
+        error on data points of band 2 in magnitudes
+    redvec : np.array with two elements
+        theoretical reddening vector for the two bands chosen
+        
+    Returns
+    -------
+    m : float
+        slope of fit in color-magnitude diagram
+    b : float
+        axis intercept of fit
+    m2 : float
+        slope of the input theoretical reddening vector `redvec`
+    b2 : float
+        axis intercept of fit forcin the slope to `m2`
+    redchi2 : float
+        reduced chi^2 of fit of `[m,b]`
+    redchi2_2 : float
+        reduced chi^2 of fit of `b2`
+    
+        
+    '''
+    # number of datapoints:
+    N = float(len(data1))
+    
+    if (len(data2) != N) or (len(data1_error) !=N) or (len(data2_error) !=N):
+        raise ValueError('All input arrays must have the same length')
+
+    x = data1 - data2
+    y = data1
+    x_error = np.sqrt( data1_error**2 + data2_error**2 )
+    y_error = data1_error
+    # calculate the different sums:
+    sum_x = np.sum(x)
+    sum_y = np.sum(y)
+    sum_xx = np.sum(x**2)
+    sum_xy = np.sum(x*y)
+    # now get b and m from analytic formula:
+    m = (-sum_x*sum_y + N*sum_xy) / (N*sum_xx - sum_x*sum_x)
+    b = (-sum_x*sum_xy + sum_xx*sum_y) / (N*sum_xx - sum_x*sum_x)
+    # now calculate chisquared for this line:
+    redchi2 = np.sum( (y - (m*x+b))**2/ y_error**2)/(N-2)
+    
+    # now fit theoretical reddening vector to data, for plotting purposes (i.e. just shifting it in y:)
+    m2 = redvec[0] # the sign is okay, because the y axis is inverted in the plots
+    b2 = 1/N * ( sum_y - m2 * sum_x )
+    redchi2_2 = np.sum( (y - (m2*x+b2))**2/y_error**2 )/(N-2)
+    
+    return m,b,m2,b2,redchi2,redchi2_2
+
+
+
+
+
+### Everything that deals wit hthe lightcurve dictionaries and only with those ###
 
 def radec_from_dict(data, RA = 'ra', DEC = 'dec'):
     '''return ra dec numpy array for list of dicts
@@ -47,6 +216,25 @@ def radec_from_dict(data, RA = 'ra', DEC = 'dec'):
         radec[i]['RA'] = d[RA]
         radec[i]['DEC'] = d[DEC]
     return radec
+
+def val_from_dict(data, name):
+    '''return ra dec numpy array for list of dicts
+    
+    Parameters
+    ----------
+    data : list of dict
+    name : strings
+        keys for entry in the dictionary
+    
+    Returns
+    -------
+    col : list of values
+    '''
+    col = []
+    for d in data:
+        col.append(d[name])
+    return col
+    
 
 
 def test_crossmatch_irac(yso1, yso2):
@@ -86,9 +274,33 @@ def makeclassinteger(guenther_data_yso):
 
 
 def makecrossids(data1, data2, radius, ra1='RAdeg', dec1='DEdeg', ra2='ra', dec2='dec'):
-    # outdated function, no longer used
-    # make cross-ids (using the coordinates) between Spiter lcs and Guenther2012.
-    # use 1 arcsec as radius.
+    '''Cross-match two lists of coordinates
+
+    This routine is not very clever and not very fast. If should be fine
+    up to a few thousand entries per list, but just a litle programming would
+    make it much faster. Let me know if you need that.
+
+    Parameters
+    ----------
+    data1 : astropy.table.Table or np.recarray
+        This is the master data, i.e. for each element in data1, the
+        results wil have one (or zero) index numbers in data2, that provide
+        the best match to this entry in data1.
+    data2 : astropt.table.Table or np.recarray
+        This data is matched to data1.
+    radius : np.float
+       maximum radius to accept a match (in degrees) 
+    ra1, dec1, ra2, dec2 : string
+        key for access RA and DEG (in degrees) the the data, i.e. the routine
+        uses `data1[ra1]` for the RA values of data1.
+
+    Results
+    -------
+    cross_ids : np.ndarray
+        Will have len(data1). For each elelment it contains the index of data2
+        that provides the best match. If no match within `radius` is found,
+        then entry will be -99999.
+    '''
     cross_ids = np.ones(len(data1),int) * -99999
     
     for i in np.arange(0,len(data1)):
@@ -163,7 +375,7 @@ def get_sed(data, sed_bands = sed_bands):
 
 
 def add_ysovar_mags(data, ysovar, channel, match_dist = 0.5 /3600.):
-    '''Add YSOVAR lightcurves form Louisa's IDL structures to our python
+    '''Add YSOVAR lightcurves to our python
     
     
     Parameters
@@ -196,7 +408,7 @@ def add_ysovar_mags(data, ysovar, channel, match_dist = 0.5 /3600.):
         dict_temp['m'+channel+'_error'].extend((yso['EMAG'+channel][good1]).tolist())
     return data
 
-def dict_cleanup(data, t_simul = 0.01, min_number_of_times = 0, floor_error = [0.01, 0.008]):
+def dict_cleanup(data, channels, min_number_of_times = 0, floor_error = {}):
     '''Clean up dictionaries after add_ysovar_mags
     
     Each object in the `data` list can be constructed from multiple sources per
@@ -208,16 +420,17 @@ def dict_cleanup(data, t_simul = 0.01, min_number_of_times = 0, floor_error = [0
     ----------
     data : list of dictionaries
         as obtained from :func:`add_ysovar_mags`
-    t_simul : float
-        max distance in days to accept datapoints in band 1 and 2 as simultaneous
-        In L1688 and IRAS 20050+2720 the distance between band 1 and 2 coverage
-        is within a few minutes, so a small number is sufficent to catch 
-        everything and to avoid false matches.
+    channels : dictionary
+        This dictionary traslantes the names of channels in the csv file to
+        the names in the output structure, e.g.
+        that for `'IRAC1'` will be `'m36'` (magnitudes) and `'t36'` (times).
     min_number_of_times : integer
-        Remove all sources with less than min_number_of_times datapoints from the list
-    floor_error : list of 2 floats
-        Floor error for IRAC1 and IRAC2. Will be added in quadrature to all error
-        values.
+        Remove all sources with less than `min_number_of_times` datapoints
+        from the list
+    floor_error : dict
+        Floor errors will be added in quadrature to all error values.
+        The keys in the dictionary should be the same as in the channels
+        dictionary.
         
     Returns
     -------
@@ -226,85 +439,104 @@ def dict_cleanup(data, t_simul = 0.01, min_number_of_times = 0, floor_error = [0
     '''
     n_datapoints = np.zeros(len(data), dtype = np.int)
     for i, d in enumerate(data):
-        if 't1' in d.keys():
-            if 't2' in d.keys():
-                n_datapoints[i] = max(len(d['t1']), len(d['t2']))
-            else:     # only t1 present 
-                n_datapoints[i] = len(d['t1'])
-        else:         # if 't1' is not present 't2' must be
-            n_datapoints[i] = len(d['t2'])
+        for channel in channels:
+            if 'm'+channels[channel] in d:
+                n_datapoints[i] = max(n_datapoints[i], len(d['m'+channels[channel]]))
     # go in reverse direction, otherwise each removal would change index numbers of
     # later entries
     data = data[n_datapoints >= min_number_of_times]
-    if np.max(np.abs(floor_error)) > 0:
+    if len(floor_error) > 0:
         print 'Adding floor error in quadrature to all error values'
-        print 'Floor value in IRAC1: ', floor_error[0], '   IRAC2: ', floor_error[1]
+        print 'Floor values ', floor_error
+
     for j, d in enumerate(data):
         d['id'] = j
         # set RA, DEC to the mean values of all sources, which make up an entry
         d['ra'] = np.mean(d['ra'])
         d['dec'] = np.mean(d['dec'])
+        # take the set of those two things and convert to a string
         d['ISOY_NAME'] = set(d['ISOY_NAME'])
-        for n, i in enumerate(['1', '2']):
-            if 't'+i in d.keys():
+        d['ISOY_NAME'] = ', '.join(d['ISOY_NAME'])
+        d['YSOVAR2_id'] = set(d['YSOVAR2_id'])
+        d['YSOVAR2_id'] = ', '.join([str(n) for n in d['YSOVAR2_id']])
+        for channel in channels:
+            c = channels[channel]
+            if 't'+c in d.keys():
                 # sort lightcurves by time.
                 # required if multiple original sources contribute to this entry
-                ind = np.array(d['t'+i]).argsort()
-                d['t'+i] = np.array(d['t'+i])[ind]
-                d['m'+i] = np.array(d['m'+i])[ind]
-                d['m'+i+'_error'] = np.array(d['m'+i+'_error'])[ind]
-                d['m'+i+'_error'] = np.sqrt(d['m'+i+'_error']**2 + floor_error[n]**2)
-        if 't1' in d.keys() and 't2' in d.keys():
-            for i, t in enumerate(d['t1']):
-                diff_t = np.abs(d['t2'] - t)
-                min2 = np.argmin(diff_t)  #index of matching time in band 2
-                if min(diff_t) < t_simul:
-                    d['t'].append(np.mean([t, d['t2'][min2]]))
-                    d['m36'].append(d['m1'][i])
-                    d['m36_error'].append(d['m1_error'][i])
-                    d['m45'].append(d['m2'][min2])
-                    d['m45_error'].append(d['m2_error'][min2])
-            # if at least one point is in common, t was added
-            # in this case change lists into numpy arrays
-            if 't' in d.keys():
-                for i in ['t', 'm36', 'm36_error', 'm45', 'm45_error']:
-                    d[i] = np.array(d[i])
+                ind = np.array(d['t'+c]).argsort()
+                d['t'+c] = np.array(d['t'+c])[ind]
+                d['m'+c] = np.array(d['m'+c])[ind]
+                d['m'+c+'_error'] = np.array(d['m'+c+'_error'])[ind]
+                if channel in floor_error:
+                    d['m'+c+'_error'] = np.sqrt(d['m'+c+'_error']**2 + floor_error[channel]**2)
     return data
 
-def make_dict(ysovar1, ysovar2, match_dist = 0.5 /3600., t_simul = 0.01, min_number_of_times = 0, floor_error = [0.01, 0.008]):
-    '''Build YSOVAR lightcurves form Louisa's IDL structures
-    
+def merge_lc(d, bands, t_simul=0.01):
+    '''merge lightcurves from several bands
+
+    This returns a lightcurve that contains only entries for those times,
+    where *all* required bands have an entry.
+
     Parameters
     ----------
-    ysovar1 : recarray
-        IRAC 1 data obtained from reading in ysovar .idlsav files with readsav
-    ysovar2 : recarray
-        IRAC 2 data obtained from reading in ysovar .idlsav files with readsav
-    match_dist : float
-        maximum distance to match two positions as one sorce
+    d : dictionary
+        as obtained from :func:`add_ysovar_mags`
+    bands : list of strings
+        labels of the spectral bands to be merged, e.g. ['36','45']
     t_simul : float
         max distance in days to accept datapoints in band 1 and 2 as simultaneous
         In L1688 and IRAS 20050+2720 the distance between band 1 and 2 coverage
         is within a few minutes, so a small number is sufficent to catch 
         everything and to avoid false matches.
-    min_number_of_times : integer
-        Remove all sources with less than min_number_of_times datapoints from the list
-    floor_error : list of 2 floats
-        Floor error for IRAC1 and IRAC2. Will be added in quadrature to all error
-        values.
-        
+
     Returns
     -------
-    data : empty list or list of dictionaries
-        structure to hold all the information
+    tab : astropy.table.Table
+        This table contains the merged lightcurve and contains times,
+        fluxes and errors.
     '''
-    data = np.array([])
-    data = add_ysovar_mags(data, ysovar1, '1', match_dist = match_dist)
-    data = add_ysovar_mags(data, ysovar2, '2', match_dist = match_dist)
-    # some dictionaries contain multiple original entries
-    # so some clean up is required
-    data = dict_cleanup(data, t_simul = t_simul, min_number_of_times = min_number_of_times, floor_error = floor_error)
-    return data
+    tab = astropy.table.Table()
+    names = ['t']
+    for band in bands:
+        names.extend(['m'+band,'m'+band+'_error'])
+    for name in names:
+        tab.add_column(astropy.table.Column(name=name, length=0, dtype=np.float))
+
+    allbandsthere = True
+    for band in bands:
+        allbandsthere = allbandsthere and ('t'+band in d.keys())
+    if allbandsthere:
+        for i, t in enumerate(d['t'+bands[0]]):
+            minind = np.zeros(len(bands), dtype = np.int)
+            diff_t = np.zeros(len(bands))
+            for j, band in enumerate(bands):
+                deltat = np.abs(t - d['t'+band])
+                #index of closest matching time in each band
+                minind[j] = np.argmin(deltat)
+                diff_t[j] = np.min(deltat)
+                
+            if np.all(diff_t < t_simul):
+                tlist = [ d['t'+band][minind[j]] for j,band in enumerate(bands) ]
+                newrow = [np.mean(tlist)]
+                for j, band in enumerate(bands):
+                    newrow.extend([d['m'+band][minind[j]],
+                                   d['m'+band+'_error'][minind[j]]])
+                tab.add_row(newrow)
+    return tab
+
+def phase_fold(time, period):
+    '''Phase fold a set of time on a period
+
+    Parameters
+    ----------
+    time : np.ndarray
+        array of times
+    period : np.float    
+    '''
+    return np.mod(time, period) / period
+
+
 
 def Isoy2radec(isoy):
     '''convert ISOY name do decimal degrees.
@@ -324,8 +556,8 @@ def Isoy2radec(isoy):
     dec = np.sign(float(s[9:])) * (float(s[10:12]) + int(s[12:14]) /60. + float(s[14:])/3600.)
     return ra, dec
 
-def dict_from_csv(csvfile, match_dist = 1.0/3600., min_number_of_times = 5, verbose = True):
-    '''Build YSOVAR lightcurves form Louisa's IDL structures
+def dict_from_csv(csvfile, match_dist = 1.0/3600., min_number_of_times = 5, channels = {'IRAC1': '36', 'IRAC2': '45'}, floor_error = {'IRAC1': 0.01, 'IRAC2': 0.008}, verbose = True):
+    '''Build YSOVAR lightcurves from database csv file
     
     Parameters
     ----------
@@ -334,7 +566,16 @@ def dict_from_csv(csvfile, match_dist = 1.0/3600., min_number_of_times = 5, verb
     match_dist : float
         maximum distance to match two positions as one sorce
     min_number_of_times : integer
-        Remove all sources with less than min_number_of_times datapoints from the list
+        Remove all sources with less than min_number_of_times datapoints
+        from the list
+    channels : dictionary
+        This dictionary traslantes the names of channels in the csv file to
+        the names in the output structure, e.g.
+        that for `'IRAC1'` will be `'m36'` (magnitudes) and `'t36'` (times).
+    floor_error : dict
+        Floor errors will be added in quadrature to all error values.
+        The keys in the dictionary should be the same as in the channels
+        dictionary.
     verbose : bool
        If True, print progress status.
         
@@ -370,15 +611,14 @@ def dict_from_csv(csvfile, match_dist = 1.0/3600., min_number_of_times = 5, verb
         dict_temp['dec'].extend([dec] * ind.sum())
         dict_temp['ISOY_NAME'].append(n)
         dict_temp['YSOVAR2_id'].append(tab['ysovarid'][ind][0])
-        for channel in ['1', '2']:
-            good = ind & (tab['hmjd'] >= 0.) & (tab['fname'] == 'IRAC'+channel)
+        for channel in channels.keys():
+            good = ind & (tab['hmjd'] >= 0.) & (tab['fname'] == channel)
             if np.sum(good) > 0:
-                dict_temp['t'+channel].extend((tab['hmjd'][good]).tolist())
-                dict_temp['m'+channel].extend((tab['mag1'][good]).tolist())
-                dict_temp['m'+channel+'_error'].extend((tab['emag1'][good]).tolist())
-
+                dict_temp['t'+channels[channel]].extend((tab['hmjd'][good]).tolist())
+                dict_temp['m'+channels[channel]].extend((tab['mag1'][good]).tolist())
+                dict_temp['m'+channels[channel]+'_error'].extend((tab['emag1'][good]).tolist())
     if verbose: print 'Cleaning up dictionaries'
-    data = dict_cleanup(data, min_number_of_times = min_number_of_times)
+    data = dict_cleanup(data, channels = channels, min_number_of_times = min_number_of_times, floor_error = floor_error)
     return data
 
 def check_dataset(data, min_number_of_times = 5, match_dist = 1./3600.):
@@ -396,19 +636,19 @@ def check_dataset(data, min_number_of_times = 5, match_dist = 1./3600.):
     print 'Number of sources in datset: ', len(data)
     print 'The following entries have less than ', min_number_of_times,' datapoints in both IRAC bands:'
     for i, d in enumerate(data):
-        if (not ('t1' in d.keys()) or (len(d['t1']) < min_number_of_times)) and  (not ('t2' in d.keys()) or (len(d['t2']) < min_number_of_times)): print i, list(d['ISOY_NAME'])
+        if (not ('t36' in d.keys()) or (len(d['t36']) < min_number_of_times)) and  (not ('t45' in d.keys()) or (len(d['t45']) < min_number_of_times)): print i, list(d['ISOY_NAME'])
     print '----------------------------------------------------------------------------'
     # IRAC1==IRAC2 ?
     for i, d in enumerate(data):
-        if 't1' in d.keys() and 't2' in d.keys():
-            ind1 = np.argsort(d['t1'])
-            ind2 = np.argsort(d['t2'])
-            if (len(d['t1']) == len(d['t2'])) and np.all(d['m1'][ind1] == d['m2'][ind2]):
+        if 't36' in d.keys() and 't45' in d.keys():
+            ind1 = np.argsort(d['t36'])
+            ind2 = np.argsort(d['t45'])
+            if (len(d['t36']) == len(d['t45'])) and np.all(d['m36'][ind1] == d['m45'][ind2]):
                 print 'IRAC1 and IRAC2 are identical in source', i
                 print 'Probably error in SQL query made to retrieve this data'
     ### Find entries with two mags in same lightcurve
     print 'The following lightcurves have two or more entries with almost identical time stamps'
-    for band in ['1', '2']:
+    for band in ['36', '45']:
         for i, d in enumerate(data):
             if 't'+band in d.keys():
                 dt = np.diff(d['t'+band])
@@ -418,7 +658,7 @@ def check_dataset(data, min_number_of_times = 5, match_dist = 1./3600.):
     print '----------------------------------------------------------------------------'
     print 'The following entries are combined from multiple sources:'
     for i, d in enumerate(data):
-        if len(d['ISOY_NAME']) > 1: print i, d['ISOY_NAME']
+        if len(d['ISOY_NAME'].split(',')) > 1: print i, d['ISOY_NAME']
     print '----------------------------------------------------------------------------'
     print 'The following sources are less than ', match_dist, ' deg apart'
     radec = radec_from_dict(data)
@@ -428,577 +668,419 @@ def check_dataset(data, min_number_of_times = 5, match_dist = 1./3600.):
             print 'distance', i, i+np.argmin(dist), ' is only ', np.min(dist)
     print '----------------------------------------------------------------------------'
 
-def make_onecolor_stats(datalist, datalist_error):
-    '''Calculates some basic statistical values for a single one-band light curve
-    
-    Parameters
-    ----------
-    datalist : np.array
-        single light curve in magnitudes
-    datalist_error : np.array
-        error on data points in magnitudes        
-        
-    Returns
-    -------
-    stats : np.array
-        array of statistical values (median, MAD, mean, stddev, chi**2 with respect to mean, maximum value, minimum value, "delta" (0.5 * (90th percentile - 1-th percentile)) )
-        
+
+
+#### The big table / Atlas class that holds the data and does some cool processing ##
+
+valfuncdict = {'mean': np.mean, 'median': np.median, 'stddev': np.std, 'min': np.min, 'max': np.max, 'mad': mad, 'delta': delta}
+valerrfuncdict = {'chi2tomean': chi2tomean, 'wmean': wmean}
+
+
+class YSOVAR_atlas(astropy.table.Table):
     '''
-    median = np.median(datalist)
-    mad = np.median(abs(datalist - median))
-    mean = np.mean(datalist)
-    stddev = np.std(datalist)
-    chisq_to_mean = np.sum( (datalist - mean)**2/(datalist_error**2) )/(len(datalist)-1)
-    delta = (scipy.stats.mstats.mquantiles(datalist, prob=0.9) - scipy.stats.mstats.mquantiles(datalist, prob=0.1))/2.
-    stats = np.array([median, mad, mean, stddev, chisq_to_mean, np.max(datalist), np.min(datalist), delta])
-    return stats
+    The basic structure for the YSOVAR analysis is the
+    :class:`YSOVAR_atlas`. 
+    To initialize an atlas object pass is a numpy array wich all the lightcurves::
 
-def make_twocolor_stats(datalist1, datalist1_error,datalist2, datalist2_error, verbose = True):
-    '''Calculates the Stetson index for a two-band light curve. Uses only near-simultaneous data points as defined in dict_cleanup.
-    
-    Parameters
-    ----------
-    datalist1 : np.array
-        single light curve of band 1 in magnitudes
-    datalist1_error : np.array
-        error on data points of band 1 in magnitudes    
-    datalist2 : np.array
-        single light curve of band 2 in magnitudes
-    datalist2_error : np.array
-        error on data points of band 2 in magnitudes          
-        
-    Returns
-    -------
-    stetson : float
-        Stetson value for the provided two-band light curve
-        
+        import ysovar_atlas as atlas
+        data = atlas.dict_from_csv('/path/tp/my/irac.csv', match_dist = 0.)
+        MyRegion = atlas.YSOVAR_atlas(lclist = data)
+
+    The :class:`YSOVAR_atlas` is build on top of a `astropy.table.Table
+    (documentation here)
+    <http://docs.astropy.org/en/v0.2/table/index.html>`_ object. See that
+    documentation for the syntax on how to acess the data or add a column.
+
+    Some columns are auto-generated, when they are first
+    used. Specifically, these are the 
+    - median
+    - mean
+    - stddev
+    - min
+    - max
+    - mad (median absolute deviation)
+    - delta (90% quantile - 10% quantile)
+    - chi2tomean
+    - wmean (uncertainty weighted average).
+
+    When you ask for `MyRegion['min_36']` it first checks if that column is already
+    present. If not, if adds the new column called `min_36` and calculates
+    the minimum of the lightcurve in band `36` for each object in the
+    atlas, that has `m36` and `t36` entries (for magnitude and time in
+    band `36` respectively. Data read with :meth:`dict_from_csv`
+    atomatically has the required format.
+
+    More function may be added to this magic list later. Check::
+
+        import ysovar_atlas as atlas
+        atlas.valfuncdict
+        atlas.valerrfuncdict
+
+    to see which functions are implmented.
+
+    :class:`YSOVAR_atlas` also includes some more functions (which need to
+    be called explicitly) to add column that contain period, LS peaks,
+    etc.  See the documentation of the individual methods.
     '''
-    
-    # number of datapoints:
-    N = float(len(datalist1))
-    if N > 1:
-        # weighted mean magnitudes in each passband:
-        wmean_36 = np.sum(datalist1/(datalist1_error**2))/np.sum(1/(datalist1_error**2))
-        wmean_45 = np.sum(datalist2/(datalist2_error**2))/np.sum(1/(datalist2_error**2))
-        # normalized residual from the weighted mean for each datapoint:
-        res_36 = (datalist1 - wmean_36) / datalist1_error
-        res_45 = (datalist2 - wmean_45) / datalist2_error
-        
-        stetson = np.sqrt(1./(N*(N-1))) * np.sum( res_36 * res_45 )
-        if verbose:
-            print stetson
-            print str( ("%.3f" % stetson) )
-            return stetson
-
-
-def make_stats(data, info, verbose = True):
-    '''Adds appropriate statistical values for all objects to info array.
-    
-    Parameters
-    ----------
-    data : np.ndarray
-        structure with all the raw object information
-    info : np.rec.array
-        structure with the refined object properties         
-        
-    Returns
-    -------
-    info : np.rec.array
-        structure with the updated object properties 
-        
-    '''
-    for i in np.arange(0,len(data)):
-        if 'm1' in data[i].keys():
-            (info.median_36[i], info.mad_36[i], info.mean_36[i], info.stddev_36[i], info.chisq_36[i], info.max_36[i], info.min_36[i], info.delta_36[i])    = make_onecolor_stats(data[i]['m1'], data[i]['m1_error'])
-            info.n_data_36[i] = len(data[i]['m1'])
+    def __init__(self, *args, **kwargs):
+        self.t_simul=0.01
+        if 'lclist' in kwargs:
+            self.lclist = kwargs.pop('lclist')
+            #self.add_column(astropy.table.Column(name = 'id', data = np.arange(1,len(self)+1)))
         else:
-            info.n_data_36[i] = 0
-        if 'm2' in data[i].keys():
-            (info.median_45[i], info.mad_45[i], info.mean_45[i], info.stddev_45[i], info.chisq_45[i], info.max_45[i], info.min_45[i], info.delta_45[i])    = make_onecolor_stats(data[i]['m2'], data[i]['m2_error'])
-            info.n_data_45[i] = len(data[i]['m2'])
+            raise ValueError('Need to pass a list of lightcurves with lclist=')
+        super(YSOVAR_atlas, self).__init__(*args, **kwargs)
+        for name in ['ra', 'dec', 'YSOVAR2_id','ISOY_NAME']:
+             col = astropy.table.Column(name = name, data = val_from_dict(self.lclist, name))
+             self.add_column(col)
+    
+    def __getitem__(self, item):
+        
+        if isinstance(item, basestring) and item not in self.colnames:
+            newcol = self.autocalc_newcol(item)
+            self.add_column(astropy.table.Column(data = newcol, name = item))
+
+        # In thiscase astropy.table.Table would return a Row object
+        # not a new Table
+        if isinstance(item, int):
+            item = [item]
+         
+        return super(YSOVAR_atlas, self).__getitem__(item)
+
+    def _new_from_slice(self, slice_):
+        """Create a new table as a referenced slice from self."""
+
+        table = YSOVAR_atlas(lclist = self.lclist[slice_])
+        # delete the columns that are autogenerated and just copy everything
+        table.remove_columns(['ra', 'dec', 'YSOVAR2_id','ISOY_NAME'])
+        table.meta = deepcopy(self.meta)
+        cols = self.columns.values()
+        names = [col.name for col in cols]
+        data = self._data[slice_]
+
+        self._update_table_from_cols(table, data, cols, names)
+
+        return table
+        
+    def autocalc_newcol(self, name):
+        '''automatically calcualte some columns on the fly'''
+        splitname = name.split('_')
+        #make newcol of type float
+        newcol = astropy.table.Column(name = name, length = len(self), dtype = np.float)
+        newcol[:] = np.nan
+        if (len(splitname) == 2 and splitname[0] in valfuncdict):
+            func = valfuncdict[splitname[0]]
+            for i in np.arange(0,len(self)):
+                if 'm'+splitname[1] in self.lclist[i]:
+                    newcol[i] = func(self.lclist[i]['m'+splitname[1]])
+        elif (len(splitname) == 2) and (splitname[0] in valerrfuncdict):
+            func = valerrfuncdict[splitname[0]]
+            for i in np.arange(0, len(self)):
+                if ('m'+splitname[1] in self.lclist[i]) and ('m'+splitname[1]+'_error' in self.lclist[i]):
+                     newcol[i] = func(self.lclist[i]['m'+splitname[1]], self.lclist[i]['m'+splitname[1]+'_error'])
+        elif (len(splitname) == 2) and (splitname[0] == 'n'):
+            #want newcol of type int
+            newcol = astropy.table.Column(name = name, data = np.zeros(len(self), dtype = np.int))
+            for i in np.arange(0,len(self)):
+                if 'm'+splitname[1] in self.lclist[i]:
+                    newcol[i] = len(self.lclist[i]['m'+splitname[1]])
         else:
-            info.n_data_45[i] = 0
+            raise ValueError('Column '+ name + ' not found and cannot be autogenerated.')
+        return newcol
 
-        if 'm36' in data[i].keys():
-            info.n_data_3645[i] = len(data[i]['m36'])
-            if info.n_data_45[i] > 1:
-                print i
-                # make two-color stats 
-                info.stetson[i] = make_twocolor_stats(data[i]['m36'], data[i]['m36_error'], data[i]['m45'], data[i]['m45_error'], verbose  = verbose)
-                
-                # fit straight line to color-magnitude diagram
-                (info.cmd_m_plain[i], info.cmd_b_plain[i], info.cmd_m_redvec[i], info.cmd_b_redvec[i]) = fit_twocolor(data[i])[0:4]
-        else:
-            info.n_data_3645[i] = 0
+    def add_catalog_data(self, catalog, radius = 1./3600., names = None, ra1 = 'RA', dec1 = 'DE', ra2 = 'RA', dec2 = 'DE'):
+        '''add information from a different Table
+
+        The tables are automatically cross matched and values are copied only
+        for objects that have a counterpart in the current table.
+
+        Parameters
+        ----------
+        catalog : astropy.table.Table
+            This is the table where the new information is provided.
+        radius : np.float
+            matching radius in degrees
+        names : list of strings
+            List column names that should be copied. If this is `None` (the default)
+            copy all columns. Column names have to be unique. Thus, make sure that
+            no column of the same name aleady exisits (this will raise an exception).
+        ra1, dec1, ra2, dec2 : string
+            key for access RA and DEG (in degrees) the the data, i.e. the routine
+            uses `data1[ra1]` for the RA values of data1.    
+        '''
+        names = names or catalog.colnames
+        ids = makecrossids(self, catalog, radius, ra1 = ra1 , dec1 = dec1, ra2 = ra2, dec2 = dec2) 
+
+        for n in names:
+            self.add_column(astropy.table.MaskedColumn(name = n, length  = len(self), dtype = catalog[n].dtype, mask = True))
+
+        for i in range(len(self)):
+            if ids[i] >=0:
+                for n in names:
+                    self[n][i] = catalog[n][ids[i]]
+
+
+    def calc_stetson(self, band1, band2, t_simul = None):
+        '''calculates the steson index between two bands for all lightcurves
+
+        A new column is added to the datatable that contains the result.
+        (If the column existed before, it is overwritten).
         
-    return info
+        Parameters
+        ----------
+        band1, band2 : string
+            name of the bands to be used for the calculation
+        t_simul : float
+            max distance in days to accept datapoints in band 1 and 2 as simultaneous
+            In L1688 and IRAS 20050+2720 the distance between band 1 and 2 coverage
+            is within a few minutes, so a small number is sufficent to catch 
+            everything and to avoid false matches.
+            If `None` is given, this defaults to `self.t_simul`.
+        '''
+        t_simul = t_simul or self.t_simul
+        name = 'stetson_'+band1+'_'+band2
+        if name not in self.colnames:
+            self.add_column(astropy.table.MaskedColumn(name = name, length = len(self), dtype = np.float))
+        self[name][:] = np.nan
+        for i in np.arange(len(self)):
+            data = merge_lc(self.lclist[i],[band1, band2], t_simul = t_simul)
+            self[name][i] = stetson(data['m'+band1], data['m'+band1+'_error'],
+                                    data['m'+band2], data['m'+band2+'_error'])
 
+    def cmd_slope_simple(self, band1='36', band2='45', redvec=redvec_36_45(), t_simul = None):
+        '''Fit straight line to color-magnitude diagram
 
-def calc_reddening():
-    # this is basically from Rieke & Lebofsky 1984.
-    # I take the extinctions from the L and M band (3.5, 5.0).
-    A36 = 0.058
-    A45 = 0.023
-    R36 = - A36/(A45 - A36)
-    return np.array([R36, A36])
+        A new column is added to the datatable that contains the result.
+        (If the column existed before, it is overwritten).
+        
+        Parameters
+        ----------
+        band1, band2 : string
+            name of the bands to be used for the calculation
+        t_simul : float
+            max distance in days to accept datapoints in band 1 and 2 as simultaneous
+            In L1688 and IRAS 20050+2720 the distance between band 1 and 2 coverage
+            is within a few minutes, so a small number is sufficent to catch 
+            everything and to avoid false matches.
+            If `None` is given, this defauls to `self.t_simul`.
+        '''
+        t_simul = t_simul or self.t_simul
+        names = ['cmd_m_plain', 'cmd_b_plain', 'cmd_m_redvec', 'cmd_b_redvec']
+        for name in names:
+            if name not in self.colnames:
+                self.add_column(astropy.table.MaskedColumn(name = name, length = len(self), dtype = np.float))
+            self[name][:] = np.nan
+        for i in np.arange(len(self)):
+            data = merge_lc(self.lclist[i],[band1, band2], t_simul = t_simul)
+            if len(data) > 1:
+                m,b,m2,b2,chi2,ch2_2 = fit_cmdslope_simple(
+                    data['m'+band1], data['m'+band1+'_error'],
+                    data['m'+band2], data['m'+band2+'_error'],
+                    redvec)
+                self['cmd_m_plain'][i] = m
+                self['cmd_b_plain'][i] = b
+                self['cmd_m_redvec'][i] = m2
+                self['cmd_b_redvec'][i] = b2
 
+    def cmd_slope_odr(self, outroot = None, n_bootstrap = None, xyswitch = False, band1='36', band2='45', redvec=redvec_36_45(), t_simul = None):
+        '''Performs straight line fit to CMD for all sources.
 
-
-
-def fit_twocolor(data):
-    # measures the slope of the data points in the color-magnitude diagram.
-    # this is just fitted with ordinary least squares, using the analytic formula.
-    # this is then used as a first guess for an orthogonal least squares fit with simultaneous treatment of errors in x and y (see fit_twocolor_odr)
-    x = data['m36'] - data['m45']
-    y = data['m36']
-    x_error = np.sqrt( data['m36_error']**2 + data['m45_error']**2 )
-    y_error = data['m36_error']
-    N = float(len(data['m36']))
-    # calculate the different sums:
-    sum_x = np.sum(x)
-    sum_y = np.sum(y)
-    sum_xx = np.sum(x**2)
-    sum_xy = np.sum(x*y)
-    # now get b and m from analytic formula:
-    m = (-sum_x*sum_y + N*sum_xy) / (N*sum_xx - sum_x*sum_x)
-    b = (-sum_x*sum_xy + sum_xx*sum_y) / (N*sum_xx - sum_x*sum_x)
-    # now calculate chisquared for this line:
-    reduced_chisq = sum( (y - (m*x+b))**2/ y_error**2)/N
+        Adds fitted parameters to info structure.
     
-    # now fit theoretical reddening vector to data, for plotting purposes (i.e. just shifting it in y:)
-    m2 = calc_reddening()[0] # the sign is okay, because the y axis is inverted in the plots
-    b2 = 1/N * ( sum_y - m2 * sum_x )
-    reduced_chisq2 = sum( (y - (m2*x+b2))**2/y_error**2 )/N
+        Parameters
+        ----------
+        outroot : string or None
+            dictionary where to save the plot, set to `None` for no plotting
+        n_bootstrap : integer or None
+            how many bootstrap trials, set to `None` for no bootstrapping
+        xyswitch : boolean
+            if the X and Y axis will be switched for the fit or not.
+            This has nothing to do with bisector fitting!
+            The fitting algorithm used here takes care of errors in x and y
+            simultaneously; the xyswitch is only for taking care of pathological
+            cases where a vertical fitted line would occur without coordinate
+            switching.
+        band1, band2 : string
+            name of the bands to be used for the calculation
+        t_simul : float
+            max distance in days to accept datapoints in band 1 and 2 as simultaneous
+            In L1688 and IRAS 20050+2720 the distance between band 1 and 2 coverage
+            is within a few minutes, so a small number is sufficent to catch 
+            everything and to avoid false matches.
+            If `None` is given, this defaults to `self.t_simul`.
     
-    return np.array([m,b,m2,b2,reduced_chisq,reduced_chisq2])
+        '''
+        t_simul = t_simul or self.t_simul
+        names = ['cmd_alpha2', 'cmd_alpha2_error', 'cmd_m2', 'cmd_b2', 'cmd_m2_error', 'cmd_b2_error', 'cmd_x_spread', 'cmd_alpha1', 'cmd_alpha1_error', 'cmd_m', 'cmd_b', 'cmd_m_error', 'cmd_b_error', 'cmd_x_spread']
 
-
-
-
-
-
-def initialize_info_array(data, guenther_data, guenther_class):
-    # creates numpy record array for all refined data of all objects.
-    # fills in the id fields from the data dictionary.
-    Ndata = 71 # number of data entries to be collected for each source
-    oneset = []
-    for i in np.arange(0,Ndata):
-        oneset.append(-99999)
-    oneset = tuple(oneset)
-    print len(oneset)
-    allsets = []
-    for i in np.arange(0,len(data)):
-        allsets.append(oneset)
-    print len(allsets)
-    infos = np.rec.array(allsets, dtype=[
-        ('id', '|f4'), # ID number
-        ('YSOVAR2_ID', '|f4'), # ID in YSOVAR2 database
-        ('id_guenther', '|f4'), # ID as in Guenther+ 2012
-        ('index_guenther', '|f4'), # index where to find this in the Guenther data array ( = id_guenther - 1)
-        ('ysoclass', '|f4'), # class from Guenther+ 2012 (0='XYSO', 1='I+I*', 2='II+II*', 3='III', 4='star')
-        ('ra_spitzer', '|f8'), 
-        ('dec_spitzer', '|f8'), 
-        ('ra_guenther', '|f8'), 
-        ('dec_guenther', '|f8'), 
-        ('lambdas',  object), 
-        ('fluxes',  object), 
-        ('mags',  object), 
-        ('mags_error',  object), 
-        ('good_period', '|f4'), # is |= -99999 if significant period exists
-        ('good_peak', '|f4'),   # is |= -99999 if significant period exists
-        ('hectospec_night1', '|O40'), # filename for hectospec spectrum
-        ('hectospec_night2', '|O40'), # filename for hectospec spectrum
-        ('period_36', '|f4'), 
-        ('peak_36', '|f4'), 
-        ('period_45', '|f4'), 
-        ('peak_45', '|f4'), 
-        ('min_36', '|f4'), 
-        ('max_36', '|f4'), 
-        ('min_45', '|f4'), 
-        ('max_45', '|f4'), 
-        ('median_36', '|f4'), 
-        ('mad_36', '|f4'), 
-        ('mean_36', '|f4'), 
-        ('stddev_36', '|f4'), 
-        ('chisq_36', '|f4'),
-        ('delta_36', '|f4'), # the 90% quantile range of the 3.6 mu data
-        ('median_45', '|f4'), 
-        ('mad_45', '|f4'), 
-        ('mean_45', '|f4'),
-        ('n_data_36', '|f4'), # number of data points
-        ('n_data_45', '|f4'),
-        ('n_data_3645', '|f4'),
-        ('stddev_45', '|f4'), 
-        ('chisq_45', '|f4'), 
-        ('delta_45', '|f4'), # the 90% quantile range of the 4.5 mu data
-        ('stetson', '|f4'),
-        ('chi2poly1_36', '|f4'),  # chi2 after fitting a polynom of degree 1 to the 3_6 lightcurve
-        ('chi2poly2_36', '|f4'),
-        ('chi2poly3_36', '|f4'),
-        ('chi2poly4_36', '|f4'),
-        ('chi2poly5_36', '|f4'),
-        ('chi2poly1_45', '|f4'),
-        ('chi2poly2_45', '|f4'),
-        ('chi2poly3_45', '|f4'),
-        ('chi2poly4_45', '|f4'),
-        ('chi2poly5_45', '|f4'),
-        ('AV', '|f4'), # AV extinction for sources which show extinction-like behaviour in the CMD
-        ('cmd_m', '|f4'), # slope of the color-magnitude diagram, from ODR
-        ('cmd_b', '|f4'), # intercept of the color-magnitude diagram, from ODR
-        ('cmd_m_error', '|f4'), # error of the slope of the color-magnitude diagram, from ODR
-        ('cmd_b_error', '|f4'), # error of the intercept of the color-magnitude diagram, from ODR
-        ('cmd_m2', '|f4'), # slope of the color-magnitude diagram, from ODR, with switched coordinates
-        ('cmd_b2', '|f4'), 
-        ('cmd_m2_error', '|f4'),
-        ('cmd_b2_error', '|f4'),    
-        ('cmd_alpha1', '|f4'), # slope angle of the color-magnitude diagram, from ODR
-        ('cmd_alpha1_error', '|f4'), # slope angle error of the color-magnitude diagram, from ODR
-        ('cmd_alpha2', '|f4'), # slope angle derived from switched ccordinates (and re-transformed to real coordinares)
-        ('cmd_alpha2_error', '|f4'),
-        ('cmd_alpha', '|f4'), # good slope angle
-        ('cmd_alpha_error', '|f4'),
-        ('cmd_x_spread', '|f4'), # spread of data along fitted line, 90th-10th quantile
-        ('cmd_m_plain', '|f4'), # CMD slope from plain LSq fitting
-        ('cmd_b_plain', '|f4'), # CMD intercept from plain LSq fitting
-        ('cmd_m_redvec', '|f4'), # theoretical reddening vector slope (constant for all objects)
-        ('cmd_b_redvec', '|f4'),   # best-fitting intercept if using reddening vector, from plain LSq fitting
-        ('cmd_dominated', '|O10') ] ) # string which identifies accretion, extinction, or other slope in cmd
-    
-    for i in np.arange(0,len(data)):
-        print 'collecting info: ' + str(i)
-        infos.id[i] = data[i]['id']
-        infos.YSOVAR2_ID[i] = data[i]['YSOVAR2_id']
-        infos.id_guenther[i] = data[i]['id_guenther']
-        infos.index_guenther[i] = data[i]['index_guenther']
-        infos.ra_spitzer[i] = data[i]['ra']
-        infos.dec_spitzer[i] = data[i]['dec']
-        infos.ysoclass[i] = guenther_class[infos.index_guenther[i]]
-        infos.ra_guenther[i] = guenther_data.RAdeg[infos.index_guenther[i]]
-        infos.dec_guenther[i] = guenther_data.DEdeg[infos.index_guenther[i]]
-        infos.lambdas[i] = get_sed(guenther_data[infos.index_guenther[i]])[0]
-        infos.mags[i] = get_sed(guenther_data[infos.index_guenther[i]])[1]
-        infos.mags_error[i] = get_sed(guenther_data[infos.index_guenther[i]])[2]
-        infos.fluxes[i] = get_sed(guenther_data[infos.index_guenther[i]])[3]
-    
-    return infos
-
-
-def calc_ls(data, infos, maxper, oversamp = 4, maxfreq = 1.):
-    '''calculate Lomb-Scagle periodograms for all sources
-    
-    Parameters
-    ----------
-    data : dict of dicts
-        which contains the input lightcurves
-    infos : np.ndarray
-        output is placed the fields `period_36`, `peak_36`, `period_45`
-        and `peak_45`
-    maxper : float
-        periods above this value will be ignored
-    oversamp : integer
-        oversampling factor
-    maxfreq : float
-        max freq of LS periodogram is maxfeq * "average" Nyquist frequency
-        For very inhomogenously sampled data, values > 1 can be useful
-    '''
-    for i in np.arange(0,len(data)):
-        #print i
-        if 't1' in data[i].keys():
-            t1 = data[i]['t1']
-            m1 = data[i]['m1']
-            if len(t1) > 2:
-                test1 = ysovar_lombscargle.fasper(t1,m1,oversamp,maxfreq)
-                good = np.where(1/test1[0] < maxper)[0] # be sensitive only to periods shorter than maxper
-                if len(good) > 0:
-                    max1 = np.argmax(test1[1][good]) # find peak
-                    sig1 = test1[1][good][max1]
-                    period1 = 1./test1[0][good][max1]
-                else:
-                    period1 = np.nan
-                    sig1 = np.nan
-                infos.period_36[i] = period1
-                infos.peak_36[i] = sig1
-            #if i == 96:
-            #    print period1
-        
-        if 't2' in data[i].keys():
-            t2 = data[i]['t2']
-            m2 = data[i]['m2']
-            if len(t2) > 2:
-                test2 = ysovar_lombscargle.fasper(t2,m2,oversamp,maxfreq)
-                good = np.where(1/test2[0] < maxper)[0] # be sensitive only to periods shorter than maxper
-                if len(good) > 0:
-                    max2 = np.argmax(test2[1][good]) # find peak
-                    sig2 = test2[1][good][max2]
-                    period2 = 1/test2[0][good][max2]
-                else:
-                    period2 = np.nan
-                    sig2 = np.nan
-                
-                infos.period_45[i] = period2
-                infos.peak_45[i] = sig2
-    
-    return infos
-    
-
-
-
-def is_there_a_good_period(data,infos, power, minper, maxper):
-    '''check if a strong periodogram peak is found; if yes, this is saved to the info structure.
-    
-    Parameters
-    ----------
-    data : np.ndarray
-        which contains the input lightcurves
-    infos : np.rec.array
-        info structure with refined object information
-    power : float
-        required power threshold for "good" period
-    minper : float
-        lowest period which is considered
-    maxper : float
-        maximum period which is considered
-    
-    Returns
-    -------
-    infos : np.rec.array
-        structure with the updated object properties ("good" period and power of peak)
-   '''
-    
-    for i in np.arange(0, len(data)):
-        per = -99999.
-        peak = -99999.
-        peak1 = infos.peak_36[i]
-        peak2 = infos.peak_45[i]
-        per1 = infos.period_36[i]
-        per2 = infos.period_45[i]
-        A = ( (peak1 > power) & (per1 > minper) & (per1 < maxper) ) # take periods between 2 and 20 d with power > 10
-        B = ( (peak2 > power) & (per2 > minper) & (per2 < maxper) )
-        if (A & B): # take higher peak period.
-            if peak1 > peak2:
-                per = per1
-                peak = peak1
-            if peak <= peak2:
-                per = per2
-                peak = peak2
-        else:
-            if A:
-                per = per1
-                peak = peak1
-            if B:
-                per = per2
-                peak = peak2
-        infos.good_period[i] = per
-        infos.good_peak[i] = peak
-    return infos
-
-
-def phase_fold_data(data,infos):
-    # take data sets for which a strong periodogram peak is found and fold these data by period.
-    for i in np.arange(0,len(data)):
-        period = infos.good_period[i]
-        if period > 0: # if there's a good period
-            if 't1' in data[i].keys():
-                data[i]['p1'] = np.mod(data[i]['t1'],period)/period
-            if 't2' in data[i].keys():
-                data[i]['p2'] = np.mod(data[i]['t2'],period)/period
-            if 't' in data[i].keys():
-                data[i]['p'] = np.mod(data[i]['t'],period)/period
-    return(data)
-
-
-
-def spectra_coordinates(filename):
-    # only for IRAS 20050: read ascii file with info about hectospec data.
-    a = asciitable.read(filename)
-    ra_string = a['RA']
-    dec_string = a['DEC']
-    ra = np.array([])
-    dec = np.array([])
-    for i in np.arange(0,len(ra_string)):
-        ra_split = string.split(ra_string[i],':')
-        print ra_split
-        ra_new = float(ra_split[0])*15. + float(ra_split[1])*15./60. + float(ra_split[2])*15./3600.
-        print ra_new
-        ra = np.append(ra,ra_new)
-        dec_split = string.split(dec_string[i],':')
-        #print dec_split
-        dec_new = float(dec_split[0]) + float(dec_split[1])/60. + float(dec_split[2])/3600.
-        #print dec_new
-        dec = np.append(dec,dec_new)
-    filenames = a['FILENAME']
-    
-    return (ra, dec, filenames)
-
-
-
-def spectra_check(infos, ra, dec, files, night_id, radius):
-    # only for IRAS 20050: check if there's a hectospec spectrum available for the sources, and if yes, add the filename of the spectrum to the info array.
-    for i in np.arange(0,len(infos)):
-        distance = np.sqrt((infos.ra_guenther[i] - ra)**2 + (infos.dec_guenther[i] - dec)**2)
-        min_ind = np.where(distance == min(distance))[0]
-        if min(distance) <= radius:
-            if night_id == 1:
-                infos.hectospec_night1[i] = str(files[min_ind][0])
-            if night_id == 2:
-                infos.hectospec_night2[i] = str(files[min_ind][0])
-        
-    return infos
-
-
-
-def make_latexfile(data, infos, outroot, name, ind, pdflatex = True):
-    # write selected data and figures for sources into latex file
-    filename = outroot + name + '.tex'
-    f = open(filename, 'wb')
-    f.write('\\documentclass[letterpaper,12pt]{article}\n')
-    f.write('\\usepackage{graphicx}\n')
-    f.write('\\begin{document}\n')
-    f.write('\\setlength{\parindent}{0pt}\n')
-    f.write('\\oddsidemargin 0.0in\n')
-    f.write('\\evensidemargin 0.0in\n')
-    f.write('\\textwidth 6.5in\n')
-    f.write('\\topmargin -0.5in\n')
-    f.write('\\textheight 9in\n')
-    f.write('\n')
-    f.write('\\newpage \n')
-    f.write('\n')
-    f.write('\\small \n')
-    plotwidth = '0.45'
-    
-    for i in ind:
-        f.write('\\newpage \n')
-        
-        f.write('\\begin{minipage}[l]{6.5in} \n')
-        
-        # write lc (always exists) and cmd (if cmd exists):
-        #f.write('\\begin{figure*}[h!]\n')
-        filename = outroot + str(i) + '_lc'
-        line = '\includegraphics[width=' + plotwidth  + '\\textwidth]{' + filename + '}' + '\n'
-        f.write(line)
-        
-        
-        try:
-            if len(data[i]['t']) > 5:
-                filename = outroot + str(i) + '_color'
-                line = '\includegraphics[width=' + plotwidth  + '\\textwidth]{' + filename + '}' + '\n'
-                f.write(line)
-        except KeyError:
-                pass
-        
-        f.write('\n')
-        #f.write('\\end{figure*}\n')
-        
-        
-        # write periodogram. Always exists.
-        # And write SED. Always exists.
-        #f.write('\\begin{figure}[h!]\n')
-        filename = outroot + str(i) + '_ls'
-        line = '\includegraphics[width=' + plotwidth  + '\\textwidth]{' + filename + '}' + '\n'
-        f.write(line)
-        filename = outroot + str(i) + '_sed'
-        line = '\includegraphics[width=' + plotwidth  + '\\textwidth]{' + filename + '}' + '\n'
-        f.write(line)
-        f.write('\n')
-        #f.write('\\end{figure}\n')
-        
-        # write lc_phased and cmd_phased, if both exist:
-        try:
-            if ( (len(data[i]['t']) > 1) & (infos[i]['good_period'] > 0) ):
-                #f.write('\\begin{figure*}[h!]\n')
-                filename = outroot + str(i) + '_lc_phased'
-                line = '\includegraphics[width=' + plotwidth  + '\\textwidth]{' + filename + '}' + '\n'
-                f.write(line)
-                filename = outroot + str(i) + '_color_phased'
-                line = '\includegraphics[width=' + plotwidth  + '\\textwidth]{' + filename + '}' + '\n'
-                f.write(line)
-                #f.write('\\end{figure*}\n')
-                f.write('\n')
-        except KeyError:
-            pass
-        
-        # write stamp - always exists
-        #f.write('\\begin{figure*}[h!]\n')
-        filename = outroot + str(i) + '_stamp'
-        line = '\includegraphics[width=' + plotwidth  + '\\textwidth]{' + filename + '}' + '\n'
-        f.write(line)
-        #write polyfit to lc if is exists
-        filename = outroot + str(i) + '_lcpoly'
-        if (('t1' in data[i].keys()) and (len(data[i]['t1']) > 15)) or (('t2' in data[i].keys()) and (len(data[i]['t2']) > 15)):
-            line = '\includegraphics[width=' + plotwidth  + '\\textwidth]{' + filename + '}' + '\n'
-            f.write(line)
-            #f.write('\\end{figure*}\n')
-            f.write('\n')
-
-        
-        f.write('ID: ' + str(i) + '\\\ \n')
-        if 'YSOVAR2_id' in data[i].keys():
-            f.write('ID in YSOVAR 2 database: ' + str(data[i]['YSOVAR2_id']) + '\\\ \n')
-        if 'ID' in infos[i].dtype.names:
-            f.write('ID Guenther+ 2012: ' + str(infos[i]['id_guenther']) + '\\\ \n')
-        if 'simbad_MAIN_ID' in infos[i].dtype.names:
-            f.write('ID Simbad: ' + infos[i]['simbad_MAIN_ID'] + '\\\ \n')
-        if 'simbad_SP_TYPE' in infos[i].dtype.names:
-            f.write('Simbad Sp type: ' + infos[i]['simbad_SP_TYPE'] + '\\\ \n')
-        if 'wil08_ID' in infos[i].dtype.names:
-            if data[i]['wil08_ID'] > 0:
-                f.write('Wilking+ 08 ID: '+ str(infos[i]['wil08_ID']) +'\\\ \n')
-        if 'bar12_Excess' in infos[i].dtype.names:
-            f.write('Barsony+ 12: excess: ' + infos[i]['bar12_Excess'] + '\\\ \n')
-        if 'bar12_Teff' in infos[i].dtype.names:
-            f.write('Barsony+ 12: Teff: ' + str(infos[i]['bar12_Teff']) + ' (' + infos[i]['bar12_Model']+ ')\\\ \n')
+        for name in names:
+            if name not in self.colnames:
+                self.add_column(astropy.table.MaskedColumn(name = name, length = len(self), dtype = np.float))
+            self[name][:] = np.nan
+        if ('cmd_m_plain' not in self.colnames) or ('cmd_b_plain' not in self.colnames):
+            self.cmd_slope_simple( band1, band2, redvec, t_simul)
+        for i in np.arange(len(self)):
+            data = merge_lc(self.lclist[i],[band1, band2], t_simul = t_simul)
+            if len(data) > 1:
+                # use the result of the plain least squares fitting as a first parameter guess.
+                p_guess = (self['cmd_m_plain'][i], self['cmd_b_plain'][i])
             
-        if infos.ysoclass[i] == 0:
-            line = 'class (from Guenther+ 2012): ' + 'XYSO' + '\\\ \n'
-        else:
-            line = "class (from Rob's pipeline): " + str(infos.ysoclass[i]) + '\\\ \n'
-        if 'IRclass' in infos[i].dtype.names:
-            f.write('Rob class ' + infos[i]['IRclass'] + '\\\ \n')
-        if 'wil08_SED' in infos[i].dtype.names:
-            f.write('Wilking+ 08 SED: ' + infos[i]['wil08_SED'] + '\\\ \n')
+                (fit_output, bootstrap_output, bootstrap_raw, alpha, alpha_error, x_spread) = fit_twocolor_odr(data, i, p_guess, outroot, n_bootstrap, xyswitch)
+
+                if xyswitch:
+                    self['cmd_alpha2'][i] = alpha
+                    self['cmd_alpha2_error'][i] = alpha_error
+                    self['cmd_m2'][i] = fit_output.beta[0]
+                    self['cmd_b2'][i] = fit_output.beta[1]
+                    self['cmd_m2_error'][i] = fit_output.sd_beta[0]
+                    self['cmd_b2_error'][i] = fit_output.sd_beta[1]
+                    self['cmd_x_spread'][i] = x_spread
+                else:
+                    self['cmd_alpha1'][i] = alpha
+                    self['cmd_alpha1_error'][i] = alpha_error
+                    self['cmd_m'][i] = fit_output.beta[0]
+                    self['cmd_b'][i] = fit_output.beta[1]
+                    self['cmd_m_error'][i] = fit_output.sd_beta[0]
+                    self['cmd_b_error'][i] = fit_output.sd_beta[1]
+                    self['cmd_x_spread'][i] = x_spread
+
+    def good_slope_angle(self):
+        '''Checks if ODR fit to slope encountered some pathological case
         
-        f.write(line)
-        f.write('\n')
-        
-        try:
-            line1 = 'median (3.6):   ' + str( ("%.2f" % infos.median_36[i]) ) + '\\\ \n'
-            line2 = 'mad (3.6):   ' + str( ("%.2f" % infos.mad_36[i]) ) + '\\\ \n'
-            line3 = 'stddev (3.6):   ' + str( ("%.2f" % infos.stddev_36[i]) ) + '\\\ \n'
-            f.write(line1)
-            f.write(line2)
-            f.write(line3)
-            f.write('\n')
-        except KeyError:
-            pass
-        
-        try:
-            line1 = 'median (4.5):   ' + str( ("%.2f" % infos.median_45[i]) ) + '\\\ \n'
-            line2 = 'mad (4.5):   ' + str( ("%.2f" % infos.mad_45[i]) ) + '\\\ \n'
-            line3 = 'stddev (4.5):   ' + str( ("%.2f" % infos.stddev_45[i]) ) + '\\\ \n'
-            f.write(line1)
-            f.write(line2)
-            f.write(line3)
-            f.write('\n')
-        except KeyError:
-            pass
-        
-        try:
-            print i
-            line1 = 'Stetson index:   ' + str( ("%.2f" % infos.stetson[i]) ) + '\\\ \n'
-            f.write(line1)
-            f.write('\n')
+        Checks if the ODR fit with switched X and Y axes yields a more
+        constrained fit than the original axes. This basically catches the
+        pathological cases with a (nearly) vertical fit with large nominal errors.
+        '''
+        names = ['cmd_alpha', 'cmd_alpha_error']
+
+        for name in names:
+            if name not in self.colnames:
+                self.add_column(name = name, length = len(self), dtype = np.float)
+            self[name][:] = np.nan
+
+        good = self['cmd_alpha1'] > -99999.
+        comp = self['cmd_alpha1_error']/self['cmd_alpha1'] < self['cmd_alpha2_error']/self['cmd_alpha2']
+        self['cmd_alpha'][good] = np.where(comp, self['cmd_alpha1'], self['cmd_alpha2'])[good]
+        self['cmd_alpha_error'][good] = np.where(comp, self['cmd_alpha1_error'], self['cmd_alpha2_error'])[good]
+
+
+
+    def cmd_dominated_by(self, redvec = redvec_36_45):
+        '''crude classification of CMD slope
+
+        This is some crude classification of the cmd slope.
+        anything that goes up and has a relative slope error of <40% is
+        "accretion-dominated", anythin that is within some cone around
+        the theoratical reddening and has error <40% is "extinction-dominated",
+        anything else is "other".
+        If slope is classified as extinction, the spread in the CMD is converted
+        to AV and stored.
+        '''
+        alpha_red = math.asin(calc_reddening()[0]/np.sqrt(calc_reddening()[0]**2 + 1**2)) # angle of standard reddening
+        if 'cmd_dominated' not in self.colnames:
+            self.add_column(name = 'cmd_dominated', length = len(self), dtype = 'S10')
+        if 'AV' not in self.colnames:
+            self.add_column(name = 'AV', length = len(self), dtype = np.float)
+        self['AV'][:] = np.nan
             
-        except KeyError:
-            pass
-        
-        f.write('\\end{minipage} \n')
+        self['cmd_dominated'] = 'no data'
+        self['cmd_dominated'][self['cmd_alpha'] > -99999] = 'bad'
+        self['cmd_dominated'][(self['cmd_dominated'] == 'bad') & (self['cmd_alpha_error']/self['cmd_alpha'] <=0.3)] = 'extinc.' 
+        self['cmd_dominated'][(self['cmd_dominated']) & (self['cmd_alpha'] < 0.)] = 'accr.'
+        ind = (self['cmd_dominated'] == 'extinc') 
+        self['AV'][ind] = self['cmd_x_spread'][ind]/redvec[1]
+
+ 
+    def calc_ls(self, band, maxper, oversamp = 4, maxfreq = 1.):
+        '''calculate Lomb-Scagle periodograms for all sources
+
+        A new column is added to the datatable that contains the result.
+        (If the column existed before, it is overwritten).
     
-    f.write('\\end{document}')
-    f.close()
+        Parameters
+        ----------
+        band : string
+            Band identifier
+        maxper : float
+            periods above this value will be ignored
+        oversamp : integer
+            oversampling factor
+        maxfreq : float
+            max freq of LS periodogram is maxfeq * "average" Nyquist frequency
+             For very inhomogenously sampled data, values > 1 can be useful
+        '''
+        if 'period_'+band not in self.colnames:
+            self.add_column(astropy.table.Column(name = 'period_'+band, dtype=np.float, length = len(self)))
+        if 'peak_'+band not in self.colnames:
+            self.add_column(astropy.table.Column(name = 'peak_'+band, dtype=np.float, length = len(self)))
+        self['period_'+band][:] = np.nan
+        self['peak_'+band][:] = np.nan
+
+        for i in np.arange(0,len(self)):
+            if 't'+band in self.lclist[i].keys():
+                t1 = self.lclist[i]['t'+band]
+                m1 = self.lclist[i]['m'+band]
+                if len(t1) > 2:
+                    test1 = ysovar_lombscargle.fasper(t1,m1,oversamp,maxfreq)
+                    good = np.where(1/test1[0] < maxper)[0]
+                    # be sensitive only to periods shorter than maxper
+                    if len(good) > 0:
+                        max1 = np.argmax(test1[1][good]) # find peak
+                        sig1 = test1[1][good][max1]
+                        period1 = 1./test1[0][good][max1]
+                        self['period_'+band][i] = period1
+                        self['peak_'+band][i] = sig1
+  
+
+    def is_there_a_good_period(self, power, minper, maxper, bands=['36','45']):
+        '''check if a strong periodogram peak is found
+
+        This method checks if a period exisits with the required
+        power and period in any of of the bands given in `bands`. If
+        the peaks in several bands fullfill the criteria, then the band with
+        the peak of highest power is selected. Output is placed in the
+        columns `good_peak` and `good_period`.
+
+        New columns are added to the datatable that contains the result.
+        (If a column existed before, it is overwritten).
+    
+        Parameters
+        ----------
+        power : float
+            required power threshold for "good" period
+        minper : float
+            lowest period which is considered
+        maxper : float
+            maximum period which is considered
+        bands : list of strings
+            Band identifiers, e.g. ['36', '45'], can also be a list with one
+            entry, e.g. ['36']
+        '''
+        if 'good_period' not in self.colnames:
+            self.add_column(astropy.table.Column(name = 'good_period',
+                            dtype=np.float, length = len(self)))
+        if 'good_peak' not in self.colnames:
+            self.add_column(astropy.table.Column(name = 'good_peak',
+                            dtype=np.float, length = len(self)))
+        self['good_period'][:] = np.nan
+        self['good_peak'][:] = np.nan
+
+        peaknames = tuple(['peak_'+band for band in bands])
+        periodnames = tuple(['period_'+band for band in bands])
+
+        peaks = self[peaknames]._data.view((np.float, len(bands)))
+        periods = self[periodnames]._data.view((np.float, len(bands)))
+        
+        good = (peaks > power) & (periods > minper) & (periods < maxper)
+        bestpeak = np.argmax(np.ma.masked_where(~good, peaks), axis=1)
+        anygood = np.any(good, axis=1)
+        self['good_period'][anygood] = periods[np.arange(peaks.shape[0]),bestpeak][anygood]
+        self['good_peak'][anygood] = peaks[np.arange(peaks.shape[0]),bestpeak][anygood]
 
 
 
-def fit_twocolor_odr(dataset, index, p_guess, outroot, n_bootstrap, ifplot, ifbootstrap, xyswitch):
+
+def fit_twocolor_odr(dataset, index, p_guess, outroot = None,  n_bootstrap = None, xyswitch = False):
     '''Fits a straight line to a single CMD, using a weighted orthogonal least squares algorithm (ODR).
     
     Parameters
@@ -1009,14 +1091,10 @@ def fit_twocolor_odr(dataset, index, p_guess, outroot, n_bootstrap, ifplot, ifbo
         the index of the dataset within the data structure
     p_guess : tuple
         initial fit parameters derived from fit_twocolor
-    outroot : string
-        dictionary where to save the plot
-    n_bootstrap : integer
-        how many bootstrap trials
-    ifplot : boolean
-        if you want a residual plot or not
-    ifbootstrap : boolean
-        if you want to bootstrap or not
+    outroot : string or None
+        dictionary where to save the plot, set to `None` for no plotting
+    n_bootstrap : integer or None
+        how many bootstrap trials, set to `None` for no bootstrapping
     xyswitch : boolean
         if the X and Y axis will be switched for the fit or not. This has nothing to do with bisector fitting! The fitting algorithm used here takes care of errors in x and y simultaneously; the xyswitch is only for taking care of pathological cases where a vertical fitted line would occur without coordinate switching.
     
@@ -1080,7 +1158,7 @@ def fit_twocolor_odr(dataset, index, p_guess, outroot, n_bootstrap, ifplot, ifbo
     #print x_spread
     
     
-    if ifplot:
+    if outroot is not None:
         # I got the following from a python script from http://www.physics.utoronto.ca/~phy326/python/odr_fit_to_data.py, I have to check this properly.
         # This does a residual plot, and some bootstrapping if desired.
         # error ellipses:
@@ -1123,7 +1201,7 @@ def fit_twocolor_odr(dataset, index, p_guess, outroot, n_bootstrap, ifplot, ifbo
         plt.ylabel("Residuals")
         plt.savefig(outroot + str(index) + '_odrfit.eps')
     
-    if ifbootstrap:
+    if n_bootstrap is not None:
         print 'bootstrapping...'
         # take a random half of the data and do the fit (choosing without replacement, standard bootstrap). Do this a lot of times and construct a cumulative distribution function for the slope and the intercept of the fitted line.
         # now what I actually want is the slope angle a, not m.
@@ -1183,102 +1261,6 @@ def fit_twocolor_odr(dataset, index, p_guess, outroot, n_bootstrap, ifplot, ifbo
     return result
 
 
-def add_twocolor_fits_to_infos(data, infos, outroot, n_bootstrap, ifplot, ifbootstrap, xyswitch):
-    '''Performs straight line fit to CMD for all sources. Adds fitted parameters to info structure.
-    
-    Parameters
-    ----------
-    data : np.ndarray
-        data collection for all sources
-    infos : np.rec.array
-        info structure for all sources
-    outroot : string
-        directory for plots
-    n_bootstrap : integer
-        how many bootstrap trials
-    ifplot : boolean
-        if you want a residual plot or not
-    ifbootstrap : boolean
-        if you want to bootstrap or not
-    xyswitch : boolean
-        if the X and Y axis will be switched for the fit or not. This has nothing to do with bisector fitting! The fitting algorithm used here takes care of errors in x and y simultaneously; the xyswitch is only for taking care of pathological cases where a vertical fitted line would occur without coordinate switching.
-    
-    Returns
-    -------
-    infos : np.rec.array
-        updated info structure
-    '''
-    for i in np.arange(0, len(data)):
-        if 't' in data[i].keys() : 
-            # use the result of the plain least squares fitting as a first parameter guess.
-            p_guess = (infos[i].cmd_m_plain, infos[i].cmd_b_plain)
-            
-            (fit_output, bootstrap_output, bootstrap_raw, alpha, alpha_error, x_spread) = fit_twocolor_odr(data[i], i, p_guess, outroot, n_bootstrap, ifplot, ifbootstrap, xyswitch)
-
-            if xyswitch:
-                infos[i].cmd_alpha2 = alpha
-                infos[i].cmd_alpha2_error = alpha_error
-                infos[i].cmd_m2 = fit_output.beta[0]
-                infos[i].cmd_b2 = fit_output.beta[1]
-                infos[i].cmd_m2_error = fit_output.sd_beta[0]
-                infos[i].cmd_b2_error = fit_output.sd_beta[1]
-                infos[i].cmd_x_spread = x_spread
-            else:
-                infos[i].cmd_alpha1 = alpha
-                infos[i].cmd_alpha1_error = alpha_error
-                infos[i].cmd_m = fit_output.beta[0]
-                infos[i].cmd_b = fit_output.beta[1]
-                infos[i].cmd_m_error = fit_output.sd_beta[0]
-                infos[i].cmd_b_error = fit_output.sd_beta[1]
-                infos[i].cmd_x_spread = x_spread
-    
-    return infos
-
-def good_slope_angle(infos):
-    '''Checks if the ODR fit with switched X and Y axes yields a more constrained fit than the original axes. This basically catches the pathological cases with a (nearly) vertical fit with large nominal errors.
-    
-    Parameters
-    ----------
-    infos : np.rec.array
-        info structure for all sources
-
-    Returns
-    -------
-    infos : np.rec.array
-        updated info structure
-    '''
-    for i in np.arange(0, len(infos)):
-        if infos[i]['cmd_alpha1'] > -99999.:
-            if infos[i]['cmd_alpha1_error']/infos[i]['cmd_alpha1'] < infos[i]['cmd_alpha2_error']/infos[i]['cmd_alpha2']:
-                infos[i]['cmd_alpha'] = infos[i]['cmd_alpha1']
-                infos[i]['cmd_alpha_error'] = infos[i]['cmd_alpha1_error']
-            else:
-                infos[i]['cmd_alpha'] = infos[i]['cmd_alpha2']
-                infos[i]['cmd_alpha_error'] = infos[i]['cmd_alpha2_error']
-    return infos
-
-
-def cmd_dominated_by(infos):
-    # this is some crude classification of the cmd slope.
-    # anything that goes up and has a relative slope error of <40% is "accretion-dominated",
-    # anythin that is within some cone around the theoratical reddening and has error <40% is "extinction-dominated",
-    # anything else is "other".
-    # if slope is classified as extinction, the spread in the CMD is converted to AV and stored in infos.
-    alpha_red = math.asin(calc_reddening()[0]/np.sqrt(calc_reddening()[0]**2 + 1**2)) # angle of standard reddening
-    for i in np.arange(0, len(infos)):
-        if ((infos[i]['cmd_alpha'] > -99999.) & (infos[i]['cmd_alpha'] < 0.) & (infos[i]['cmd_alpha_error']/infos[i]['cmd_alpha'] <= 0.3) ):
-            infos[i]['cmd_dominated'] = 'accr.'
-        elif ((infos[i]['cmd_alpha'] > -99999.) & (np.abs(infos[i]['cmd_alpha'] - alpha_red) <= np.pi/18.) & (infos[i]['cmd_alpha_error']/infos[i]['cmd_alpha'] <= 0.3) ):
-            infos[i]['cmd_dominated'] = 'extinc.'
-            infos[i]['AV'] = infos[i]['cmd_x_spread']/calc_reddening()[1]
-        elif ((infos[i]['cmd_alpha'] > -99999.) & (infos[i]['cmd_alpha_error']/infos[i]['cmd_alpha'] <= 0.3)):
-            infos[i]['cmd_dominated'] = 'other'
-        elif (infos[i]['cmd_alpha'] > -99999.):
-            infos[i]['cmd_dominated'] = 'bad'
-        else:
-            infos[i]['cmd_dominated'] = 'no data'
-    
-    return infos
 
 
 
