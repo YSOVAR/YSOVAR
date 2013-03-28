@@ -41,8 +41,8 @@ def coord_CDS2RADEC(dat):
     '''
     radeg = dat['RAh']*15. + dat['RAm'] / 4. + dat['RAs']/4./60.
     dedeg = ((dat['DE-'] !='-')*2-1) * (dat['DEd'] + dat['DEm'] / 60. + dat['DEs']/3600.)
-    dat.add_column(astropy.table.MaskedColumn(name = 'RAdeg', data = radeg))
-    dat.add_column(astropy.table.MaskedColumn(name = 'DEdeg', data = dedeg))
+    dat.add_column(astropy.table.Column(name = 'RAdeg', data = radeg))
+    dat.add_column(astropy.table.Column(name = 'DEdeg', data = dedeg))
 
 def coord_str2RADEC(dat, ra = 'RA', dec = 'DEC'):
     '''transform RA in [hh:mm:ss] and DEC in ['dd:mm:ss'] from an table to degrees
@@ -62,8 +62,8 @@ def coord_str2RADEC(dat, ra = 'RA', dec = 'DEC'):
     radeg = t['h']*15. + t['m'] / 4. + t['s']/4./60.
     t = asciitable.read(data[dec], delimiter=':', Reader = asciitable.NoHeader, names =  ['d','m','s'])
     dedeg = t['d'] + t['m'] / 60. + t['s']/3600.
-    dat.add_column(astropy.table.MaskedColumn(name = 'RAdeg', data = radeg))
-    dat.add_column(astropy.table.MaskedColumn(name = 'DEdeg', data = dedeg))
+    dat.add_column(astropy.table.Column(name = 'RAdeg', data = radeg))
+    dat.add_column(astropy.table.Column(name = 'DEdeg', data = dedeg))
 
 
 
@@ -106,17 +106,17 @@ def stetson(data1, data1_error,data2, data2_error):
     # number of datapoints:
     N = float(len(data1))
     
-    if (len(data2) != N) or (len(data1_error) !=N) or (len(data2_error) !=n):
+    if (len(data2) != N) or (len(data1_error) !=N) or (len(data2_error) !=N):
         raise ValueError('All input arrays must have the same length')
     if N > 1:
         # weighted mean magnitudes in each passband:
         wmean1 = wmean(data1, data1_error)
         wmean2 = wmean(data2, data2_error)
         # normalized residual from the weighted mean for each datapoint:
-        res_1 = (data1 - wmean2) / data1_error
-        res_2 = (data2 - wmean1) / data2_error
+        res_1 = (data1 - wmean1) / data1_error
+        res_2 = (data2 - wmean2) / data2_error
         
-        return np.sqrt(1./(N*(N-1))) * np.sum( res_1 * res2 )
+        return np.sqrt(1./(N*(N-1))) * np.sum( res_1 * res_2 )
     else:
         return np.nan
 
@@ -812,7 +812,7 @@ class YSOVAR_atlas(astropy.table.Table):
         ids = makecrossids(self, catalog, radius, ra1 = ra1 , dec1 = dec1, ra2 = ra2, dec2 = dec2) 
 
         for n in names:
-            self.add_column(astropy.table.MaskedColumn(name = n, length  = len(self), dtype = catalog[n].dtype, mask = True))
+            self.add_column(astropy.table.Column(name = n, length  = len(self), dtype = catalog[n].dtype))
 
         for i in range(len(self)):
             if ids[i] >=0:
@@ -840,7 +840,7 @@ class YSOVAR_atlas(astropy.table.Table):
         t_simul = t_simul or self.t_simul
         name = 'stetson_'+band1+'_'+band2
         if name not in self.colnames:
-            self.add_column(astropy.table.MaskedColumn(name = name, length = len(self), dtype = np.float))
+            self.add_column(astropy.table.Column(name = name, length = len(self), dtype = np.float))
         self[name][:] = np.nan
         for i in np.arange(len(self)):
             data = merge_lc(self.lclist[i],[band1, band2], t_simul = t_simul)
@@ -868,7 +868,7 @@ class YSOVAR_atlas(astropy.table.Table):
         names = ['cmd_m_plain', 'cmd_b_plain', 'cmd_m_redvec', 'cmd_b_redvec']
         for name in names:
             if name not in self.colnames:
-                self.add_column(astropy.table.MaskedColumn(name = name, length = len(self), dtype = np.float))
+                self.add_column(astropy.table.Column(name = name, length = len(self), dtype = np.float))
             self[name][:] = np.nan
         for i in np.arange(len(self)):
             data = merge_lc(self.lclist[i],[band1, band2], t_simul = t_simul)
@@ -915,7 +915,7 @@ class YSOVAR_atlas(astropy.table.Table):
 
         for name in names:
             if name not in self.colnames:
-                self.add_column(astropy.table.MaskedColumn(name = name, length = len(self), dtype = np.float))
+                self.add_column(astropy.table.Column(name = name, length = len(self), dtype = np.float))
             self[name][:] = np.nan
         if ('cmd_m_plain' not in self.colnames) or ('cmd_b_plain' not in self.colnames):
             self.cmd_slope_simple( band1, band2, redvec, t_simul)
