@@ -882,7 +882,7 @@ class YSOVAR_atlas(astropy.table.Table):
                 self['cmd_m_redvec'][i] = m2
                 self['cmd_b_redvec'][i] = b2
 
-    def cmd_slope_odr(self, outroot = None, n_bootstrap = None, xyswitch = False, band1='36', band2='45', redvec=redvec_36_45, t_simul = None):
+    def cmd_slope_odr(self, outroot = None, n_bootstrap = None, band1='36', band2='45', redvec=redvec_36_45, t_simul = None):
         '''Performs straight line fit to CMD for all sources.
 
         Adds fitted parameters to info structure.
@@ -893,13 +893,6 @@ class YSOVAR_atlas(astropy.table.Table):
             dictionary where to save the plot, set to `None` for no plotting
         n_bootstrap : integer or None
             how many bootstrap trials, set to `None` for no bootstrapping
-        xyswitch : boolean
-            if the X and Y axis will be switched for the fit or not.
-            This has nothing to do with bisector fitting!
-            The fitting algorithm used here takes care of errors in x and y
-            simultaneously; the xyswitch is only for taking care of pathological
-            cases where a vertical fitted line would occur without coordinate
-            switching.
         band1, band2 : string
             name of the bands to be used for the calculation
         t_simul : float
@@ -925,24 +918,23 @@ class YSOVAR_atlas(astropy.table.Table):
                 # use the result of the plain least squares fitting as a first parameter guess.
                 p_guess = (self['cmd_m_plain'][i], self['cmd_b_plain'][i])
             
-                (fit_output, bootstrap_output, bootstrap_raw, alpha, alpha_error, x_spread) = fit_twocolor_odr(data, i, p_guess, outroot, n_bootstrap, xyswitch)
+                (fit_output, bootstrap_output, bootstrap_raw, alpha, alpha_error, x_spread) = fit_twocolor_odr(data, i, p_guess, outroot, n_bootstrap, True)
+                self['cmd_alpha2'][i] = alpha
+                self['cmd_alpha2_error'][i] = alpha_error
+                self['cmd_m2'][i] = fit_output.beta[0]
+                self['cmd_b2'][i] = fit_output.beta[1]
+                self['cmd_m2_error'][i] = fit_output.sd_beta[0]
+                self['cmd_b2_error'][i] = fit_output.sd_beta[1]
+                self['cmd_x_spread'][i] = x_spread
 
-                if xyswitch:
-                    self['cmd_alpha2'][i] = alpha
-                    self['cmd_alpha2_error'][i] = alpha_error
-                    self['cmd_m2'][i] = fit_output.beta[0]
-                    self['cmd_b2'][i] = fit_output.beta[1]
-                    self['cmd_m2_error'][i] = fit_output.sd_beta[0]
-                    self['cmd_b2_error'][i] = fit_output.sd_beta[1]
-                    self['cmd_x_spread'][i] = x_spread
-                else:
-                    self['cmd_alpha1'][i] = alpha
-                    self['cmd_alpha1_error'][i] = alpha_error
-                    self['cmd_m'][i] = fit_output.beta[0]
-                    self['cmd_b'][i] = fit_output.beta[1]
-                    self['cmd_m_error'][i] = fit_output.sd_beta[0]
-                    self['cmd_b_error'][i] = fit_output.sd_beta[1]
-                    self['cmd_x_spread'][i] = x_spread
+                (fit_output, bootstrap_output, bootstrap_raw, alpha, alpha_error, x_spread) = fit_twocolor_odr(data, i, p_guess, outroot, n_bootstrap, False)
+                self['cmd_alpha1'][i] = alpha
+                self['cmd_alpha1_error'][i] = alpha_error
+                self['cmd_m'][i] = fit_output.beta[0]
+                self['cmd_b'][i] = fit_output.beta[1]
+                self['cmd_m_error'][i] = fit_output.sd_beta[0]
+                self['cmd_b_error'][i] = fit_output.sd_beta[1]
+                self['cmd_x_spread'][i] = x_spread
 
     def good_slope_angle(self):
         '''Checks if ODR fit to slope encountered some pathological case
@@ -955,7 +947,7 @@ class YSOVAR_atlas(astropy.table.Table):
 
         for name in names:
             if name not in self.colnames:
-                self.add_column(name = name, length = len(self), dtype = np.float)
+                self.add_column(astropy.table.Column(name = name, length = len(self), dtype = np.float))
             self[name][:] = np.nan
 
         good = self['cmd_alpha1'] > -99999.
@@ -978,16 +970,16 @@ class YSOVAR_atlas(astropy.table.Table):
         '''
         alpha_red = math.asin(redvec[0]/np.sqrt(redvec[0]**2 + 1**2)) # angle of standard reddening
         if 'cmd_dominated' not in self.colnames:
-            self.add_column(name = 'cmd_dominated', length = len(self), dtype = 'S10')
+            self.add_column(astropy.table.Column(name = 'cmd_dominated', length = len(self), dtype = 'S10'))
         if 'AV' not in self.colnames:
-            self.add_column(name = 'AV', length = len(self), dtype = np.float)
+            self.add_column(astropy.table.Column(name = 'AV', length = len(self), dtype = np.float))
         self['AV'][:] = np.nan
             
         self['cmd_dominated'] = 'no data'
         self['cmd_dominated'][self['cmd_alpha'] > -99999] = 'bad'
         self['cmd_dominated'][(self['cmd_dominated'] == 'bad') & (self['cmd_alpha_error']/self['cmd_alpha'] <=0.3)] = 'extinc.' 
-        self['cmd_dominated'][(self['cmd_dominated']) & (self['cmd_alpha'] < 0.)] = 'accr.'
-        ind = (self['cmd_dominated'] == 'extinc') 
+        self['cmd_dominated'][(self['cmd_dominated'] == 'extinc.') & (self['cmd_alpha'] < 0.)] = 'accr.'
+        ind = (self['cmd_dominated'] == 'extinc.') 
         self['AV'][ind] = self['cmd_x_spread'][ind]/redvec[1]
 
  
