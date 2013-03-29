@@ -120,13 +120,13 @@ def stetson(data1, data1_error,data2, data2_error):
     else:
         return np.nan
 
-def redvec_36_45():
-    ''' Rieke & Lebofsky 1984:  I take the extinctions from the L and M band (3.5, 5.0).'''
-    A36 = 0.058
-    A45 = 0.023
-    R36 = - A36/(A45 - A36)
-    return np.array([R36, A36])
-
+#def redvec_36_45():
+#    ''' Rieke & Lebofsky 1984:  I take the extinctions from the L and M band (3.5, 5.0).'''
+#    A36 = 0.058
+#    A45 = 0.023
+#    R36 = - A36/(A45 - A36)
+#    return np.array([R36, A36])
+redvec_36_45 = np.array([-2.58, 0.058])
 
 def fit_cmdslope_simple(data1, data1_error,data2, data2_error, redvec):
     '''measures the slope of the data points in the color-magnitude diagram
@@ -847,7 +847,7 @@ class YSOVAR_atlas(astropy.table.Table):
             self[name][i] = stetson(data['m'+band1], data['m'+band1+'_error'],
                                     data['m'+band2], data['m'+band2+'_error'])
 
-    def cmd_slope_simple(self, band1='36', band2='45', redvec=redvec_36_45(), t_simul = None):
+    def cmd_slope_simple(self, band1='36', band2='45', redvec=redvec_36_45, t_simul = None):
         '''Fit straight line to color-magnitude diagram
 
         A new column is added to the datatable that contains the result.
@@ -882,7 +882,7 @@ class YSOVAR_atlas(astropy.table.Table):
                 self['cmd_m_redvec'][i] = m2
                 self['cmd_b_redvec'][i] = b2
 
-    def cmd_slope_odr(self, outroot = None, n_bootstrap = None, xyswitch = False, band1='36', band2='45', redvec=redvec_36_45(), t_simul = None):
+    def cmd_slope_odr(self, outroot = None, n_bootstrap = None, xyswitch = False, band1='36', band2='45', redvec=redvec_36_45, t_simul = None):
         '''Performs straight line fit to CMD for all sources.
 
         Adds fitted parameters to info structure.
@@ -976,7 +976,7 @@ class YSOVAR_atlas(astropy.table.Table):
         If slope is classified as extinction, the spread in the CMD is converted
         to AV and stored.
         '''
-        alpha_red = math.asin(calc_reddening()[0]/np.sqrt(calc_reddening()[0]**2 + 1**2)) # angle of standard reddening
+        alpha_red = math.asin(redvec[0]/np.sqrt(redvec[0]**2 + 1**2)) # angle of standard reddening
         if 'cmd_dominated' not in self.colnames:
             self.add_column(name = 'cmd_dominated', length = len(self), dtype = 'S10')
         if 'AV' not in self.colnames:
