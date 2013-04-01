@@ -40,7 +40,7 @@ def make_latexfile(atlas, outroot, name, ind = None, plotwidth = '0.45\\textwidt
                                   'stddev_36': 'stddev [3.6]',
                                   'median_45': 'median [4.5]',
                                   'mad_45': 'medium abs dev [4.5]',
-                                  'stddev_35': 'stddev [4.5]',
+                                  'stddev_45': 'stddev [4.5]',
                                   'stetson_36_45': 'Stetson [3.6] vs. [4.5]'},
                    pdflatex = True):
     '''make output LeTeX file that produces an atlas
@@ -90,7 +90,7 @@ def make_latexfile(atlas, outroot, name, ind = None, plotwidth = '0.45\\textwidt
         for ext in fileextensions:
             print filepresent, figname + ext
             if os.path.exists(figname+ext): filepresent = True
-        if filepresent: filename.write('\\includegraphics[width=' + plotwidth  + ']{' + figname + '}' + '\n')
+        if filepresent: filename.write('\\includegraphics[width=' + plotwidth  + ']{' + os.path.basename(figname) + '}' + '\n')
 
     if ind is None:
         ind = np.arange(len(atlas), dtype = np.int)
@@ -184,7 +184,7 @@ def get_stamps(data, outroot, verbose = True):
 
 def make_reddeningvector_for_plot(x1, x2, y1, y2):
     # calculates the coordinates of the reddening evctor in convenient plot coordinates.
-    slope = redvec_36_45()
+    slope = redvec_36_45
     
     if (x2-x1 <= 0.1):
         AV = 0.25
@@ -282,7 +282,7 @@ def make_info_plots(infos, outroot, bands = ['36', '45'], bandlabels=['[3.6]', '
     # makes some overview histograms of object properties
     #color definition:
     color = [(1,0.35,0.35), (1,0.95,0.35), (0.5,0.9,0.25), (0.25,0.45,1), (0.9,0.35,1)]
-    ysoclass = infose['ysoclass']
+    ysoclass = infos['ysoclass']
 
     for band, bandlabel in zip(bands, bandlabels):
         mads = infos['mad_'+band]
@@ -558,7 +558,7 @@ def make_lc_plots(atlas, outroot, verbose = True, xlim = None, twinx = False, in
             plt.close("all")
         # make light curve plot:
         fig = lc_plot(atlas[i], xlim = xlim, twinx = twinx)
-        filename = outroot + str(i) + '_lc'
+        filename = os.path.join(outroot, str(i) + '_lc')
         multisave(fig, filename)
         plt.close("all")
 
@@ -675,12 +675,12 @@ def plot_polys(atlas, outroot, verbose = True):
         # make light curve plot:
         if ('t36' in d.keys()) and (len(d['t36']) > 15):
             fig = lc.plot_all_polys(d['t36'], d['m36'], d['m36_error'], 'IRAC 1')
-            filename = outroot + str(i) + '_lcpoly'
+            filename = os.path.join(outroot, str(i) + '_lcpoly')
             multisave(fig, filename)
             plt.close(fig)
         elif ('t45' in d.keys()) and (len(d['t45']) > 15):
             fig = lc.plot_all_polys(d['t45'], d['m45'], d['m2_error'], 'IRAC 2')
-            filename = outroot + str(i) + '_lcpoly'
+            filename = os.path.join(outroot, str(i) + '_lcpoly')
             multisave(fig, filename)
             plt.close(fig)
 
@@ -710,7 +710,7 @@ def make_plot_skyview(outroot, infos):
 	plt.xlabel('RA')
 	plt.ylabel('DEC')
 	
-	plt.savefig(outroot + 'skyview_iras20050.pdf')
+	plt.savefig(os.path.join(outroot,  'skyview_iras20050.pdf'))
 	plt.clf()
 
 
@@ -751,13 +751,16 @@ def make_ls_plots(atlas, outroot, maxper, oversamp, maxfreq, verbose = True):
             if len(t2) > 2:
                 test2 = ysovar_lombscargle.fasper(t2,m2,oversamp,maxfreq)
                 ax.plot(1/test2[0],test2[1],linewidth=2, label = r'4.5 $\mu$m')
-        
-        ax.legend(loc = 'upper right')
-        ax.set_xscale('log')
-        ax.set_xlabel('Period (d)')
-        ax.set_ylabel('Periodogram power')
-        ax.set_title('Lomb-Scargle Periodogram')
-        multisave(fig, os.path.join(outroot, str(i) + '_ls'))
+
+        if ('t36' in data.keys() and (np.isfinite(test1[1]).sum() > 1)) or ('t45' in data.keys() and (np.isfinite(test2[1]).sum() > 1)):
+            # The isfinite is here for very, VERY pathological cases
+            # like constant lightcurves
+            ax.legend(loc = 'upper right')
+            ax.set_xscale('log')
+            ax.set_xlabel('Period (d)')
+            ax.set_ylabel('Periodogram power')
+            ax.set_title('Lomb-Scargle Periodogram')
+            multisave(fig, os.path.join(outroot, str(i) + '_ls'))
 
 
 def make_phased_lc_cmd_plots(atlas, outroot, bands = ['36','45'], marker = ['o', '+'], lw = [0,1]):
@@ -801,7 +804,7 @@ def make_phased_lc_cmd_plots(atlas, outroot, bands = ['36','45'], marker = ['o',
                 ax.set_xlabel('phase')
                 ax.set_title('phase-folded light curve, period = ' + str( ("%.2f" % period) ) + ' d')
                 ax.set_ylim(ax.get_ylim()[::-1])
-                multisave(fig, outroot + str(i) + '_lc_phased')
+                multisave(fig, os.path.join(outroot, str(i) + '_lc_phased'))
                 
             # make phased color-magnitude plot
             fig.clf()

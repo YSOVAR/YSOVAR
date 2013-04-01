@@ -71,9 +71,9 @@ def mad(data):
     '''calculate median absolute deviation'''
     return np.median(np.abs(data - np.median(data)))
 
-def chi2tomean(data, error):
-    '''chi^2 to mean'''
-    return np.sum( (data - np.mean(data))**2/(data_error**2) )/(len(data)-1)
+def redchi2tomean(data, error):
+    '''reduced chi^2 to mean'''
+    return np.sum( (data - np.mean(data))**2/(error**2) )/(len(data)-1)
 
 def delta(data):
     '''with of distribution form 10%-90%'''
@@ -496,6 +496,8 @@ def merge_lc(d, bands, t_simul=0.01):
         This table contains the merged lightcurve and contains times,
         fluxes and errors.
     '''
+    if not isinstance(d, dict):
+        raise ValueError('d must be a dictionary that contains lightcurves.')
     tab = astropy.table.Table()
     names = ['t']
     for band in bands:
@@ -673,7 +675,7 @@ def check_dataset(data, min_number_of_times = 5, match_dist = 1./3600.):
 #### The big table / Atlas class that holds the data and does some cool processing ##
 
 valfuncdict = {'mean': np.mean, 'median': np.median, 'stddev': np.std, 'min': np.min, 'max': np.max, 'mad': mad, 'delta': delta}
-valerrfuncdict = {'chi2tomean': chi2tomean, 'wmean': wmean}
+valerrfuncdict = {'redchi2tomean': redchi2tomean, 'wmean': wmean}
 
 
 class YSOVAR_atlas(astropy.table.Table):
@@ -700,7 +702,7 @@ class YSOVAR_atlas(astropy.table.Table):
     - max
     - mad (median absolute deviation)
     - delta (90% quantile - 10% quantile)
-    - chi2tomean
+    - redchi2tomean
     - wmean (uncertainty weighted average).
 
     When you ask for `MyRegion['min_36']` it first checks if that column is already
