@@ -4,6 +4,17 @@ import ysovar_atlas as atlas
 
 import pytest
 
+def test_makecrossids():
+    d1 = np.rec.array([[0,0],[23,45],[45,89],[230,-50], [255,-66]], dtype=[('ra', np.float),('dec', np.float)])
+    d2 = np.rec.array([[.01,0.9],[23,44.1],[55,89.4],[229.8,-50.1], [23, 44.05], [23.01,44.05]], dtype=[('ra', np.float),('dec', np.float)])
+    cid = atlas.makecrossids(d1,d2,1.0,'ra','dec','ra','dec')
+    assert cid[0] == 0
+    assert cid[1] == 1
+    assert cid[2] == 2
+    assert cid[3] == 3
+    assert cid[4] == -99999
+    assert len(cid) == len(d1)
+    
 def test_isoy2radec():
     ra, dec = atlas.Isoy2radec('ISOY_J162722.02-242114.5')
     assert np.abs(ra - 246.84175) < 0.00001

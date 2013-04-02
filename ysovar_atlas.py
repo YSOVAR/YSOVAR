@@ -304,9 +304,14 @@ def makecrossids(data1, data2, radius, ra1='RAdeg', dec1='DEdeg', ra2='ra', dec2
     cross_ids = np.ones(len(data1),int) * -99999
     
     for i in np.arange(0,len(data1)):
-        distance = dist_radec(data1[ra1][i], data1[dec1][i], data2[ra2], data2[dec2], unit ='deg') 
-        if min(distance) <= radius:
-            cross_ids[i] = np.argmin(distance)
+        # Pick out only those that are close in dec
+        ind = np.where(np.abs(data1[dec1][i] - data2[dec2]) < radius)[0]
+        # and calculate the full dist_radec only for those that are close enough
+        # since dist_radec includes several sin, cos, that speeds it up a lot
+        if len(ind) > 0:
+            distance = dist_radec(data1[ra1][i], data1[dec1][i], data2[ra2][ind], data2[dec2][ind], unit ='deg') 
+            if min(distance) <= radius:
+                cross_ids[i] = ind[np.argmin(distance)]
         
     print len(np.where(cross_ids != -99999)[0])
     return cross_ids
