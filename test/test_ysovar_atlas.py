@@ -109,10 +109,10 @@ class Test_expected_results():
 
     def test_cmd_flat(self, data):
         ind = np.where(data['YSOVAR2_id'] == '-2500')[0][0]
-        assert abs(data['cmd_m'][ind] - .5) < 0.1
+        assert abs(data['cmd_m'][ind]) < 0.1
         assert data['cmd_b_error'][ind] < 0.001
         assert data['cmd_m_error'][ind] < 0.001
-        assert abs(data['cmd_b'][ind] - 11.5) < 0.001
+        assert abs(data['cmd_b'][ind] - 12.) < 0.001
         assert data['cmd_alpha_error'][ind] < 0.001
 
     def test_cmd_random(self, data):
