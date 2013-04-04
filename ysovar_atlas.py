@@ -676,7 +676,7 @@ def check_dataset(data, min_number_of_times = 5, match_dist = 1./3600.):
 
 #### The big table / Atlas class that holds the data and does some cool processing ##
 
-valfuncdict = {'mean': np.mean, 'median': np.median, 'stddev': np.std, 'min': np.min, 'max': np.max, 'mad': mad, 'delta': delta}
+valfuncdict = {'mean': np.mean, 'median': np.median, 'stddev': lambda x: np.std(x, dof = 1), 'min': np.min, 'max': np.max, 'mad': mad, 'delta': delta}
 valerrfuncdict = {'redchi2tomean': redchi2tomean, 'wmean': wmean}
 
 
@@ -765,6 +765,22 @@ class YSOVAR_atlas(astropy.table.Table):
         self._update_table_from_cols(table, data, cols, names)
 
         return table
+
+    def sort(self, keys):
+        '''
+        Sort the table according to one or more keys. This operates
+        on the existing table and does not return a new table.
+
+        Parameters
+        ----------
+        keys : str or list of str
+            The key(s) to order the table by
+        '''
+        # kind of ugly to make sure lclist get the same reordering
+        self.add_column(astropy.table.Column(data = self.lclist, name = 'randomnamethatisneverusedagain'))
+        super(YSOVAR_atlas, self).sort(keys)
+        self.lclist = self['randomnamethatisneverusedagain'].data
+        self.remove_column('randomnamethatisneverusedagain')
         
     def autocalc_newcol(self, name):
         '''automatically calcualte some columns on the fly'''
