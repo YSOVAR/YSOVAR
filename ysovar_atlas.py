@@ -86,6 +86,11 @@ def wmean(data, error):
 def stetson(data1, data1_error,data2, data2_error):
     '''Calculates the Stetson index for a two-band light curve.
 
+    According to eqn (1) in Stetson 1996, PSAP, 108, 851.
+    This procedure uses on the matched lightcurves
+    (not frames with one band only) and assignes a weight (g_i) in
+    Stetson (1996) of 1 to each datapoint.
+
     Parameters
     ----------
     data1 : np.array
@@ -115,8 +120,8 @@ def stetson(data1, data1_error,data2, data2_error):
         # normalized residual from the weighted mean for each datapoint:
         res_1 = (data1 - wmean1) / data1_error
         res_2 = (data2 - wmean2) / data2_error
-        
-        return np.sqrt(1./(N*(N-1))) * np.sum( res_1 * res_2 )
+        P_ik = res_1 * res_2
+        return np.sqrt(1./(N*(N-1))) * np.sum( np.sign(P_ik) * np.sqrt(np.abs(P_ik)) )
     else:
         return np.nan
 

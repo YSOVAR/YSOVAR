@@ -36,9 +36,12 @@ def data():
 
 @pytest.mark.usefixtures("data")
 class Test_expected_results():
+    def test_ignore_short_lcs(self, data):
+        assert '-998' not in set(data['YSOVAR2_id'])
+        
     def test_const_lc_36(self, data):
         ind1 = np.where(data['YSOVAR2_id'] == '-1000')[0][0]
-        assert data['n_36'][ind1] == 5
+        assert data['n_36'][ind1] == 6
         assert abs(data['max_36'][ind1] - 12.) < 1e-6
         assert abs(data['min_36'][ind1] - 12.) < 1e-6
         assert abs(data['median_36'][ind1] - 12.) < 1e-6
@@ -51,7 +54,7 @@ class Test_expected_results():
 
     def test_const_lc_45(self, data):
         ind1 = np.where(data['YSOVAR2_id'] == '-1001')[0][0]
-        assert data['n_45'][ind1] == 5
+        assert data['n_45'][ind1] == 6
         assert abs(data['max_45'][ind1] - 12.) < 1e-6
         assert abs(data['min_45'][ind1] - 12.) < 1e-6
         assert abs(data['median_45'][ind1] - 12.) < 1e-6
@@ -63,26 +66,26 @@ class Test_expected_results():
 
     def test_lin_lc_36(self, data):
         ind1 = np.where(data['YSOVAR2_id'] == '-1002')[0][0]
-        assert data['n_36'][ind1] == 5
+        assert data['n_36'][ind1] == 6
         assert abs(data['max_36'][ind1] - 13.) < 1e-6
         assert abs(data['min_36'][ind1] - 11.) < 1e-6
         assert abs(data['median_36'][ind1] - 12.) < 1e-6
         assert abs(data['wmean_36'][ind1] - 12.) < 1e-6
-        assert abs(data['stddev_36'][ind1]- 1./np.sqrt(2.)) < 1e-6
+        assert abs(data['stddev_36'][ind1]- 0.6455) < 1e-3
         assert abs(data['mad_36'][ind1] - 0.5) < 1e-6 
-        assert abs(data['redchi2tomean_36'][ind1] - 62.5 ) < 1e-6
+        assert abs(data['redchi2tomean_36'][ind1] - 50 ) < 1e-6
         # too short for testing delta reliably. Add test for that.
 
     def test_lin_lc_45(self, data):
         ind1 = np.where(data['YSOVAR2_id'] == '-1003')[0][0]
-        assert data['n_45'][ind1] == 5
+        assert data['n_45'][ind1] == 6
         assert abs(data['max_45'][ind1] - 13.) < 1e-6
         assert abs(data['min_45'][ind1] - 11.) < 1e-6
         assert abs(data['median_45'][ind1] - 12.) < 1e-6
         assert abs(data['wmean_45'][ind1] - 12.) < 1e-6
-        assert abs(data['stddev_45'][ind1]- 1./np.sqrt(2.)) < 1e-6
+        assert abs(data['stddev_45'][ind1]- 0.6455) < 1e-3
         assert abs(data['mad_45'][ind1] - 0.5) < 1e-6 
-        assert abs(data['redchi2tomean_45'][ind1] - 62.5 ) < 1e-6
+        assert abs(data['redchi2tomean_45'][ind1] - 50 ) < 1e-6
         # too short for testing delta reliably. Add test for that.
 
     def test_one_period(self, data):
@@ -131,10 +134,9 @@ class Test_expected_results():
         assert data['cmd_dominated'][ind] == 'extinc.'
 
     def test_stetson(self, data):
-        ind1 = np.where(data['YSOVAR2_id'] == '-2700')[0][0]
-        ind2 = np.where(data['YSOVAR2_id'] == '-2701')[0][0]
-        data.calc_stetson('36','45')
-        assert data['stetson_36_45'][ind1] < 0.01
-        assert data['stetson_36_45'][ind2] - 101.02 < 0.1
-        
+        data.calc_stetson('36', '45')
+        for ind, res in zip(['-2700', '-2701', '-2702', '-2703', '-2704'], [0.0,0.0, 10.1012, 10.1012, -10.1012]):
+            print 'number:', ind, ' -- expected: ', res
+            i = np.where(data['YSOVAR2_id'] == ind)[0][0]
+            assert np.abs(data['stetson_36_45'][i] - res) < 0.01
         
