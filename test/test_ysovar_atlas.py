@@ -1,8 +1,8 @@
 import numpy as np
+import pytest
+from astropy.table import Table
 
 import ysovar_atlas as atlas
-
-import pytest
 
 def test_makecrossids():
     d1 = np.rec.array([[0,0],[23,45],[45,89],[230,-50], [255,-66]], dtype=[('ra', np.float),('dec', np.float)])
@@ -21,6 +21,16 @@ def test_isoy2radec():
     assert np.abs(dec + 24.354028) < 0.00001
     ra, dec = atlas.Isoy2radec('ISOY_J162722.02+242114.5')
     assert np.abs(dec - 24.354028) < 0.00001
+
+def test_makecrossids_all():
+    data1 = Table({'ra':np.array([0.,10.,15.]), 'dec':np.array([0.,0.,0.])})
+    data2 = Table({'ra':np.array([0.,0,0,0,0]), 'dec':np.array([0.,.1,.5,1,5])})
+    ids = makecrossids_all(data1, data2, 1., ra1 = 'ra', dec1 = 'dec', ra2 = 'ra', dec2 = 'dec')
+    assert len(ids) == len(data1)
+    assert np.all(ids[0] == [0, 1, 2, 3])
+    for i in np.arange(1, len(data1)):
+        assert len(id[i]) == 0
+
 
 @pytest.fixture(scope = "module")
 def data():
