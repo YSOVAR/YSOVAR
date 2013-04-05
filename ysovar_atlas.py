@@ -911,12 +911,12 @@ class YSOVAR_atlas(astropy.table.Table):
     
         '''
         t_simul = t_simul or self.t_simul
-        names = ['cmd_alpha2', 'cmd_alpha2_error', 'cmd_m2', 'cmd_b2', 'cmd_m2_error', 'cmd_b2_error', 'cmd_x_spread', 'cmd_alpha1', 'cmd_alpha1_error', 'cmd_m', 'cmd_b', 'cmd_m_error', 'cmd_b_error', 'cmd_x_spread']
+        names = ['cmd_alpha2', 'cmd_alpha2_error', 'cmd_m2', 'cmd_b2', 'cmd_m2_error', 'cmd_b2_error', 'cmd_y_spread', 'cmd_alpha1', 'cmd_alpha1_error', 'cmd_m', 'cmd_b', 'cmd_m_error', 'cmd_b_error', 'cmd_x_spread']
 
         for name in names:
             if name not in self.colnames:
                 self.add_column(astropy.table.Column(name = name, length = len(self), dtype = np.float))
-            self[name][:] = np.nan
+                self[name][:] = np.nan
         if ('cmd_m_plain' not in self.colnames) or ('cmd_b_plain' not in self.colnames):
             self.cmd_slope_simple( band1, band2, redvec, t_simul)
         for i in np.arange(len(self)):
@@ -934,7 +934,7 @@ class YSOVAR_atlas(astropy.table.Table):
                     self['cmd_b2'][i] = fit_output.beta[1]
                     self['cmd_m2_error'][i] = fit_output.sd_beta[0]
                     self['cmd_b2_error'][i] = fit_output.sd_beta[1]
-                    self['cmd_x_spread'][i] = x_spread
+                    self['cmd_y_spread'][i] = x_spread
                 else:
                     self['cmd_alpha1'][i] = alpha
                     self['cmd_alpha1_error'][i] = alpha_error
@@ -955,40 +955,45 @@ class YSOVAR_atlas(astropy.table.Table):
 
         for name in names:
             if name not in self.colnames:
-                self.add_column(name = name, length = len(self), dtype = np.float)
-            self[name][:] = np.nan
+                self.add_column(astropy.table.Column(name = name, length = len(self), dtype = np.float))
+                self[name][:] = np.nan
+        
+        self['cmd_alpha'] = self['cmd_alpha1']
+        self['cmd_alpha_error'] = self['cmd_alpha1_error']
+        # now check if alpha2 has smaller errors. If yes, set alpha to alpha2 and alpha_error to alpha2_error.
+        comp = np.where((np.isnan(self['cmd_alpha2']) == False) & (np.abs(self['cmd_alpha2_error']) < np.abs(self['cmd_alpha1_error'])))[0]
+        self['cmd_alpha'][comp] = self['cmd_alpha2'][comp]
+        self['cmd_alpha_error'][comp] = self['cmd_alpha2_error'][comp]
 
-        good = self['cmd_alpha1'] > -99999.
-        comp = self['cmd_alpha1_error']/self['cmd_alpha1'] < self['cmd_alpha2_error']/self['cmd_alpha2']
-        self['cmd_alpha'][good] = np.where(comp, self['cmd_alpha1'], self['cmd_alpha2'])[good]
-        self['cmd_alpha_error'][good] = np.where(comp, self['cmd_alpha1_error'], self['cmd_alpha2_error'])[good]
 
 
-
-    def cmd_dominated_by(self, redvec = redvec_36_45):
+    def cmd_dominated_by(self, redvec = redvec_36_45()):
         '''crude classification of CMD slope
 
-        This is some crude classification of the cmd slope.
-        anything that goes up and has a relative slope error of <40% is
-        "accretion-dominated", anythin that is within some cone around
-        the theoratical reddening and has error <40% is "extinction-dominated",
+        This is a basic classification of the cmd slope for the 3.6 and 4.5 bands.
+        Stuff with a relative slope error > 40% is "bad".
+        Anything that goes up and has a relative slope error of <40% is
+        "accretion-dominated", anything that is within some cone around
+        the theoretical reddening and has error <40% is "extinction-dominated",
         anything else is "other".
         If slope is classified as extinction, the spread in the CMD is converted
         to AV and stored.
         '''
-        alpha_red = math.asin(calc_reddening()[0]/np.sqrt(calc_reddening()[0]**2 + 1**2)) # angle of standard reddening
+        alpha_red = math.asin(redvec[0]/np.sqrt(redvec[0]**2 + 1**2)) # angle of standard reddening
         if 'cmd_dominated' not in self.colnames:
-            self.add_column(name = 'cmd_dominated', length = len(self), dtype = 'S10')
+            self.add_column(astropy.table.Column(name = 'cmd_dominated', length = len(self), dtype = 'S10'))
         if 'AV' not in self.colnames:
-            self.add_column(name = 'AV', length = len(self), dtype = np.float)
-        self['AV'][:] = np.nan
+            self.add_column(astropy.table.Column(name = 'AV', length = len(self), dtype = np.float))
+            self['AV'][:] = np.nan
             
-        self['cmd_dominated'] = 'no data'
-        self['cmd_dominated'][self['cmd_alpha'] > -99999] = 'bad'
-        self['cmd_dominated'][(self['cmd_dominated'] == 'bad') & (self['cmd_alpha_error']/self['cmd_alpha'] <=0.3)] = 'extinc.' 
-        self['cmd_dominated'][(self['cmd_dominated']) & (self['cmd_alpha'] < 0.)] = 'accr.'
-        ind = (self['cmd_dominated'] == 'extinc') 
-        self['AV'][ind] = self['cmd_x_spread'][ind]/redvec[1]
+        self['cmd_dominated'][np.isnan(self['cmd_alpha'])] = 'no data'
+        self['cmd_dominated'][np.abs(self['cmd_alpha_error']/self['cmd_alpha']) >= 0.4] = 'bad'
+        self['cmd_dominated'][np.abs(self['cmd_alpha_error']/self['cmd_alpha']) < 0.4] = 'other'
+        self['cmd_dominated'][(np.abs(self['cmd_alpha_error']/self['cmd_alpha']) < 0.4) & ( (np.abs(self['cmd_alpha']) - np.abs(alpha_red)) <= 0.3 )] = 'extinc.' 
+        self['cmd_dominated'][(np.abs(self['cmd_alpha_error']/self['cmd_alpha']) < 0.4) & (self['cmd_alpha'] < 0. )] = 'accr.' 
+        # I should add another criterion for spot-dominated variability.
+        # now transform cmd_x_spread into AV for the extinction-dominated sources:
+        self['AV'][(np.abs(self['cmd_alpha_error']/self['cmd_alpha']) < 0.4) & ( (np.abs(self['cmd_alpha']) - np.abs(alpha_red)) <= 0.3 )] = self['cmd_x_spread'][(np.abs(self['cmd_alpha_error']/self['cmd_alpha']) < 0.4) & ( (np.abs(self['cmd_alpha']) - np.abs(alpha_red)) <= 0.3 )]/redvec[1]
 
  
     def calc_ls(self, band, maxper, oversamp = 4, maxfreq = 1.):

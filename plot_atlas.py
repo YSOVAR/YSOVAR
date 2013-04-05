@@ -416,7 +416,7 @@ def make_info_plots(infos, outroot, bands = ['36', '45'], bandlabels=['[3.6]', '
 
 
 
-def plot_lc(ax, data):
+def plot_lc(ax, data, mergedlc):
     ''' plot lc in a given axes container
     
     Parameters
@@ -429,9 +429,9 @@ def plot_lc(ax, data):
         ax.scatter(data['t36']-mjdoffset, data['m36'], lw=0, s=20, marker='o', color='k', label = '[3.6]')
     if 't45' in data.keys():
         ax.scatter(data['t45']-mjdoffset, data['m45'], lw=1, s=20, marker='+', color='k', label = '[4.5]')
-    if len(data['t']) > 0:
-        ax.scatter(data['t']-mjdoffset, data['m36'], lw=0, s=30, marker='o', c=data['t'])
-        ax.scatter(data['t']-mjdoffset, data['m45'], lw=2, s=40, marker='+', c=data['t'])
+    if len(mergedlc['t']) > 0:
+        ax.scatter(mergedlc['t']-mjdoffset, mergedlc['m36'], lw=0, s=30, marker='o', c=mergedlc['t'])
+        ax.scatter(mergedlc['t']-mjdoffset, mergedlc['m45'], lw=2, s=40, marker='+', c=mergedlc['t'])
 
 def lc_plot(catalog, xlim = None, twinx = True):
     '''plot one or two lcs for a single object
@@ -489,20 +489,20 @@ def lc_plot(catalog, xlim = None, twinx = True):
         else:
             ax = fig.add_axes(axpos, xlim = xl,sharey = axes[0])
         axes.append(ax)
+        mergedlc = merge_lc(data, ['36','45'])
         if twinx:
             tax = ax.twinx()
             tax.ticklabel_format(useOffset=False, axis='y') 
             tax.set_xlim(xl)
             taxes.append(tax)
             ax.scatter(data['t36']-mjdoffset, data['m36'], lw=0, s=20, marker='o', color='k', label = '[3.6], symbol: o')
-            tax.scatter(data['t45']-mjdoffset, data['m45'], lw=1, s=20, marker='+', color='k', label = '[4.5], symbol: +')
-            mergedlc = merge_lc(data, ['36','45'])
+            tax.scatter(data['t45']-mjdoffset, data['m45'], lw=1, s=20, marker='+', color='k', label = '[4.5], symbol: +')            
             if len(mergedlc) > 0:
                 ax.scatter(mergedlc['t']-mjdoffset, mergedlc['m36'], lw=0, s=30, marker='o', c=mergedlc['t'])
                 tax.scatter(mergedlc['t']-mjdoffset, mergedlc['m45'], lw=2, s=30, marker='+', c= 'r')
             tax.tick_params(axis='y', colors='r')
         else:
-            plot_lc(ax, data)
+            plot_lc(ax, data, mergedlc)
         # Special cases where e.g. first axes is treated different
         if np.mod(i,2) == 0: ax.set_xlabel('time (MJD - '+str(mjdoffset)+' )')
         if i ==0: 
