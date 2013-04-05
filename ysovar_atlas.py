@@ -44,36 +44,36 @@ def coord_CDS2RADEC(dat):
     dat.add_column(astropy.table.Column(name = 'RAdeg', data = radeg))
     dat.add_column(astropy.table.Column(name = 'DEdeg', data = dedeg))
 
-def coord_str2RADEC(dat, ra = 'RA', dec = 'DEC'):
-    '''transform RA in [hh:mm:ss] and DEC in ['dd:mm:ss'] from an table to degrees
+def coord_hmsdms2RADEC(dat, ra = ['RAh', 'RAm', 'RAs'],dec = ['DEd', 'DEm','DEs']):
+    '''transform RA and DEC from table to degrees
 
-    Tables which have RA and DEC as ASCII values of the foom
-    `hh:mm:ss.sss` and `dd:mm:ss.sss` will be parsed by this procedure,
-    which calculates new values for RA and DEC in degrees.
+    Tables where RA and DEC are encoded as three numeric columns each like
+    `hh:mm:ss` `dd:mm:ss` can be converted into decimal deg.
+    This procedure parses that and calculates new values for RA and DEC in degrees.
     These are added to the Table as `RAdeg` and `DEdeg`.
 
     Parameters
     ----------
     dat : astropy.table.Table
-        with columns in the CDS format (e.g. from reading a CDS table with
-        `astropy.io.ascii`)
+        with columns in the format given above
+    ra : list of three strings
+        names of RA column names for hour, min, sec
+    dec : list of three strings
+        names of DEC column names for deg, min, sec
     '''
-    t = asciitable.read(data[ra], delimiter=':', Reader = asciitable.NoHeader, names =  ['h','m','s'])
-    radeg = t['h']*15. + t['m'] / 4. + t['s']/4./60.
-    t = asciitable.read(data[dec], delimiter=':', Reader = asciitable.NoHeader, names =  ['d','m','s'])
-    dedeg = t['d'] + t['m'] / 60. + t['s']/3600.
+    radeg = dat[ra[0]]*15. + dat[ra[1]] / 4. + dat[ra[2]]/4./60.
+    dedeg = dat[dec[0]] + dat[dec[1]] / 60. + dat[dec[2]]/3600.
     dat.add_column(astropy.table.Column(name = 'RAdeg', data = radeg))
     dat.add_column(astropy.table.Column(name = 'DEdeg', data = dedeg))
-
 
 
 def mad(data):
     '''calculate median absolute deviation'''
     return np.median(np.abs(data - np.median(data)))
 
-def chi2tomean(data, error):
-    '''chi^2 to mean'''
-    return np.sum( (data - np.mean(data))**2/(data_error**2) )/(len(data)-1)
+def redchi2tomean(data, error):
+    '''reduced chi^2 to mean'''
+    return np.sum( (data - np.mean(data))**2/(error**2) )/(len(data)-1)
 
 def delta(data):
     '''with of distribution form 10%-90%'''
@@ -85,6 +85,11 @@ def wmean(data, error):
 
 def stetson(data1, data1_error,data2, data2_error):
     '''Calculates the Stetson index for a two-band light curve.
+
+    According to eqn (1) in Stetson 1996, PSAP, 108, 851.
+    This procedure uses on the matched lightcurves
+    (not frames with one band only) and assignes a weight (g_i) in
+    Stetson (1996) of 1 to each datapoint.
 
     Parameters
     ----------
@@ -115,18 +120,18 @@ def stetson(data1, data1_error,data2, data2_error):
         # normalized residual from the weighted mean for each datapoint:
         res_1 = (data1 - wmean1) / data1_error
         res_2 = (data2 - wmean2) / data2_error
-        
-        return np.sqrt(1./(N*(N-1))) * np.sum( res_1 * res_2 )
+        P_ik = res_1 * res_2
+        return np.sqrt(1./(N*(N-1))) * np.sum( np.sign(P_ik) * np.sqrt(np.abs(P_ik)) )
     else:
         return np.nan
 
-def redvec_36_45():
-    ''' Rieke & Lebofsky 1984:  I take the extinctions from the L and M band (3.5, 5.0).'''
-    A36 = 0.058
-    A45 = 0.023
-    R36 = - A36/(A45 - A36)
-    return np.array([R36, A36])
-
+#def redvec_36_45():
+#    ''' Rieke & Lebofsky 1984:  I take the extinctions from the L and M band (3.5, 5.0).'''
+#    A36 = 0.058
+#    A45 = 0.023
+#    R36 = - A36/(A45 - A36)
+#    return np.array([R36, A36])
+redvec_36_45 = np.array([-2.58, 0.058])
 
 def fit_cmdslope_simple(data1, data1_error,data2, data2_error, redvec):
     '''measures the slope of the data points in the color-magnitude diagram
@@ -196,7 +201,7 @@ def fit_cmdslope_simple(data1, data1_error,data2, data2_error, redvec):
 
 
 
-### Everything that deals wit hthe lightcurve dictionaries and only with those ###
+### Everything that deals with the lightcurve dictionaries and only with those ###
 
 def radec_from_dict(data, RA = 'ra', DEC = 'dec'):
     '''return ra dec numpy array for list of dicts
@@ -236,19 +241,6 @@ def val_from_dict(data, name):
     return col
     
 
-
-def test_crossmatch_irac(yso1, yso2):
-    # outdated routine, not used anymore
-    crossid_test = np.ones(len(yso1), int)*-99999
-    id_dist = 1./3600. # = 1 arcsec
-    for i in np.arange(0,len(yso1)):
-        distance = np.sqrt((yso1['ra'][i] - yso2['ra'])**2 + (yso1['dec'][i] - yso2['dec'])**2)
-        min_ind = np.where(distance == min(distance))[0]
-        if min(distance) <= id_dist:
-            crossid_test[i] = min_ind
-    return crossid_test
-
-
 def readguentherlist(filename):  
     # reads the data from Table 3 in Guenther+ 2012 and returns both (a) all data and (b) only ysos and stars as one subset. The data from the paper needs to be stored locally as ascii file.
     print 'reading data from Guenther+ 2012 ...'
@@ -274,11 +266,10 @@ def makeclassinteger(guenther_data_yso):
 
 
 def makecrossids(data1, data2, radius, ra1='RAdeg', dec1='DEdeg', ra2='ra', dec2='dec'):
-    '''Cross-match two lists of coordinates
+    '''Cross-match two lists of coordinates, return closest match
 
     This routine is not very clever and not very fast. If should be fine
-    up to a few thousand entries per list, but just a litle programming would
-    make it much faster. Let me know if you need that.
+    up to a few thousand entries per list. 
 
     Parameters
     ----------
@@ -304,12 +295,59 @@ def makecrossids(data1, data2, radius, ra1='RAdeg', dec1='DEdeg', ra2='ra', dec2
     cross_ids = np.ones(len(data1),int) * -99999
     
     for i in np.arange(0,len(data1)):
-        distance = dist_radec(data1[ra1][i], data1[dec1][i], data2[ra2], data2[dec2], unit ='deg') 
-        if min(distance) <= radius:
-            cross_ids[i] = np.argmin(distance)
+        # Pick out only those that are close in dec
+        ind = np.where(np.abs(data1[dec1][i] - data2[dec2]) < radius)[0]
+        # and calculate the full dist_radec only for those that are close enough
+        # since dist_radec includes several sin, cos, that speeds it up a lot
+        if len(ind) > 0:
+            distance = dist_radec(data1[ra1][i], data1[dec1][i], data2[ra2][ind], data2[dec2][ind], unit ='deg') 
+            if min(distance) < radius:
+                cross_ids[i] = ind[np.argmin(distance)]
         
-    print len(np.where(cross_ids != -99999)[0])
     return cross_ids
+
+def makecrossids_all(data1, data2, radius, ra1='RAdeg', dec1='DEdeg', ra2='ra', dec2='dec'):
+    '''Cross-match two lists of coordinates, return all matches within radius
+
+    This routine is not very clever and not very fast. If should be fine
+    up to a few thousand entries per list. 
+
+    Parameters
+    ----------
+    data1 : astropy.table.Table or np.recarray
+        This is the master data, i.e. for each element in data1, the
+        results wil have one (or zero) index numbers in data2, that provide
+        the best match to this entry in data1.
+    data2 : astropt.table.Table or np.recarray
+        This data is matched to data1.
+    radius : np.float
+       maximum radius to accept a match (in degrees) 
+    ra1, dec1, ra2, dec2 : string
+        key for access RA and DEG (in degrees) the the data, i.e. the routine
+        uses `data1[ra1]` for the RA values of data1.
+
+    Results
+    -------
+    cross_ids : list of lists
+        Will have len(data1). For each elelment it contains the indices of data2
+        that are within `radius`. If no match within `radius` is found,
+        then entry will be `[]`.
+    '''
+    cross_ids = []
+    
+    for i in range(len(data1)):
+        # Pick out only those that are close in dec
+        ind = np.where(np.abs(data1[dec1][i] - data2[dec2]) <= radius)[0]
+        # and calculate the full dist_radec only for those that are close enough
+        # since dist_radec includes several sin, cos, that speeds it up a lot
+        if len(ind) > 0:
+            distance = dist_radec(data1[ra1][i], data1[dec1][i], data2[ra2][ind], data2[dec2][ind], unit ='deg') 
+            cross_ids.append(ind[distance <= radius])
+        else:
+            cross_ids.append([])
+
+    return cross_ids
+
 
 ''' Format:
     dictionary of bands, where the name of the band mag is the key
@@ -371,42 +409,6 @@ def get_sed(data, sed_bands = sed_bands):
     zero_magnitude_flux_wavlen = zero_magnitude_flux_freq * 1e-23 * freq / wavelen
     sed = 2.5**(-mags)*zero_magnitude_flux_wavlen
     return (wavelen, mags, mags_error, sed)
-
-
-
-def add_ysovar_mags(data, ysovar, channel, match_dist = 0.5 /3600.):
-    '''Add YSOVAR lightcurves to our python
-    
-    
-    Parameters
-    ----------
-    data : empty list or list of dictionaries
-        structure to hold all the information
-    ysovar : recarray
-        obtained from reading in ysovar .idlsav files with readsav
-    channel : string
-        usually "1" or "2", as part of the label for keywords in dictionaries
-    match_dist : float
-        maximum distance to match two positions as one sorce 
-    '''
-    channel = str(channel).strip()  # just in case someone puts in a number
-    for k, yso in enumerate(ysovar):
-        radec = radec_from_dict(data, RA = 'ra', DEC = 'dec')
-        distance = dist_radec(radec['RA'], radec['DEC'], yso['RA'], yso['DEC'], unit ='deg') 
-        if len(data) > 0 and min(distance) <= match_dist:
-            dict_temp = data[np.argmin(distance)]
-        else:
-            dict_temp = defaultdict(list)
-            data = np.append(data, dict_temp)
-        dict_temp['id_ysovar'+channel].append(k)
-        dict_temp['ra'].append(yso['RA'])
-        dict_temp['dec'].append(yso['DEC'])
-        dict_temp['ISOY_NAME'].append(yso['ISOY_NAME'])
-        good1 = np.where(yso['HMJD'+channel] >= 0.)[0]
-        dict_temp['t'+channel].extend((yso['HMJD'+channel][good1]).tolist())
-        dict_temp['m'+channel].extend((yso['MAG'+channel][good1]).tolist())
-        dict_temp['m'+channel+'_error'].extend((yso['EMAG'+channel][good1]).tolist())
-    return data
 
 def dict_cleanup(data, channels, min_number_of_times = 0, floor_error = {}):
     '''Clean up dictionaries after add_ysovar_mags
@@ -496,6 +498,8 @@ def merge_lc(d, bands, t_simul=0.01):
         This table contains the merged lightcurve and contains times,
         fluxes and errors.
     '''
+    if not isinstance(d, dict):
+        raise ValueError('d must be a dictionary that contains lightcurves.')
     tab = astropy.table.Table()
     names = ['t']
     for band in bands:
@@ -556,13 +560,13 @@ def Isoy2radec(isoy):
     dec = np.sign(float(s[9:])) * (float(s[10:12]) + int(s[12:14]) /60. + float(s[14:])/3600.)
     return ra, dec
 
-def dict_from_csv(csvfile, match_dist = 1.0/3600., min_number_of_times = 5, channels = {'IRAC1': '36', 'IRAC2': '45'}, floor_error = {'IRAC1': 0.01, 'IRAC2': 0.008}, verbose = True):
+def dict_from_csv(csvfile,  match_dist = 1.0/3600., min_number_of_times = 5, channels = {'IRAC1': '36', 'IRAC2': '45'}, data = [], floor_error = {'IRAC1': 0.01, 'IRAC2': 0.008}, mag = 'mag1', emag = 'emag1', time = 'hmjd', source_name = 'sname',  verbose = True):
     '''Build YSOVAR lightcurves from database csv file
     
     Parameters
     ----------
     cvsfile : sting or file object
-        input csv file 
+        input csv file
     match_dist : float
         maximum distance to match two positions as one sorce
     min_number_of_times : integer
@@ -572,6 +576,8 @@ def dict_from_csv(csvfile, match_dist = 1.0/3600., min_number_of_times = 5, chan
         This dictionary traslantes the names of channels in the csv file to
         the names in the output structure, e.g.
         that for `'IRAC1'` will be `'m36'` (magnitudes) and `'t36'` (times).
+    data : list of dicts
+        New entries will be added to data. It can be empty (the default).
     floor_error : dict
         Floor errors will be added in quadrature to all error values.
         The keys in the dictionary should be the same as in the channels
@@ -588,11 +594,10 @@ def dict_from_csv(csvfile, match_dist = 1.0/3600., min_number_of_times = 5, chan
     '''
     if verbose: print 'Reading csv file - This may take a few minutes...'
     tab = asciitable.read(csvfile)
-    data = []
     radec = {'RA':[], 'DEC': []}
     for i, n in enumerate(set(tab['sname'])):
         if verbose and (np.mod(i,100)==0):
-            print 'making dict for source ' + str(i) + ' of ' + str(len(set(tab['sname'])))
+            print 'Processing dict for source ' + str(i) + ' of ' + str(len(set(tab['sname'])))
         ind = (tab['sname'] == n)
         ra = tab[ind][0]['ra']
         dec = tab[ind][0]['de'] 
@@ -606,17 +611,16 @@ def dict_from_csv(csvfile, match_dist = 1.0/3600., min_number_of_times = 5, chan
             data = np.append(data, dict_temp)
             radec['RA'].append(ra)
             radec['DEC'].append(dec)
-            dict_temp['id_ysovar'].append(len(data))
         dict_temp['ra'].extend([ra] * ind.sum())
         dict_temp['dec'].extend([dec] * ind.sum())
         dict_temp['ISOY_NAME'].append(n)
         dict_temp['YSOVAR2_id'].append(tab['ysovarid'][ind][0])
         for channel in channels.keys():
-            good = ind & (tab['hmjd'] >= 0.) & (tab['fname'] == channel)
+            good = ind & (tab[time] >= 0.) & (tab['fname'] == channel)
             if np.sum(good) > 0:
-                dict_temp['t'+channels[channel]].extend((tab['hmjd'][good]).tolist())
-                dict_temp['m'+channels[channel]].extend((tab['mag1'][good]).tolist())
-                dict_temp['m'+channels[channel]+'_error'].extend((tab['emag1'][good]).tolist())
+                dict_temp['t'+channels[channel]].extend((tab[time][good]).tolist())
+                dict_temp['m'+channels[channel]].extend((tab[mag][good]).tolist())
+                dict_temp['m'+channels[channel]+'_error'].extend((tab[emag][good]).tolist())
     if verbose: print 'Cleaning up dictionaries'
     data = dict_cleanup(data, channels = channels, min_number_of_times = min_number_of_times, floor_error = floor_error)
     return data
@@ -672,8 +676,8 @@ def check_dataset(data, min_number_of_times = 5, match_dist = 1./3600.):
 
 #### The big table / Atlas class that holds the data and does some cool processing ##
 
-valfuncdict = {'mean': np.mean, 'median': np.median, 'stddev': np.std, 'min': np.min, 'max': np.max, 'mad': mad, 'delta': delta}
-valerrfuncdict = {'chi2tomean': chi2tomean, 'wmean': wmean}
+valfuncdict = {'mean': np.mean, 'median': np.median, 'stddev': lambda x: np.std(x, dof = 1), 'min': np.min, 'max': np.max, 'mad': mad, 'delta': delta}
+valerrfuncdict = {'redchi2tomean': redchi2tomean, 'wmean': wmean}
 
 
 class YSOVAR_atlas(astropy.table.Table):
@@ -700,7 +704,7 @@ class YSOVAR_atlas(astropy.table.Table):
     - max
     - mad (median absolute deviation)
     - delta (90% quantile - 10% quantile)
-    - chi2tomean
+    - redchi2tomean
     - wmean (uncertainty weighted average).
 
     When you ask for `MyRegion['min_36']` it first checks if that column is already
@@ -761,6 +765,22 @@ class YSOVAR_atlas(astropy.table.Table):
         self._update_table_from_cols(table, data, cols, names)
 
         return table
+
+    def sort(self, keys):
+        '''
+        Sort the table according to one or more keys. This operates
+        on the existing table and does not return a new table.
+
+        Parameters
+        ----------
+        keys : str or list of str
+            The key(s) to order the table by
+        '''
+        # kind of ugly to make sure lclist get the same reordering
+        self.add_column(astropy.table.Column(data = self.lclist, name = 'randomnamethatisneverusedagain'))
+        super(YSOVAR_atlas, self).sort(keys)
+        self.lclist = self['randomnamethatisneverusedagain'].data
+        self.remove_column('randomnamethatisneverusedagain')
         
     def autocalc_newcol(self, name):
         '''automatically calcualte some columns on the fly'''
@@ -819,6 +839,33 @@ class YSOVAR_atlas(astropy.table.Table):
                 for n in names:
                     self[n][i] = catalog[n][ids[i]]
 
+    def add_mags(self, data, cross_ids, band, channel):
+        '''Add lightcurves to some list of dictionaries
+
+
+        Parameters
+        ----------
+        data : astropy.table.Table or np.rec.array
+            data table with new mags
+        cross_ids : list of lists
+            for each elements in self, `cross_ids` says which row in `data`
+            should be included for this object
+        band : list of strings
+            [name of mag, name or error, name of time]
+        channel : string
+            name of this channel in the lightcurve. Should be short and unique.
+
+        '''
+        if len(self) != len(cross_ids):
+            raise ValueError('cross_ids needs to have same length as master table')
+        for k in range(len(self)):
+            if len(cross_ids[k]) > 0:
+                ind = np.array(cross_ids[k])
+                self.lclist[k]['t'+channel].extend(data[band[2]][ind].tolist())
+                self.lclist[k]['m'+channel].extend(data[band[0]][ind].tolist())
+                self.lclist[k]['t'+channel+'_error'].extend(data[band[1]][ind].tolist())
+
+
 
     def calc_stetson(self, band1, band2, t_simul = None):
         '''calculates the steson index between two bands for all lightcurves
@@ -847,7 +894,7 @@ class YSOVAR_atlas(astropy.table.Table):
             self[name][i] = stetson(data['m'+band1], data['m'+band1+'_error'],
                                     data['m'+band2], data['m'+band2+'_error'])
 
-    def cmd_slope_simple(self, band1='36', band2='45', redvec=redvec_36_45(), t_simul = None):
+    def cmd_slope_simple(self, band1='36', band2='45', redvec=redvec_36_45, t_simul = None):
         '''Fit straight line to color-magnitude diagram
 
         A new column is added to the datatable that contains the result.
@@ -882,7 +929,7 @@ class YSOVAR_atlas(astropy.table.Table):
                 self['cmd_m_redvec'][i] = m2
                 self['cmd_b_redvec'][i] = b2
 
-    def cmd_slope_odr(self, outroot = None, n_bootstrap = None, xyswitch = False, band1='36', band2='45', redvec=redvec_36_45(), t_simul = None):
+    def cmd_slope_odr(self, outroot = None, n_bootstrap = None, band1='36', band2='45', redvec=redvec_36_45, t_simul = None):
         '''Performs straight line fit to CMD for all sources.
 
         Adds fitted parameters to info structure.
@@ -893,13 +940,6 @@ class YSOVAR_atlas(astropy.table.Table):
             dictionary where to save the plot, set to `None` for no plotting
         n_bootstrap : integer or None
             how many bootstrap trials, set to `None` for no bootstrapping
-        xyswitch : boolean
-            if the X and Y axis will be switched for the fit or not.
-            This has nothing to do with bisector fitting!
-            The fitting algorithm used here takes care of errors in x and y
-            simultaneously; the xyswitch is only for taking care of pathological
-            cases where a vertical fitted line would occur without coordinate
-            switching.
         band1, band2 : string
             name of the bands to be used for the calculation
         t_simul : float
@@ -925,24 +965,24 @@ class YSOVAR_atlas(astropy.table.Table):
                 # use the result of the plain least squares fitting as a first parameter guess.
                 p_guess = (self['cmd_m_plain'][i], self['cmd_b_plain'][i])
             
-                (fit_output, bootstrap_output, bootstrap_raw, alpha, alpha_error, x_spread) = fit_twocolor_odr(data, i, p_guess, outroot, n_bootstrap, xyswitch)
+                (fit_output, bootstrap_output, bootstrap_raw, alpha, alpha_error, x_spread) = fit_twocolor_odr(data, i, p_guess, outroot, n_bootstrap, True)
+                self['cmd_alpha2'][i] = alpha
+                self['cmd_alpha2_error'][i] = alpha_error
+                self['cmd_m2'][i] = fit_output.beta[0]
+                self['cmd_b2'][i] = fit_output.beta[1]
+                self['cmd_m2_error'][i] = fit_output.sd_beta[0]
+                self['cmd_b2_error'][i] = fit_output.sd_beta[1]
+                self['cmd_x2_spread'][i] = x_spread
 
-                if xyswitch:
-                    self['cmd_alpha2'][i] = alpha
-                    self['cmd_alpha2_error'][i] = alpha_error
-                    self['cmd_m2'][i] = fit_output.beta[0]
-                    self['cmd_b2'][i] = fit_output.beta[1]
-                    self['cmd_m2_error'][i] = fit_output.sd_beta[0]
-                    self['cmd_b2_error'][i] = fit_output.sd_beta[1]
-                    self['cmd_y_spread'][i] = x_spread
-                else:
-                    self['cmd_alpha1'][i] = alpha
-                    self['cmd_alpha1_error'][i] = alpha_error
-                    self['cmd_m'][i] = fit_output.beta[0]
-                    self['cmd_b'][i] = fit_output.beta[1]
-                    self['cmd_m_error'][i] = fit_output.sd_beta[0]
-                    self['cmd_b_error'][i] = fit_output.sd_beta[1]
-                    self['cmd_x_spread'][i] = x_spread
+                (fit_output, bootstrap_output, bootstrap_raw, alpha, alpha_error, x_spread) = fit_twocolor_odr(data, i, p_guess, outroot, n_bootstrap, False)
+                self['cmd_alpha1'][i] = alpha
+                self['cmd_alpha1_error'][i] = alpha_error
+                self['cmd_m'][i] = fit_output.beta[0]
+                self['cmd_b'][i] = fit_output.beta[1]
+                self['cmd_m_error'][i] = fit_output.sd_beta[0]
+                self['cmd_b_error'][i] = fit_output.sd_beta[1]
+                self['cmd_x_spread'][i] = x_spread
+
 
     def good_slope_angle(self):
         '''Checks if ODR fit to slope encountered some pathological case
@@ -964,6 +1004,7 @@ class YSOVAR_atlas(astropy.table.Table):
         comp = np.where((np.isnan(self['cmd_alpha2']) == False) & (np.abs(self['cmd_alpha2_error']) < np.abs(self['cmd_alpha1_error'])))[0]
         self['cmd_alpha'][comp] = self['cmd_alpha2'][comp]
         self['cmd_alpha_error'][comp] = self['cmd_alpha2_error'][comp]
+
 
 
 
@@ -994,6 +1035,7 @@ class YSOVAR_atlas(astropy.table.Table):
         # I should add another criterion for spot-dominated variability.
         # now transform cmd_x_spread into AV for the extinction-dominated sources:
         self['AV'][(np.abs(self['cmd_alpha_error']/self['cmd_alpha']) < 0.4) & ( (np.abs(self['cmd_alpha']) - np.abs(alpha_red)) <= 0.3 )] = self['cmd_x_spread'][(np.abs(self['cmd_alpha_error']/self['cmd_alpha']) < 0.4) & ( (np.abs(self['cmd_alpha']) - np.abs(alpha_red)) <= 0.3 )]/redvec[1]
+
 
  
     def calc_ls(self, band, maxper, oversamp = 4, maxfreq = 1.):
