@@ -19,6 +19,7 @@ import astropy.table
 
 import ysovar_lombscargle
 from great_circle_dist import dist_radec, dist_radec_fast
+import lightcurves
 
 
 ### Helper functions, simple one liners to do some math needed later on etc. ###
@@ -1061,6 +1062,38 @@ class YSOVAR_atlas(astropy.table.Table):
         ind = (self['cmd_dominated'] == 'extinc.') 
         self['AV'][ind] = self['cmd_x_spread'][ind]/redvec[1]
 
+    def describe_autocorr(self, band, scale = 0.1):
+        '''Describe the autocorrelation for all lightcurves
+
+        Three new columns are added to the datatable that contain the result.
+        (If the columns existed before, they are overwritten).
+    
+        Parameters
+        ----------
+        band : string
+            Band identifier
+        scale : float
+            Since the lightcurves are unevenly sampeled, the resulting
+            autocorrelation function needs to be binned. `scale` sets
+            the width of those bins.
+        '''
+        colnames = ['tcorr_', 'tauto_', 'valauto_']
+        for cname in colnames:
+            if cname+band not in self.colnames:
+                self.add_column(astropy.table.Column(name = cname+band, dtype=np.float, length = len(self)))
+                self[cname+band][:] = np.nan
+
+        for i in np.arange(0,len(self)):
+            if 't'+band in self.lclist[i].keys():
+                t1 = self.lclist[i]['t'+band]
+                m1 = self.lclist[i]['m'+band]
+                if len(t1) > 5:
+                    (tcorr, tauto, valauto) = lightcurves.describe_autocorr(t1, m1, scale = scale)
+                    self['tcorr_'+band][i] = tcorr
+                    self['tauto_'+band][i] = tauto
+                    self['valauto_'+band][i] = valauto
+
+        
  
     def calc_ls(self, band, maxper, oversamp = 4, maxfreq = 1.):
         '''calculate Lomb-Scagle periodograms for all sources
