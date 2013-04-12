@@ -25,11 +25,11 @@ def test_isoy2radec():
 def test_makecrossids_all():
     data1 = Table({'ra':np.array([0.,10.,15.]), 'dec':np.array([0.,0.,0.])})
     data2 = Table({'ra':np.array([0.,0,0,0,0]), 'dec':np.array([0.,.1,.5,1,5])})
-    ids = makecrossids_all(data1, data2, 1., ra1 = 'ra', dec1 = 'dec', ra2 = 'ra', dec2 = 'dec')
+    ids = atlas.makecrossids_all(data1, data2, 1., ra1 = 'ra', dec1 = 'dec', ra2 = 'ra', dec2 = 'dec')
     assert len(ids) == len(data1)
     assert np.all(ids[0] == [0, 1, 2, 3])
     for i in np.arange(1, len(data1)):
-        assert len(id[i]) == 0
+        assert len(ids[i]) == 0
 
 
 @pytest.fixture(scope = "module")
