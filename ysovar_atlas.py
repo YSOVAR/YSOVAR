@@ -41,8 +41,9 @@ def coord_CDS2RADEC(dat):
     '''
     radeg = dat['RAh']*15. + dat['RAm'] / 4. + dat['RAs']/4./60.
     dedeg = ((dat['DE-'] !='-')*2-1) * (dat['DEd'] + dat['DEm'] / 60. + dat['DEs']/3600.)
-    dat.add_column(astropy.table.Column(name = 'RAdeg', data = radeg))
-    dat.add_column(astropy.table.Column(name = 'DEdeg', data = dedeg))
+    coltype = type(dat.columns[0])  # could be Column or MaskedColumn
+    dat.add_column(coltype(name = 'RAdeg', data = radeg))
+    dat.add_column(coltype(name = 'DEdeg', data = dedeg))
 
 def coord_hmsdms2RADEC(dat, ra = ['RAh', 'RAm', 'RAs'],dec = ['DEd', 'DEm','DEs']):
     '''transform RA and DEC from table to degrees
@@ -656,9 +657,10 @@ def check_dataset(data, min_number_of_times = 5, match_dist = 1./3600.):
         for i, d in enumerate(data):
             if 't'+band in d.keys():
                 dt = np.diff(d['t'+band])
+                dm = np.diff(d['m'+band])
                 ind = np.where(dt < 0.00001)[0]
                 if len(ind) > 0:
-                    print 'IRAC'+band+ ', source ', i, 'at times: ', d['t'+band][ind]
+                    print 'IRAC'+band+ ', source ', i, 'at times: ', d['t'+band][ind], ' mag diff is: ', dm[ind]
     print '----------------------------------------------------------------------------'
     print 'The following entries are combined from multiple sources:'
     for i, d in enumerate(data):
