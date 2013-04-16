@@ -951,7 +951,7 @@ class YSOVAR_atlas(astropy.table.Table):
     
         '''
         t_simul = t_simul or self.t_simul
-        names = ['cmd_alpha2', 'cmd_alpha2_error', 'cmd_m2', 'cmd_b2', 'cmd_m2_error', 'cmd_b2_error', 'cmd_y_spread', 'cmd_alpha1', 'cmd_alpha1_error', 'cmd_m', 'cmd_b', 'cmd_m_error', 'cmd_b_error', 'cmd_x_spread']
+        names = ['cmd_alpha2', 'cmd_alpha2_error', 'cmd_m2', 'cmd_b2', 'cmd_m2_error', 'cmd_b2_error', 'cmd_x2_spread', 'cmd_alpha1', 'cmd_alpha1_error', 'cmd_m', 'cmd_b', 'cmd_m_error', 'cmd_b_error', 'cmd_x_spread']
 
         for name in names:
             if name not in self.colnames:
@@ -1008,7 +1008,7 @@ class YSOVAR_atlas(astropy.table.Table):
 
 
 
-    def cmd_dominated_by(self, redvec = redvec_36_45()):
+    def cmd_dominated_by(self, redvec = redvec_36_45):
         '''crude classification of CMD slope
 
         This is a basic classification of the cmd slope for the 3.6 and 4.5 bands.

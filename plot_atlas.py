@@ -1222,3 +1222,24 @@ def extraplots_2(data, infos, outroot_overview):
 
 
 
+
+def fancyplot(x, y, outroot, filename, colors, ind,  xlabel, ylabel, marker, xlog=False, ylog=False, legendtext='', legendpos='upper right'):
+    plt.clf()
+    if xlog == True:
+	plt.xscale('log')
+    
+    if ylog == True:
+	plt.yscale('log')
+    
+    pids = ['p0', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6']
+    for i in np.arange(0, len(colors)):
+	pids[i] = plt.scatter(x[ind[i]], y[ind[i]], marker=marker[i], color=colors[i] )
+    
+    if legendtext != '':
+	plt.legend(pids, legendtext, legendpos)
+    
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    #plt.axis(axis)
+    plt.savefig(outroot+filename)
+        
