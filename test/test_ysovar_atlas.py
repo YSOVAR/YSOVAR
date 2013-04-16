@@ -25,11 +25,11 @@ def test_isoy2radec():
 def test_makecrossids_all():
     data1 = Table({'ra':np.array([0.,10.,15.]), 'dec':np.array([0.,0.,0.])})
     data2 = Table({'ra':np.array([0.,0,0,0,0]), 'dec':np.array([0.,.1,.5,1,5])})
-    ids = makecrossids_all(data1, data2, 1., ra1 = 'ra', dec1 = 'dec', ra2 = 'ra', dec2 = 'dec')
+    ids = atlas.makecrossids_all(data1, data2, 1., ra1 = 'ra', dec1 = 'dec', ra2 = 'ra', dec2 = 'dec')
     assert len(ids) == len(data1)
     assert np.all(ids[0] == [0, 1, 2, 3])
     for i in np.arange(1, len(data1)):
-        assert len(id[i]) == 0
+        assert len(ids[i]) == 0
 
 
 @pytest.fixture(scope = "module")
@@ -81,7 +81,7 @@ class Test_expected_results():
         assert abs(data['min_36'][ind1] - 11.) < 1e-6
         assert abs(data['median_36'][ind1] - 12.) < 1e-6
         assert abs(data['wmean_36'][ind1] - 12.) < 1e-6
-        assert abs(data['stddev_36'][ind1]- 0.6455) < 1e-3
+        assert abs(data['stddev_36'][ind1]- 1./np.sqrt(2.)) < 1e-3
         assert abs(data['mad_36'][ind1] - 0.5) < 1e-6 
         assert abs(data['redchi2tomean_36'][ind1] - 50 ) < 1e-6
         # too short for testing delta reliably. Add test for that.
@@ -93,7 +93,7 @@ class Test_expected_results():
         assert abs(data['min_45'][ind1] - 11.) < 1e-6
         assert abs(data['median_45'][ind1] - 12.) < 1e-6
         assert abs(data['wmean_45'][ind1] - 12.) < 1e-6
-        assert abs(data['stddev_45'][ind1]- 0.6455) < 1e-3
+        assert abs(data['stddev_45'][ind1]- 1./np.sqrt(2.)) < 1e-3
         assert abs(data['mad_45'][ind1] - 0.5) < 1e-6 
         assert abs(data['redchi2tomean_45'][ind1] - 50 ) < 1e-6
         # too short for testing delta reliably. Add test for that.

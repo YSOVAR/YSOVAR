@@ -3,6 +3,7 @@ import itertools
 import numpy as np
 import scipy
 import scipy.odr as odr
+from scipy.signal import argrelmax
 import matplotlib.pylab as plt
 import astropy.table
 
@@ -31,7 +32,7 @@ def combinations_with_replacement(iterable, r):
 
 
 def delta_delta_points(data1, data2):
-    '''make a list of scatter dealta_data1 vs delta_data2 for all combinations of
+    '''make a list of scatter delta_data1 vs delta_data2 for all combinations of
     
     E.g. this can be used to calculate delta_T vs. delta mag
     
@@ -66,9 +67,7 @@ def delta_delta_points(data1, data2):
     return diff_1[ind], diff_2[ind]
 
 def delta_corr_points(x, data1, data2):
-    '''correlate two variables sample at the same (possible irregular) time points
-    
-    Essentially, this is a correlation function for irregularly gridded data.
+    '''correlate two variables sampled at the same (possible irregular) time points
     
     Parameters
     ----------
@@ -106,7 +105,7 @@ def slotting(xbins, x, y, kernel = None, normalize = True):
     
     `xbins` defines a (possible non-uniform) bin grid. For each bin, find all
     (x,y) pairs that belong in the x bin and add up all the y values in that bin.
-    Optiaonally, the y values can be convolved with a kernel before, so that
+    Optionally, the x values can be convolved with a kernel before, so that
     each y can contribute to more than one bin.
     
     Parameters
@@ -123,7 +122,7 @@ def slotting(xbins, x, y, kernel = None, normalize = True):
         If false, get the usual correlation function. For a regularly sampled
         time series, this is the same as zero-padding on the edges.
         For `normalize = true` divide by the number of entries in a time bin.
-        This avoids zero-padding, but leads to a irragular "noise" distribution
+        This avoids zero-padding, but leads to an irregular "noise" distribution
         over the bins.
     
     Returns
@@ -182,6 +181,48 @@ def normalize(data):
     '''
     return (data - data.mean()) / np.std(data)
 
+def describe_autocorr(t, val, scale = 0.1):
+    '''describe the time scales of time series using an autocorrelation function
+
+    This procedure takes an unevenly sampled time series and computes
+    the autocorrelation function from that. The result is binned in time bins
+    of width `scale` and three numbers are derived from the shape of the
+    autocorrelation function.
+
+    This is based on the definitions used by Maria for the Orion paper.
+    A visual definition is given `on the YSOVAR wiki (restriced acess)
+    <http://ysovar.ipac.caltech.edu/private/wiki/images/3/3c/Acfdefn.jpg>_`.
+
+    Parameters
+    ----------
+    t : np.ndarray
+        times of time series
+    val : np.ndarray
+        values of time series
+    scale : float
+        In order to accept irregular time series, the calculated autocorrelation
+        needs to be binned in time. `scale` sets the width of those bins.
+
+    Returns
+    -------
+    coherence_time : float
+        time when the autocorrelation function falls below 0.5
+    autocorr_time : float
+        position of first positive peak
+    autocorr_val : float
+        value of first positive peak
+    '''
+    if len(t) != len(val):
+        raise ValueError('Time t and value vector val must have same length.')
+    normy = normalize(val)
+    dt, dm = delta_corr_points(t, normy, normy)
+    autotime  = np.arange(np.min(dt), np.max(dt), scale)
+    autocorr, n_autobin = slotting(autotime, dt, dm)
+    coherence_time = autotime[np.min(np.where(autocorr < 0.5))]
+    ind1max = np.min(argrelmax(autocorr))
+    autocorr_time = autotime[ind1max]
+    autocorr_val = autocorr[ind1max]
+    return coherence_time, autocorr_time, autocorr_val
 
 def fit_poly(x, y, yerr, degree):
     ''' Fit a polynom to a dataset
@@ -282,9 +323,9 @@ def calc_poly_chi(data, verbose = True, bands=['36','45']):
             for band in bands:
                 if 't' + band in data.lclist[i].keys():
                     shift, coeff, chi2 = fit_poly(data.lclist[i]['t'+band], data.lclist[i]['m'+band], data.lclist[i]['m'+band+'_error'], deg)
-                    data['chi2poly_'+str(deg) + band][i] = chi2
+                    data['chi2poly_'+str(deg) + '_' + band][i] = chi2
                 else:
-                    data['chi2poly_'+str(deg) + band][i] = np.nan
+                    data['chi2poly_'+str(deg) + '_' + band][i] = np.nan
 
 
 
