@@ -53,6 +53,31 @@ The :class:`ysovar_atlas.YSOVAR_atlas` is build on top of a `astropy.table.Table
 <http://docs.astropy.org/en/v0.2/table/index.html>`_ object. See that
 documentation for the syntax on how to acess the data or add a column.
 
+The object ``mycloud`` combines two seperate things: If represents a
+table of properties for each lightcurve, but it also keeps a copy of
+the original list of dictionaries. It is still possible to add
+lightcurves for new bands to that dictionary, which can be found in
+``mycloud.lclist``. For each band there have to be three lists of
+equal lenths in that dictionary:
+
+- ``'t'+band`` for the observation times
+- ``'m'+band`` for the magnitudes
+- ``'m'+band+'_error'`` for the uncertainties
+
+``band`` can be any string **not** containing ``_``. As an example,
+here we loop through all lightcruves and construct a combined IRAC1
+and IRAC2 lightcurve. We then calculate the IRAC1-IRAC2 color and its
+error and add it to the dictionary, that the ``'3645'`` can be treated
+as if it were a separate band in the analysis later::
+
+    for d in mycloud.lclist:
+        merged = atlas.merge_lc(d, ['36', '45'])
+        if len(merged) > 5:
+            d['t3645'] = list(merged['t'])
+            d['m3645'] = list(merged['m36'] - merged ['m45'])
+            d['m3645_error'] = list(np.sqrt(merged['m36_error']**2 + merged['m45_error']**2))
+
+
 
 Merging with auxillary data
 ---------------------------
@@ -121,6 +146,8 @@ Then, we search for periods. The paramters in the call are the maximum period in
 
     mycloud.calc_ls('36', 300)
     mycloud.calc_ls('45', 300)
+    # If we added the band '3645' as in the example above, we can do:
+    mycloud.calc_ls('3645', 300)
 
     mycloud.is_there_a_good_period(20, 1,100)
 

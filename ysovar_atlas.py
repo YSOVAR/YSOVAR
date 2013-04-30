@@ -562,7 +562,7 @@ def Isoy2radec(isoy):
     dec = np.sign(float(s[9:])) * (float(s[10:12]) + int(s[12:14]) /60. + float(s[14:])/3600.)
     return ra, dec
 
-def dict_from_csv(csvfile,  match_dist = 1.0/3600., min_number_of_times = 5, channels = {'IRAC1': '36', 'IRAC2': '45'}, data = [], floor_error = {'IRAC1': 0.01, 'IRAC2': 0.008}, mag = 'mag1', emag = 'emag1', time = 'hmjd', source_name = 'sname',  verbose = True):
+def dict_from_csv(csvfile,  match_dist = 1.0/3600., min_number_of_times = 5, channels = {'IRAC1': '36', 'IRAC2': '45'}, data = [], floor_error = {'IRAC1': 0.01, 'IRAC2': 0.008}, mag = 'mag1', emag = 'emag1', time = 'hmjd', bg = None, source_name = 'sname',  verbose = True):
     '''Build YSOVAR lightcurves from database csv file
     
     Parameters
@@ -580,10 +580,20 @@ def dict_from_csv(csvfile,  match_dist = 1.0/3600., min_number_of_times = 5, cha
         that for `'IRAC1'` will be `'m36'` (magnitudes) and `'t36'` (times).
     data : list of dicts
         New entries will be added to data. It can be empty (the default).
+    mag : string
+        name of magnitude column
+    emag : string
+        name of column holding the error on the mag
+    time : string
+        name of column holding the time of observation
+    bg : string or None
+        name of column holding the bg for each observations (None indicates
+        that the bg column is not present).
     floor_error : dict
         Floor errors will be added in quadrature to all error values.
         The keys in the dictionary should be the same as in the channels
         dictionary.
+    
     verbose : bool
        If True, print progress status.
         
@@ -623,6 +633,8 @@ def dict_from_csv(csvfile,  match_dist = 1.0/3600., min_number_of_times = 5, cha
                 dict_temp['t'+channels[channel]].extend((tab[time][good]).tolist())
                 dict_temp['m'+channels[channel]].extend((tab[mag][good]).tolist())
                 dict_temp['m'+channels[channel]+'_error'].extend((tab[emag][good]).tolist())
+                if bg is not None:
+                    dict_temp['m'+channels[channel]+'_bg'].extend((tab[bg][good]).tolist())
     if verbose: print 'Cleaning up dictionaries'
     data = dict_cleanup(data, channels = channels, min_number_of_times = min_number_of_times, floor_error = floor_error)
     return data
@@ -733,10 +745,10 @@ class YSOVAR_atlas(astropy.table.Table):
         atlas.valfuncdict
         atlas.valerrfuncdict
 
-    to see which functions are implmented.
+    to see which functions are implemented.
 
     :class:`YSOVAR_atlas` also includes some more functions (which need to
-    be called explicitly) to add column that contain period, LS peaks,
+    be called explicitly) to add columns that contain period, LS peaks,
     etc.  See the documentation of the individual methods.
     '''
     def __init__(self, *args, **kwargs):
@@ -876,7 +888,7 @@ class YSOVAR_atlas(astropy.table.Table):
                 ind = np.array(cross_ids[k])
                 self.lclist[k]['t'+channel].extend(data[band[2]][ind].tolist())
                 self.lclist[k]['m'+channel].extend(data[band[0]][ind].tolist())
-                self.lclist[k]['t'+channel+'_error'].extend(data[band[1]][ind].tolist())
+                self.lclist[k]['m'+channel+'_error'].extend(data[band[1]][ind].tolist())
 
     def calc_allstats(self, band):
         '''calcualte all simple statistical descriptors for a single band
@@ -886,7 +898,7 @@ class YSOVAR_atlas(astropy.table.Table):
         added to the data table.
 
         This does no include periodicity, which requires certain user selected
-        parameter.
+        parameters.
 
         Parameters
         ----------
@@ -1099,7 +1111,7 @@ class YSOVAR_atlas(astropy.table.Table):
         '''calculate Lomb-Scagle periodograms for all sources
 
         A new column is added to the datatable that contains the result.
-        (If the column existed before, it is overwritten).
+        (If the column exists before, it is overwritten).
     
         Parameters
         ----------
@@ -1113,12 +1125,11 @@ class YSOVAR_atlas(astropy.table.Table):
             max freq of LS periodogram is maxfeq * "average" Nyquist frequency
              For very inhomogenously sampled data, values > 1 can be useful
         '''
-        if 'period_'+band not in self.colnames:
-            self.add_column(astropy.table.Column(name = 'period_'+band, dtype=np.float, length = len(self)))
-        if 'peak_'+band not in self.colnames:
-            self.add_column(astropy.table.Column(name = 'peak_'+band, dtype=np.float, length = len(self)))
-        self['period_'+band][:] = np.nan
-        self['peak_'+band][:] = np.nan
+        colnames = ['period_', 'peak_', 'FAP_']
+        for cname in colnames:
+            if cname+band not in self.colnames:
+                self.add_column(astropy.table.Column(name = cname+band, dtype=np.float, length = len(self)))
+                self[cname+band][:] = np.nan
 
         for i in np.arange(0,len(self)):
             if 't'+band in self.lclist[i].keys():
@@ -1134,6 +1145,8 @@ class YSOVAR_atlas(astropy.table.Table):
                         period1 = 1./test1[0][good][max1]
                         self['period_'+band][i] = period1
                         self['peak_'+band][i] = sig1
+                        self['FAP_'+band][i] = ysovar_lombscargle.getSignificance(
+                            test1[0][good], test1[1][good], good.sum(), oversamp)[max1]
   
 
     def is_there_a_good_period(self, power, minper, maxper, bands=['36','45']):

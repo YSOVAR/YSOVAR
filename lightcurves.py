@@ -3,7 +3,7 @@ import itertools
 import numpy as np
 import scipy
 import scipy.odr as odr
-from scipy.signal import argrelmax
+import scipy.signal
 import matplotlib.pylab as plt
 import astropy.table
 
@@ -181,7 +181,7 @@ def normalize(data):
     '''
     return (data - data.mean()) / np.std(data)
 
-def describe_autocorr(t, val, scale = 0.1):
+def describe_autocorr(t, val, scale = 0.1, autocorr_scale = 0.5):
     '''describe the time scales of time series using an autocorrelation function
 
     This procedure takes an unevenly sampled time series and computes
@@ -201,25 +201,29 @@ def describe_autocorr(t, val, scale = 0.1):
         values of time series
     scale : float
         In order to accept irregular time series, the calculated autocorrelation
-        needs to be binned in time. `scale` sets the width of those bins.
+        needs to be binned in time. ``scale`` sets the width of those bins.
+    autocorr_scale : float
+        ``coherence_time`` is the time when the autocorrelation falls below
+        ``autocorr_scale``. ``0.5`` is a common value, but for sparse sampling
+        ``0.2`` might give better results.
 
     Returns
     -------
     coherence_time : float
-        time when the autocorrelation function falls below 0.5
+        time when the autocorrelation function falls below ``autocorr_scale``
     autocorr_time : float
         position of first positive peak
     autocorr_val : float
         value of first positive peak
     '''
     if len(t) != len(val):
-        raise ValueError('Time t and value vector val must have same length.')
+        raise ValueError('Time t and vector val must have same length.')
     normy = normalize(val)
     dt, dm = delta_corr_points(t, normy, normy)
     autotime  = np.arange(np.min(dt), np.max(dt), scale)
     autocorr, n_autobin = slotting(autotime, dt, dm)
-    coherence_time = autotime[np.min(np.where(autocorr < 0.5))]
-    ind1max = np.min(argrelmax(autocorr))
+    coherence_time = autotime[np.min(np.where(autocorr < autocorr_scale))]
+    ind1max = np.min(scipy.signal.argrelmax(autocorr))
     autocorr_time = autotime[ind1max]
     autocorr_val = autocorr[ind1max]
     return coherence_time, autocorr_time, autocorr_val
@@ -228,7 +232,7 @@ def fit_poly(x, y, yerr, degree):
     ''' Fit a polynom to a dataset
     
     ..note:: 
-        For numerical stability the `x` values will be shifted, such that
+        For numerical stability the ``x`` values will be shifted, such that
         x[0] = 0!
     
     Thus, the parameters describe a fit to this shifted dataset! 
