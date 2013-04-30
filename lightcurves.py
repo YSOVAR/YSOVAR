@@ -313,8 +313,8 @@ def calc_poly_chi(data, verbose = True, bands=['36','45']):
     '''
     for deg in np.arange(1,6):
         for band in bands:
-            if 'chi2poly_'+str(deg) + band not in data.colnames:
-                data.add_column(astropy.table.Column(name = 'chi2poly_'+str(deg) + band, dtype= np.float, length = len(data)))
+            if 'chi2poly_'+str(deg) + '_' +band not in data.colnames:
+                data.add_column(astropy.table.Column(name = 'chi2poly_'+str(deg) + '_' + band, dtype= np.float, length = len(data)))
          
     for i in range(len(data)):
         if verbose and (np.mod(i, 100) == 0):
