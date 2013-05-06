@@ -6,6 +6,8 @@ import scipy.odr as odr
 import scipy.signal
 import matplotlib.pylab as plt
 import astropy.table
+import statsmodels.tsa.stattools as tsatools
+import statsmodels.tsa.ar_model as ar
 
 import ysovar_atlas as atlas
 
@@ -66,6 +68,36 @@ def delta_delta_points(data1, data2):
     ind = np.argsort(diff_1)
     return diff_1[ind], diff_2[ind]
 
+def corr_points(x, data1, data2):
+    '''Make all combinations of  two variables as times ``x``
+    
+    Parameters
+    ----------
+    x : np.ndarray
+        independend variable (x-axis), e.g. time of a lightcurve
+    data1, data2 : np.ndarray
+        dependent variables (y-axis), e.g. flux for a lightcurve
+    
+    Returns
+    -------
+    diff_x : np.ndarray
+        all possible intervals of the independent variable
+    d_2 : 2-d np.ndarray
+        corresponding values of dependent variables.
+        Array as shape (N, 2), where N is the number of combinations.
+    '''
+    if (len(x) != len(data2)) or (len(data1) != len(data2)):
+        raise ValueError('All input arrays must have the same number of elements.')
+    comblist = list(combinations_with_replacement(range(len(data1)), 2))
+    diff_x = np.zeros(len(comblist))
+    diff_2 = np.zeros((len(comblist), 2))
+    for i,j in enumerate(comblist):
+        diff_x[i] = x[j[1]] - x[j[0]]
+        d_2[i,:] = [data1[j[1]], data2[j[0]]]
+    ind = np.argsort(diff_x)
+    return diff_x[ind], diff_2[ind]
+
+
 def delta_corr_points(x, data1, data2):
     '''correlate two variables sampled at the same (possible irregular) time points
     
@@ -80,25 +112,15 @@ def delta_corr_points(x, data1, data2):
     -------
     diff_x : np.ndarray
         all possible intervals of the independent variable
-    diff_2 : np.ndarray
+    d_2 : np.ndarray
         corresponding correlation in the dependent variables
     
     ..note::
         Essentially, this is a correltation function for irregularly sampled data
     
     '''
-    #if not np.all(np.diff(data1) >= 0):
-        #raise ValueError('Independent inputarray must by monotonically increasing.')
-    if (len(x) != len(data2)) or (len(data1) != len(data2)):
-        raise ValueError('All input arrays must have the same number of elements.')
-    comblist = list(combinations_with_replacement(range(len(data1)), 2))
-    diff_x = np.zeros(len(comblist))
-    diff_2 = np.zeros_like(diff_x)
-    for i,j in enumerate(comblist):
-        diff_x[i] = x[j[1]] - x[j[0]]
-        diff_2[i] = data1[j[1]] * data2[j[0]]
-    ind = np.argsort(diff_x)
-    return diff_x[ind], diff_2[ind]
+    diff_x, d_2 = corr_points(x, data1, data2)
+    return diff_x, d_2[:,0] * d_2[:, 1]
 
 def slotting(xbins, x, y, kernel = None, normalize = True):
     '''Add up all the y values in each x bin
@@ -181,7 +203,7 @@ def normalize(data):
     '''
     return (data - data.mean()) / np.std(data)
 
-def describe_autocorr(t, val, scale = 0.1, autocorr_scale = 0.5):
+def describe_autocorr(t, val, scale = 0.1, autocorr_scale = 0.5, autosum_limit = 1.75):
     '''describe the time scales of time series using an autocorrelation function
 
     This procedure takes an unevenly sampled time series and computes
@@ -190,7 +212,7 @@ def describe_autocorr(t, val, scale = 0.1, autocorr_scale = 0.5):
     autocorrelation function.
 
     This is based on the definitions used by Maria for the Orion paper.
-    A visual definition is given `on the YSOVAR wiki (restriced acess)
+    A visual definition is given `on the YSOVAR wiki (restriced access)
     <http://ysovar.ipac.caltech.edu/private/wiki/images/3/3c/Acfdefn.jpg>_`.
 
     Parameters
@@ -206,6 +228,11 @@ def describe_autocorr(t, val, scale = 0.1, autocorr_scale = 0.5):
         ``coherence_time`` is the time when the autocorrelation falls below
         ``autocorr_scale``. ``0.5`` is a common value, but for sparse sampling
         ``0.2`` might give better results.
+    autosum_limit : float
+        The autocorrelation function is also calculated with a time binning
+        of ``scale``. To get a robust measure of this, the function
+        calculate the time scale for the cumularitve sum of the autocorrelation
+        function to exceed ``autosum_limit``.
 
     Returns
     -------
@@ -215,18 +242,83 @@ def describe_autocorr(t, val, scale = 0.1, autocorr_scale = 0.5):
         position of first positive peak
     autocorr_val : float
         value of first positive peak
+    cumsumtime : float
+        time when the cumulative sum of a finely binned autocorrelation function
+        exceeds ``autosum_limit`` for the first time; ``np.inf`` is returned
+        if the autocorrelation function never reaches this value.
     '''
     if len(t) != len(val):
         raise ValueError('Time t and vector val must have same length.')
+    
+    trebin = np.arange(np.min(t), np.max(t), scale)
+    valrebin = np.interp(trebin, t, val)
+    valnorm = normalize(valrebin)
+    trebin = trebin - trebin[0]
+    acf = tsatools.acf(valnorm, nlags = 50./scale)
+    
+    coherence_time = trebin[np.min(np.where(acf < autocorr_scale))]
+    ind1max = scipy.signal.argrelmax(acf)[0]
+    indsubzero = np.min(np.where(acf < 0))
+    # autocorr is positive and after the first negative value
+    ind = (acf[ind1max] > 0.) & (ind1max > indsubzero)
+    if ind.sum() > 0: 
+        ind1max = np.min(ind1max[ind])
+        autocorr_time = trebin[ind1max]
+        autocorr_val = acf[ind1max]
+    else:
+        autocorr_time = np.inf
+        autocorr_val = np.inf
+
     normy = normalize(val)
     dt, dm = delta_corr_points(t, normy, normy)
-    autotime  = np.arange(np.min(dt), np.max(dt), scale)
+    autotime  = np.arange(np.min(dt), np.max(dt), scale/10.)
     autocorr, n_autobin = slotting(autotime, dt, dm)
-    coherence_time = autotime[np.min(np.where(autocorr < autocorr_scale))]
-    ind1max = np.min(scipy.signal.argrelmax(autocorr))
-    autocorr_time = autotime[ind1max]
-    autocorr_val = autocorr[ind1max]
-    return coherence_time, autocorr_time, autocorr_val
+    autocorr[n_autobin == 0] = 0.  #np.nan because of devision
+    autosum = scale * autocorr.cumsum()
+    #autosum.cumsum() is value at end of bin, so add one bin width to autotime
+    ind = np.where(autosum > autosum_limit)
+    if len(ind[0]) > 0:
+        cumsumtime = scale + autotime[np.min(ind)]
+    else:
+        cumsumtime = np.inf
+
+    return coherence_time, autocorr_time, autocorr_val, cumsumtime
+
+def ARmodel(t, val, degree = 2, scale = 0.5):
+    '''Fit an auto-regressive (AR) model to data and retrn some parameters
+
+    The inout data can be irregularly binned, it will be resampled on a
+    regular grid with bin-width ``scale``.
+
+    Parameters
+    -----------
+    t : np.ndarray
+        input times
+    val : np.ndarray
+        input values
+    degree : int
+        degree of AR model
+    scale : float
+        binning ofthe resampled lightcurve
+
+    Returns
+    -------
+    params : list of ``(degree + 1)`` floats
+        parameters of the model
+    sigma2 : float
+        sigma of the Gaussian component of the model
+    aic : float
+       value of the Akaike information criterion
+    '''
+    if len(t) != len(val):
+        raise ValueError('Time t and vector val must have same length.')
+    
+    trebin = np.arange(np.min(t), np.max(t), scale)
+    valrebin = np.interp(trebin, t, val)
+    valrebin = normalize(valrebin)
+    modar = ar.AR(valrebin)
+    resar = modar.fit(degree)
+    return  resar.params, resar.sigma2, resar.aic
 
 def fit_poly(x, y, yerr, degree):
     ''' Fit a polynom to a dataset

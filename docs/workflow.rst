@@ -73,9 +73,9 @@ as if it were a separate band in the analysis later::
     for d in mycloud.lclist:
         merged = atlas.merge_lc(d, ['36', '45'])
         if len(merged) > 5:
-            d['t3645'] = list(merged['t'])
-            d['m3645'] = list(merged['m36'] - merged ['m45'])
-            d['m3645_error'] = list(np.sqrt(merged['m36_error']**2 + merged['m45_error']**2))
+            d['t3645'] = np.array(merged['t'])
+            d['m3645'] = np.array(merged['m36'] - merged ['m45'])
+            d['m3645_error'] = np.array(np.sqrt(merged['m36_error']**2 + merged['m45_error']**2))
 
 
 
