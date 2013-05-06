@@ -562,7 +562,7 @@ def Isoy2radec(isoy):
     dec = np.sign(float(s[9:])) * (float(s[10:12]) + int(s[12:14]) /60. + float(s[14:])/3600.)
     return ra, dec
 
-def dict_from_csv(csvfile,  match_dist = 1.0/3600., min_number_of_times = 5, channels = {'IRAC1': '36', 'IRAC2': '45'}, data = [], floor_error = {'IRAC1': 0.01, 'IRAC2': 0.008}, mag = 'mag1', emag = 'emag1', time = 'hmjd', bg = None, source_name = 'sname',  verbose = True):
+def dict_from_csv(csvfile,  match_dist = 1.0/3600., min_number_of_times = 5, channels = {'IRAC1': '36', 'IRAC2': '45'}, data = [], floor_error = {'IRAC1': 0.01, 'IRAC2': 0.007}, mag = 'mag1', emag = 'emag1', time = 'hmjd', bg = None, source_name = 'sname',  verbose = True):
     '''Build YSOVAR lightcurves from database csv file
     
     Parameters
@@ -691,7 +691,7 @@ def check_dataset(data, min_number_of_times = 5, match_dist = 1./3600.):
 
 #### The big table / Atlas class that holds the data and does some cool processing ##
 
-valfuncdict = {'mean': np.mean, 'median': np.median, 'stddev': lambda x: np.std(x, ddof = 1), 'min': np.min, 'max': np.max, 'mad': mad, 'delta': delta, 'skew': scipy.stats.skew, 'kurtosis': scipy.stats.kurtosis}
+valfuncdict = {'mean': np.mean, 'median': np.median, 'stddev': lambda x: np.std(x, ddof = 1), 'min': np.min, 'max': np.max, 'mad': mad, 'delta': delta, 'skew': scipy.stats.skew, 'kurtosis': scipy.stats.kurtosis, 'isnormal': lambda x: scipy.stats.normaltest(x)[1]}
 '''
 mad: median absolute deviation
 stddev: standard deviation calculated fron non-biased variance
