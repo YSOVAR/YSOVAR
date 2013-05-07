@@ -1107,7 +1107,7 @@ class YSOVAR_atlas(astropy.table.Table):
 
         
  
-    def calc_ls(self, band, maxper, oversamp = 4, maxfreq = 1.):
+    def calc_ls(self, band, maxper, oversamp = 4, maxfreq = 1., timefilter = np.isfinite):
         '''calculate Lomb-Scagle periodograms for all sources
 
         A new column is added to the datatable that contains the result.
@@ -1123,7 +1123,16 @@ class YSOVAR_atlas(astropy.table.Table):
             oversampling factor
         maxfreq : float
             max freq of LS periodogram is maxfeq * "average" Nyquist frequency
-             For very inhomogenously sampled data, values > 1 can be useful
+            For very inhomogenously sampled data, values > 1 can be useful
+        timefilter : function
+            This function has to accept a np.ndarray of observation times and
+            it should return an index array selecteing those time that should
+            be used for the LS periodogram.
+            The default function selects all times. An example how to use this
+            keyword to restrict the LS periodogram to include certain times only
+            is shown below::
+
+                cat.calc_ls('36',15., timefilter = lambda x : x < 55340)
         '''
         colnames = ['period_', 'peak_', 'FAP_']
         for cname in colnames:
