@@ -717,7 +717,7 @@ class YSOVAR_atlas(astropy.table.Table):
 
     The :class:`YSOVAR_atlas` is build on top of a `astropy.table.Table
     (documentation here)
-    <http://docs.astropy.org/en/v0.2/table/index.html>`_ object. See that
+    <http://docs.astropy.org/en/v0.21/table/index.html>`_ object. See that
     documentation for the syntax on how to acess the data or add a column.
 
     Some columns are auto-generated, when they are first
@@ -873,13 +873,33 @@ class YSOVAR_atlas(astropy.table.Table):
         data : astropy.table.Table or np.rec.array
             data table with new mags
         cross_ids : list of lists
-            for each elements in self, `cross_ids` says which row in `data`
+            for each elements in self, ``cross_ids`` says which row in `data`
             should be included for this object
         band : list of strings
             [name of mag, name or error, name of time]
         channel : string
             name of this channel in the lightcurve. Should be short and unique.
 
+        Example
+        -------
+        In this example ``cat`` is a :class:`YSOVAR_atlas` and `pairitel.csv`
+        looks like this::
+
+            2MASSRA,2MASSDEC,Jmag,JmagE,HJDATE
+            13.111, 14.111,12.,0.1,55000.
+            13.111, 14.111,12.1,0.1,55001.
+            <...>
+            14.000, 15.000, 13.1, 0.12, 55000.
+            <...>
+
+        Then, this code will perform add thos J mags to ``cat``::
+
+            jhk  = ascii.read('pairitel.csv', fill_values = ('', 'nan'))
+            cross_ids = atlas.makecrossids_all(cat, jhk, 1./3600.,
+                    ra1 = 'ra', dec1 = 'dec', ra2 = '2MASSRA', dec2 = '2MASSDEC')
+            cat.add_mags(jhk, cross_ids, ['Jmag','JmagE','HJDATE'], 'J')
+
+        
         '''
         if len(self) != len(cross_ids):
             raise ValueError('cross_ids needs to have same length as master table')
@@ -1143,7 +1163,9 @@ class YSOVAR_atlas(astropy.table.Table):
         for i in np.arange(0,len(self)):
             if 't'+band in self.lclist[i].keys():
                 t1 = self.lclist[i]['t'+band]
-                m1 = self.lclist[i]['m'+band]
+                ind = timefilter(t1)
+                t1 = t1[ind]
+                m1 = self.lclist[i]['m'+band][ind]
                 if len(t1) > 2:
                     test1 = ysovar_lombscargle.fasper(t1,m1,oversamp,maxfreq)
                     good = np.where(1/test1[0] < maxper)[0]
