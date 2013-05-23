@@ -1,9 +1,10 @@
+# -*- coding: utf-8 -*-
 import itertools
 
 import numpy as np
 import scipy
 import scipy.odr as odr
-from scipy.signal import argrelmax
+#from scipy.signal import argrelmax
 import matplotlib.pylab as plt
 import astropy.table
 
@@ -181,48 +182,48 @@ def normalize(data):
     '''
     return (data - data.mean()) / np.std(data)
 
-def describe_autocorr(t, val, scale = 0.1):
-    '''describe the time scales of time series using an autocorrelation function
+#def describe_autocorr(t, val, scale = 0.1):
+    #'''describe the time scales of time series using an autocorrelation function
 
-    This procedure takes an unevenly sampled time series and computes
-    the autocorrelation function from that. The result is binned in time bins
-    of width `scale` and three numbers are derived from the shape of the
-    autocorrelation function.
+    #This procedure takes an unevenly sampled time series and computes
+    #the autocorrelation function from that. The result is binned in time bins
+    #of width `scale` and three numbers are derived from the shape of the
+    #autocorrelation function.
 
-    This is based on the definitions used by Maria for the Orion paper.
-    A visual definition is given `on the YSOVAR wiki (restriced acess)
-    <http://ysovar.ipac.caltech.edu/private/wiki/images/3/3c/Acfdefn.jpg>_`.
+    #This is based on the definitions used by Maria for the Orion paper.
+    #A visual definition is given `on the YSOVAR wiki (restriced acess)
+    #<http://ysovar.ipac.caltech.edu/private/wiki/images/3/3c/Acfdefn.jpg>_`.
 
-    Parameters
-    ----------
-    t : np.ndarray
-        times of time series
-    val : np.ndarray
-        values of time series
-    scale : float
-        In order to accept irregular time series, the calculated autocorrelation
-        needs to be binned in time. `scale` sets the width of those bins.
+    #Parameters
+    #----------
+    #t : np.ndarray
+        #times of time series
+    #val : np.ndarray
+        #values of time series
+    #scale : float
+        #In order to accept irregular time series, the calculated autocorrelation
+        #needs to be binned in time. `scale` sets the width of those bins.
 
-    Returns
-    -------
-    coherence_time : float
-        time when the autocorrelation function falls below 0.5
-    autocorr_time : float
-        position of first positive peak
-    autocorr_val : float
-        value of first positive peak
-    '''
-    if len(t) != len(val):
-        raise ValueError('Time t and value vector val must have same length.')
-    normy = normalize(val)
-    dt, dm = delta_corr_points(t, normy, normy)
-    autotime  = np.arange(np.min(dt), np.max(dt), scale)
-    autocorr, n_autobin = slotting(autotime, dt, dm)
-    coherence_time = autotime[np.min(np.where(autocorr < 0.5))]
-    ind1max = np.min(argrelmax(autocorr))
-    autocorr_time = autotime[ind1max]
-    autocorr_val = autocorr[ind1max]
-    return coherence_time, autocorr_time, autocorr_val
+    #Returns
+    #-------
+    #coherence_time : float
+        #time when the autocorrelation function falls below 0.5
+    #autocorr_time : float
+        #position of first positive peak
+    #autocorr_val : float
+        #value of first positive peak
+    #'''
+    #if len(t) != len(val):
+        #raise ValueError('Time t and value vector val must have same length.')
+    #normy = normalize(val)
+    #dt, dm = delta_corr_points(t, normy, normy)
+    #autotime  = np.arange(np.min(dt), np.max(dt), scale)
+    #autocorr, n_autobin = slotting(autotime, dt, dm)
+    #coherence_time = autotime[np.min(np.where(autocorr < 0.5))]
+    #ind1max = np.min(argrelmax(autocorr))
+    #autocorr_time = autotime[ind1max]
+    #autocorr_val = autocorr[ind1max]
+    #return coherence_time, autocorr_time, autocorr_val
 
 def fit_poly(x, y, yerr, degree):
     ''' Fit a polynom to a dataset
@@ -323,9 +324,11 @@ def calc_poly_chi(data, verbose = True, bands=['36','45']):
             for band in bands:
                 if 't' + band in data.lclist[i].keys():
                     shift, coeff, chi2 = fit_poly(data.lclist[i]['t'+band], data.lclist[i]['m'+band], data.lclist[i]['m'+band+'_error'], deg)
-                    data['chi2poly_'+str(deg) + '_' + band][i] = chi2
+                    #data['chi2poly_'+str(deg) + '_' + band][i] = chi2
+                    data['chi2poly_'+str(deg) + band][i] = chi2
                 else:
-                    data['chi2poly_'+str(deg) + '_' + band][i] = np.nan
+                    #data['chi2poly_'+str(deg) + '_' + band][i] = np.nan
+                    data['chi2poly_'+str(deg) + band][i] = np.nan
 
 
 

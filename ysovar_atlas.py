@@ -562,7 +562,7 @@ def Isoy2radec(isoy):
     dec = np.sign(float(s[9:])) * (float(s[10:12]) + int(s[12:14]) /60. + float(s[14:])/3600.)
     return ra, dec
 
-def dict_from_csv(csvfile,  match_dist = 1.0/3600., min_number_of_times = 5, channels = {'IRAC1': '36', 'IRAC2': '45'}, data = [], floor_error = {'IRAC1': 0.01, 'IRAC2': 0.008}, mag = 'mag1', emag = 'emag1', time = 'hmjd', source_name = 'sname',  verbose = True):
+def dict_from_csv(csvfile,  match_dist = 1.0/3600., min_number_of_times = 5, channels = {'IRAC1': '36', 'IRAC2': '45'}, data = [], floor_error = {'IRAC1': 0.01, 'IRAC2': 0.008}, mag = 'mag1', emag = 'emag1', sky = 'sky', time = 'hmjd', source_name = 'sname',  verbose = True):
     '''Build YSOVAR lightcurves from database csv file
     
     Parameters
@@ -623,6 +623,7 @@ def dict_from_csv(csvfile,  match_dist = 1.0/3600., min_number_of_times = 5, cha
                 dict_temp['t'+channels[channel]].extend((tab[time][good]).tolist())
                 dict_temp['m'+channels[channel]].extend((tab[mag][good]).tolist())
                 dict_temp['m'+channels[channel]+'_error'].extend((tab[emag][good]).tolist())
+                dict_temp['sky'+channels[channel]].extend((tab[sky][good]).tolist())
     if verbose: print 'Cleaning up dictionaries'
     data = dict_cleanup(data, channels = channels, min_number_of_times = min_number_of_times, floor_error = floor_error)
     return data
