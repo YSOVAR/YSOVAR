@@ -88,7 +88,7 @@ def make_latexfile(atlas, outroot, name, ind = None, plotwidth = '0.45\\textwidt
     def fig_if_exists(filename, figname, plotwidth, fileextensions):
         filepresent = False
         for ext in fileextensions:
-            print filepresent, figname + ext
+            #print filepresent, figname + ext
             if os.path.exists(figname+ext): filepresent = True
         if filepresent: filename.write('\\includegraphics[width=' + plotwidth  + ']{' + os.path.basename(figname) + '}' + '\n')
 
@@ -829,7 +829,7 @@ def make_phased_lc_cmd_plots(atlas, outroot, bands = ['36','45'], marker = ['o',
 
 
 
-def make_sed_plots(infos, outroot, title = 'SED (data from Guenther+ 2012)'):
+def make_sed_plots(infos, outroot, title = 'SED (data from Guenther+ 2012)', sed_bands = {}):
     # plots SED from Guenther+ 2012, and adds m1 and m2 values from the Spitzer monitoring (marked with a different symbol) if the source does not have a Spitzer 3.6 or 4.5 datapoint in Guenther+ 2012.
     fig = plt.figure()
     for i in np.arange(0,len(infos)):
@@ -840,7 +840,7 @@ def make_sed_plots(infos, outroot, title = 'SED (data from Guenther+ 2012)'):
             plot_sed = deepcopy(infos.fluxes[i])
             lambdas = infos.lambdas[i]
         except AttributeError:
-            (lambdas, mags, mags_error, plot_sed) = get_sed(infos[i]) 
+            (lambdas, mags, mags_error, plot_sed) = get_sed(infos[i], sed_bands = sed_bands) 
         flag36 = 0
         flag45 = 0
         ax.plot(lambdas, plot_sed, 'o')

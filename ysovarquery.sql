@@ -1,6 +1,6 @@
 -- standard query to get all relevant data for a cluster
 
-SELECT source.id as ysovarid, source.name as sname, source.radeg as ra, source.dedeg as de, hmjd,filter.name as fname, mag1,emag1 ,useful,kind,photom.note from  photom,source,filter,cluster WHERE photom.source_id=source.id AND source.cluster=cluster.id AND cluster.short_name='L1688' AND photom.filter=filter.id and photom.kind = 0 AND (filter.name='IRAC1' OR filter.name='IRAC2')  AND useful= 1 AND hmjd > 55000
+SELECT source.id as ysovarid, source.name as sname, source.radeg as ra, source.dedeg as de, hmjd,filter.name as fname, mag1,emag1,sky ,useful,kind,photom.note from  photom,source,filter,cluster WHERE photom.source_id=source.id AND source.cluster=cluster.id AND cluster.short_name='L1688' AND photom.filter=filter.id and photom.kind = 0 AND (filter.name='IRAC1' OR filter.name='IRAC2')  AND useful= 1 AND hmjd > 55000
 
 
 

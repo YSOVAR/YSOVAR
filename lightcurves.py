@@ -4,9 +4,11 @@ import itertools
 import numpy as np
 import scipy
 import scipy.odr as odr
-#from scipy.signal import argrelmax
+import scipy.signal
 import matplotlib.pylab as plt
 import astropy.table
+import statsmodels.tsa.stattools as tsatools
+import statsmodels.tsa.ar_model as ar
 
 import ysovar_atlas as atlas
 
@@ -67,6 +69,36 @@ def delta_delta_points(data1, data2):
     ind = np.argsort(diff_1)
     return diff_1[ind], diff_2[ind]
 
+def corr_points(x, data1, data2):
+    '''Make all combinations of  two variables at times ``x``
+    
+    Parameters
+    ----------
+    x : np.ndarray
+        independend variable (x-axis), e.g. time of a lightcurve
+    data1, data2 : np.ndarray
+        dependent variables (y-axis), e.g. flux for a lightcurve
+    
+    Returns
+    -------
+    diff_x : np.ndarray
+        all possible intervals of the independent variable
+    d_2 : 2-d np.ndarray
+        corresponding values of dependent variables.
+        Array as shape (N, 2), where N is the number of combinations.
+    '''
+    if (len(x) != len(data2)) or (len(data1) != len(data2)):
+        raise ValueError('All input arrays must have the same number of elements.')
+    comblist = list(combinations_with_replacement(range(len(data1)), 2))
+    diff_x = np.zeros(len(comblist))
+    d_2 = np.zeros((len(comblist), 2))
+    for i,j in enumerate(comblist):
+        diff_x[i] = x[j[1]] - x[j[0]]
+        d_2[i,:] = [data1[j[1]], data2[j[0]]]
+    ind = np.argsort(diff_x)
+    return diff_x[ind], d_2[ind]
+
+
 def delta_corr_points(x, data1, data2):
     '''correlate two variables sampled at the same (possible irregular) time points
     
@@ -81,25 +113,15 @@ def delta_corr_points(x, data1, data2):
     -------
     diff_x : np.ndarray
         all possible intervals of the independent variable
-    diff_2 : np.ndarray
+    d_2 : np.ndarray
         corresponding correlation in the dependent variables
     
     ..note::
         Essentially, this is a correltation function for irregularly sampled data
     
     '''
-    #if not np.all(np.diff(data1) >= 0):
-        #raise ValueError('Independent inputarray must by monotonically increasing.')
-    if (len(x) != len(data2)) or (len(data1) != len(data2)):
-        raise ValueError('All input arrays must have the same number of elements.')
-    comblist = list(combinations_with_replacement(range(len(data1)), 2))
-    diff_x = np.zeros(len(comblist))
-    diff_2 = np.zeros_like(diff_x)
-    for i,j in enumerate(comblist):
-        diff_x[i] = x[j[1]] - x[j[0]]
-        diff_2[i] = data1[j[1]] * data2[j[0]]
-    ind = np.argsort(diff_x)
-    return diff_x[ind], diff_2[ind]
+    diff_x, d_2 = corr_points(x, data1, data2)
+    return diff_x, d_2[:,0] * d_2[:, 1]
 
 def slotting(xbins, x, y, kernel = None, normalize = True):
     '''Add up all the y values in each x bin
@@ -167,6 +189,34 @@ def gauss_kernel(scale = 1):
         return temp[1:] - temp[:-1]
     return kernel
 
+def discrete_struc_func(t, val, order  = 2, scale = 0.1):
+    '''discrete structure function
+
+    Parameters
+    ----------
+    t : np.ndarray
+        times of time series
+    val : np.ndarray
+        values of time series
+    order : float
+        the exponent of the structure function
+    scale : float
+        In order to accept irregular time series, the calculated autocorrelation
+        needs to be binned in time. ``scale`` sets the width of those bins.
+
+    Returns
+    -------
+    timebins : np.ndarray
+        time bins corresponding to the values in ``dsf``
+    dsf : np.ndarray
+        binned and averaged discrete structure function
+    '''
+    dt, dm = corr_points(t, val, val)
+    dm = np.abs(dm[:,0]-dm[:,1])**order
+    timebins = np.arange(0, np.max(dt), scale)
+    dsf, n = slotting(timebins, dt, dm)
+    return timebins, dsf
+
 def normalize(data):
     '''normalize data to mean = 1 and stddev = 1
     
@@ -182,54 +232,205 @@ def normalize(data):
     '''
     return (data - data.mean()) / np.std(data)
 
-#def describe_autocorr(t, val, scale = 0.1):
-    #'''describe the time scales of time series using an autocorrelation function
 
+def describe_autocorr(t, val, scale = 0.1, autocorr_scale = 0.5, autosum_limit = 1.75):
+    '''describe the time scales of time series using an autocorrelation function
+    
     #This procedure takes an unevenly sampled time series and computes
     #the autocorrelation function from that. The result is binned in time bins
     #of width `scale` and three numbers are derived from the shape of the
     #autocorrelation function.
 
-    #This is based on the definitions used by Maria for the Orion paper.
-    #A visual definition is given `on the YSOVAR wiki (restriced acess)
-    #<http://ysovar.ipac.caltech.edu/private/wiki/images/3/3c/Acfdefn.jpg>_`.
+    This is based on the definitions used by Maria for the Orion paper.
+    A visual definition is given `on the YSOVAR wiki (restriced access)
+    <http://ysovar.ipac.caltech.edu/private/wiki/images/3/3c/Acfdefn.jpg>_`.
 
-    #Parameters
-    #----------
-    #t : np.ndarray
-        #times of time series
-    #val : np.ndarray
-        #values of time series
-    #scale : float
-        #In order to accept irregular time series, the calculated autocorrelation
-        #needs to be binned in time. `scale` sets the width of those bins.
+    Parameters
+    ----------
+    t : np.ndarray
+        times of time series
+    val : np.ndarray
+        values of time series
+    scale : float
+        In order to accept irregular time series, the calculated autocorrelation
+        needs to be binned in time. ``scale`` sets the width of those bins.
+    autocorr_scale : float
+        ``coherence_time`` is the time when the autocorrelation falls below
+        ``autocorr_scale``. ``0.5`` is a common value, but for sparse sampling
+        ``0.2`` might give better results.
+    autosum_limit : float
+        The autocorrelation function is also calculated with a time binning
+        of ``scale``. To get a robust measure of this, the function
+        calculate the time scale for the cumularitve sum of the autocorrelation
+        function to exceed ``autosum_limit``.
 
-    #Returns
-    #-------
-    #coherence_time : float
-        #time when the autocorrelation function falls below 0.5
-    #autocorr_time : float
-        #position of first positive peak
-    #autocorr_val : float
-        #value of first positive peak
-    #'''
-    #if len(t) != len(val):
-        #raise ValueError('Time t and value vector val must have same length.')
-    #normy = normalize(val)
-    #dt, dm = delta_corr_points(t, normy, normy)
-    #autotime  = np.arange(np.min(dt), np.max(dt), scale)
-    #autocorr, n_autobin = slotting(autotime, dt, dm)
-    #coherence_time = autotime[np.min(np.where(autocorr < 0.5))]
-    #ind1max = np.min(argrelmax(autocorr))
-    #autocorr_time = autotime[ind1max]
-    #autocorr_val = autocorr[ind1max]
-    #return coherence_time, autocorr_time, autocorr_val
+    Returns
+    -------
+    coherence_time : float
+        time when the autocorrelation function falls below ``autocorr_scale``
+    autocorr_time : float
+        position of first positive peak
+    autocorr_val : float
+        value of first positive peak
+    cumsumtime : float
+        time when the cumulative sum of a finely binned autocorrelation function
+        exceeds ``autosum_limit`` for the first time; ``np.inf`` is returned
+        if the autocorrelation function never reaches this value.
+    '''
+    if len(t) != len(val):
+        raise ValueError('Time t and vector val must have same length.')
+    
+    trebin = np.arange(np.min(t), np.max(t), scale)
+    valrebin = np.interp(trebin, t, val)
+    valnorm = normalize(valrebin)
+    trebin = trebin - trebin[0]
+    acf = tsatools.acf(valnorm, nlags = 100./scale)
+    
+    coherence_time = trebin[np.min(np.where(acf < autocorr_scale))]
+    ind1max = scipy.signal.argrelmax(acf)[0]
+
+    #set defaults, in case first peak is not found
+    autocorr_time = np.inf
+    autocorr_val = np.inf
+
+    if len(ind1max) > 0:
+        indsubzero = np.min(np.where(acf < 0))
+        # autocorr is positive and after the first negative value
+        ind = (acf[ind1max] > 0.) & (ind1max > indsubzero)
+        if ind.sum() > 0: 
+            ind1max = np.min(ind1max[ind])
+            autocorr_time = trebin[ind1max]
+            autocorr_val = acf[ind1max]
+
+    normy = normalize(val)
+    dt, dm = delta_corr_points(t, normy, normy)
+    autotime  = np.arange(np.min(dt), np.max(dt), scale/10.)
+    autocorr, n_autobin = slotting(autotime, dt, dm)
+    autocorr[n_autobin == 0] = 0.  #np.nan because of devision
+    autosum = scale * autocorr.cumsum()
+    #autosum.cumsum() is value at end of bin, so add one bin width to autotime
+    ind = np.where(autosum > autosum_limit)
+    if len(ind[0]) > 0:
+        cumsumtime = scale + autotime[np.min(ind)]
+    else:
+        cumsumtime = np.inf
+
+    return coherence_time, autocorr_time, autocorr_val, cumsumtime
+
+def describe_all_acf(data, verbose = True, bands=['36','45'], scale = 0.1, autocorr_scale = 0.5, autosum_limit = 1.75, timefilter = np.isfinite):
+    '''describe the time scales of time series using an autocorrelation function
+
+    This procedure takes an unevenly sampled time series and computes
+    the autocorrelation function from that. The result is binned in time bins
+    of width `scale` and three numbers are derived from the shape of the
+    autocorrelation function.
+
+    This is based on the definitions used by Maria for the Orion paper.
+    A visual definition is given `on the YSOVAR wiki (restriced access)
+    <http://ysovar.ipac.caltech.edu/private/wiki/images/3/3c/Acfdefn.jpg>_`.
+
+    If add two columns for the coherence time and the cumsumtime of the ACF
+    to ``data``. If those columns existed befroe, they are overwritten.
+
+    Parameters
+    ----------
+    data : astropy.table.Table
+        structure with the defined object properties.
+    verbose : bool
+        Switch for extra verbosity.
+    bands : list of strings
+        Band identifiers, e.g. ['36', '45'], can also be a list with one
+        entry, e.g. ['36']
+    scale : float
+        In order to accept irregular time series, the calculated autocorrelation
+        needs to be binned in time. ``scale`` sets the width of those bins.
+    autocorr_scale : float
+        ``coherence_time`` is the time when the autocorrelation falls below
+        ``autocorr_scale``. ``0.5`` is a common value, but for sparse sampling
+        ``0.2`` might give better results.
+    autosum_limit : float
+        The autocorrelation function is also calculated with a time binning
+        of ``scale``. To get a robust measure of this, the function
+        calculate the time scale for the cumularitve sum of the autocorrelation
+        function to exceed ``autosum_limit``.
+    timefilter : function
+        This function has to accept a np.ndarray of observation times and
+        it should return an index array selecteing those time that should
+        be used for the LS periodogram.
+        The default function selects all times. An example how to use this
+        keyword to restrict the LS periodogram to include certain times only
+        is shown below::
+
+            lc.describe_all_acf(cat, timefilter = lambda x : x < 55340)
+    '''
+
+    for n in ['ACFcoherencetime', 'ACFcumsumtime']:
+        for band in bands:
+            if n + '_' +band not in data.colnames:
+                data.add_column(astropy.table.Column(name = n + '_' + band, dtype= np.float, length = len(data)))
+         
+    for i in range(len(data)):
+        if verbose and (np.mod(i, 100) == 0):
+            print 'Calculating ACF for dataset: ', i, ' of ', len(data)
+        for band in bands:
+            coherence_time = np.nan
+            cumsumtime = np.nan
+            if 't' + band in data.lclist[i].keys():
+                t = data.lclist[i]['t'+band]
+                ind = timefilter(t)
+                t = t[ind]
+                m = data.lclist[i]['m'+band][ind]
+                if len(t) > 25:
+                    coherence_time, autocorr_time, autocorr_val, cumsumtime = \
+                        describe_autocorr(t, m, scale = scale,
+                                          autocorr_scale = autocorr_scale,
+                                          autosum_limit = autosum_limit)
+            data['ACFcoherencetime_'+band][i] = coherence_time
+            data['ACFcumsumtime_'+band][i] = cumsumtime
+
+
+def ARmodel(t, val, degree = 2, scale = 0.5):
+    '''Fit an auto-regressive (AR) model to data and retrn some parameters
+
+    The inout data can be irregularly binned, it will be resampled on a
+    regular grid with bin-width ``scale``.
+
+    Parameters
+    -----------
+    t : np.ndarray
+        input times
+    val : np.ndarray
+        input values
+    degree : int
+        degree of AR model
+    scale : float
+        binning ofthe resampled lightcurve
+
+    Returns
+    -------
+    params : list of ``(degree + 1)`` floats
+        parameters of the model
+    sigma2 : float
+        sigma of the Gaussian component of the model
+    aic : float
+       value of the Akaike information criterion
+    '''
+    if len(t) != len(val):
+        raise ValueError('Time t and vector val must have same length.')
+    
+    trebin = np.arange(np.min(t), np.max(t), scale)
+    valrebin = np.interp(trebin, t, val)
+    valrebin = normalize(valrebin)
+    modar = ar.AR(valrebin)
+    resar = modar.fit(degree)
+    return  resar.params, resar.sigma2, resar.aic
+
 
 def fit_poly(x, y, yerr, degree):
     ''' Fit a polynom to a dataset
     
     ..note:: 
-        For numerical stability the `x` values will be shifted, such that
+        For numerical stability the ``x`` values will be shifted, such that
         x[0] = 0!
     
     Thus, the parameters describe a fit to this shifted dataset! 
@@ -314,8 +515,8 @@ def calc_poly_chi(data, verbose = True, bands=['36','45']):
     '''
     for deg in np.arange(1,6):
         for band in bands:
-            if 'chi2poly_'+str(deg) + band not in data.colnames:
-                data.add_column(astropy.table.Column(name = 'chi2poly_'+str(deg) + band, dtype= np.float, length = len(data)))
+            if 'chi2poly_'+str(deg) + '_' +band not in data.colnames:
+                data.add_column(astropy.table.Column(name = 'chi2poly_'+str(deg) + '_' + band, dtype= np.float, length = len(data)))
          
     for i in range(len(data)):
         if verbose and (np.mod(i, 100) == 0):
