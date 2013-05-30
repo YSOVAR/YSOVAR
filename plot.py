@@ -12,10 +12,11 @@ import matplotlib
 import matplotlib.pyplot as plt
 import pylab
 
-import ysovar_lombscargle
-import lightcurves as lc
+from . import ysovar_lombscargle
+from . import lightcurves as lc
+from .autofuncs import redvecs
 
-from ysovar_atlas import *
+from .ysovar_atlas import *
 
 filetype = ['.eps']
 mjdoffset = 55000
@@ -184,7 +185,7 @@ def get_stamps(data, outroot, verbose = True):
 
 def make_reddeningvector_for_plot(x1, x2, y1, y2):
     # calculates the coordinates of the reddening evctor in convenient plot coordinates.
-    slope = redvec_36_45
+    slope = redvecs['36_45']
     
     if (x2-x1 <= 0.1):
         AV = 0.25
@@ -586,15 +587,15 @@ def cmd_plot(atlas, mergedlc, verbose = True):
     y1 = ax.get_ylim()[0]
     y2 = ax.get_ylim()[1]
     # plot line for fit to data:
-    m = atlas['cmd_m']
-    b = atlas['cmd_b']
+    m = atlas['cmd_m_36_45']
+    b = atlas['cmd_b_36_45']
     line_x = np.array([x1, x2])
     line_y = np.array([m*x1+b, m*x2+b])
     ax.plot(line_x, line_y, 'k-', label = 'measured slope')
     
     # plot line for shifted reddening vector to data:
-    m = atlas['cmd_m_redvec']
-    b = atlas['cmd_b_redvec']
+    m = atlas['cmd_m_redvec_36_45']
+    b = atlas['cmd_b_redvec_36_45']
     line_x = np.array([x1, x2])
     line_y = np.array([m*x1+b, m*x2+b])
     ax.plot(line_x, line_y, 'k--', label = 'standard reddening')

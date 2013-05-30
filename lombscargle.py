@@ -30,6 +30,8 @@ Reference:
 from numpy import *
 from numpy.fft import *
 
+from .registry import register
+
 def __spread__(y, yy, n, x, m):
     """
     Given an array yy(0:n-1), extirpolate (spread) a value y into
@@ -218,3 +220,36 @@ def getSignificance(wk1, wk2, nout, ofac):
     sig[ind] = 1.0-(1.0-expy[ind])**effm
     return sig
 
+def lomb_scargle(time, mag, maxper=15., oversamp = 4, maxfreq = 1.):
+    '''calculate Lomb-Scagle periodograms for all sources
+
+    A new column is added to the datatable that contains the result.
+    (If the column exists before, it is overwritten).
+
+    Parameters
+    ----------
+    time : np.ndarray
+        times of obseration
+    mag : np.ndarray
+        Observed magnitudes
+    maxper : float
+        periods above this value will be ignored
+    oversamp : integer
+        oversampling factor
+    maxfreq : float
+        max freq of LS periodogram is maxfeq * "average" Nyquist frequency
+        For very inhomogenously sampled data, values > 1 can be useful
+    '''
+    if len(time) > 5:
+        test1 = fasper(time, mag, oversamp, maxfreq)
+        good = where(1/test1[0] < maxper)[0]
+        # be sensitive only to periods shorter than maxper
+        if len(good) > 0:
+            max1 = argmax(test1[1][good]) # find peak
+            sig1 = test1[1][good][max1]
+            period1 = 1./test1[0][good][max1]
+            fap = getSignificance(test1[0][good], test1[1][good], good.sum(), oversamp)[max1]
+            return period1, sig1, fap
+    return nan, nan, nan
+
+register(lomb_scargle, n_bands = 1, time = True, error = False, default_colnames = ['period', 'peak', 'FAP'], name = 'lombscargle')

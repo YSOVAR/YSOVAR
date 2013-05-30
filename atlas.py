@@ -17,14 +17,12 @@ import astropy.io.fits as pyfits
 import astropy.io.ascii as asciitable
 import astropy.table
 
-import ysovar_lombscargle
-from great_circle_dist import dist_radec, dist_radec_fast
-import lightcurves
-
+from .great_circle_dist import dist_radec, dist_radec_fast
+from . import lightcurves
+from . import registry
 
 ### Helper functions, simple one liners to do some math needed later on etc. ###
-
-            
+           
 
 def coord_CDS2RADEC(dat):
     '''transform RA and DEC from CDS table to degrees
@@ -68,141 +66,6 @@ def coord_hmsdms2RADEC(dat, ra = ['RAh', 'RAm', 'RAs'],dec = ['DEd', 'DEm','DEs'
     dat.add_column(astropy.table.Column(name = 'RAdeg', data = radeg))
     dat.add_column(astropy.table.Column(name = 'DEdeg', data = dedeg))
 
-
-def mad(data):
-    '''calculate median absolute deviation'''
-    return np.median(np.abs(data - np.median(data)))
-
-def redchi2tomean(data, error):
-    '''reduced chi^2 to mean'''
-    return np.sum( (data - np.mean(data))**2/(error**2) )/(len(data)-1)
-
-def delta(data):
-    '''with of distribution form 10%-90%'''
-    return (scipy.stats.mstats.mquantiles(data, prob=0.9) - scipy.stats.mstats.mquantiles(data, prob=0.1))/2.
-
-def wmean(data, error):
-    '''error weighted mean'''
-    return np.average(data, weights=1./error**2.)
-
-def stetson(data1, data1_error,data2, data2_error):
-    '''Calculates the Stetson index for a two-band light curve.
-
-    According to eqn (1) in Stetson 1996, PSAP, 108, 851.
-    This procedure uses on the matched lightcurves
-    (not frames with one band only) and assignes a weight (g_i) in
-    Stetson (1996) of 1 to each datapoint.
-
-    Parameters
-    ----------
-    data1 : np.array
-        single light curve of band 1 in magnitudes
-    data1_error : np.array
-        error on data points of band 1 in magnitudes    
-    data2 : np.array
-        single light curve of band 2 in magnitudes
-    data2_error : np.array
-        error on data points of band 2 in magnitudes          
-        
-    Returns
-    -------
-    stetson : float
-        Stetson value for the provided two-band light curve
-        
-    '''
-    # number of datapoints:
-    N = float(len(data1))
-    
-    if (len(data2) != N) or (len(data1_error) !=N) or (len(data2_error) !=N):
-        raise ValueError('All input arrays must have the same length')
-    if N > 1:
-        # weighted mean magnitudes in each passband:
-        wmean1 = wmean(data1, data1_error)
-        wmean2 = wmean(data2, data2_error)
-        # normalized residual from the weighted mean for each datapoint:
-        res_1 = (data1 - wmean1) / data1_error
-        res_2 = (data2 - wmean2) / data2_error
-        P_ik = res_1 * res_2
-        return np.sqrt(1./(N*(N-1))) * np.sum( np.sign(P_ik) * np.sqrt(np.abs(P_ik)) )
-    else:
-        return np.nan
-
-#def redvec_36_45():
-#    ''' Rieke & Lebofsky 1984:  I take the extinctions from the L and M band (3.5, 5.0).'''
-#    A36 = 0.058
-#    A45 = 0.023
-#    R36 = - A36/(A45 - A36)
-#    return np.array([R36, A36])
-redvec_36_45 = np.array([-2.58, 0.058])
-
-def fit_cmdslope_simple(data1, data1_error,data2, data2_error, redvec):
-    '''measures the slope of the data points in the color-magnitude diagram
-    
-    This is just fitted with ordinary least squares, using the analytic formula.
-    This is then used as a first guess for an orthogonal least squares fit with simultaneous treatment of errors in x and y (see fit_twocolor_odr)
-
-    Parameters
-    ----------
-    data1 : np.array
-        single light curve of band 1 in magnitudes
-    data1_error : np.array
-        error on data points of band 1 in magnitudes    
-    data2 : np.array
-        single light curve of band 2 in magnitudes
-    data2_error : np.array
-        error on data points of band 2 in magnitudes
-    redvec : np.array with two elements
-        theoretical reddening vector for the two bands chosen
-        
-    Returns
-    -------
-    m : float
-        slope of fit in color-magnitude diagram
-    b : float
-        axis intercept of fit
-    m2 : float
-        slope of the input theoretical reddening vector `redvec`
-    b2 : float
-        axis intercept of fit forcin the slope to `m2`
-    redchi2 : float
-        reduced chi^2 of fit of `[m,b]`
-    redchi2_2 : float
-        reduced chi^2 of fit of `b2`
-    
-        
-    '''
-    # number of datapoints:
-    N = float(len(data1))
-    
-    if (len(data2) != N) or (len(data1_error) !=N) or (len(data2_error) !=N):
-        raise ValueError('All input arrays must have the same length')
-
-    x = data1 - data2
-    y = data1
-    x_error = np.sqrt( data1_error**2 + data2_error**2 )
-    y_error = data1_error
-    # calculate the different sums:
-    sum_x = np.sum(x)
-    sum_y = np.sum(y)
-    sum_xx = np.sum(x**2)
-    sum_xy = np.sum(x*y)
-    # now get b and m from analytic formula:
-    m = (-sum_x*sum_y + N*sum_xy) / (N*sum_xx - sum_x*sum_x)
-    b = (-sum_x*sum_xy + sum_xx*sum_y) / (N*sum_xx - sum_x*sum_x)
-    # now calculate chisquared for this line:
-    redchi2 = np.sum( (y - (m*x+b))**2/ y_error**2)/(N-2)
-    
-    # now fit theoretical reddening vector to data, for plotting purposes (i.e. just shifting it in y:)
-    m2 = redvec[0] # the sign is okay, because the y axis is inverted in the plots
-    b2 = 1/N * ( sum_y - m2 * sum_x )
-    redchi2_2 = np.sum( (y - (m2*x+b2))**2/y_error**2 )/(N-2)
-    
-    return m,b,m2,b2,redchi2,redchi2_2
-
-
-
-
-
 ### Everything that deals with the lightcurve dictionaries and only with those ###
 
 def radec_from_dict(data, RA = 'ra', DEC = 'dec'):
@@ -242,17 +105,6 @@ def val_from_dict(data, name):
         col.append(d[name])
     return col
     
-
-def readguentherlist(filename):  
-    # reads the data from Table 3 in Guenther+ 2012 and returns both (a) all data and (b) only ysos and stars as one subset. The data from the paper needs to be stored locally as ascii file.
-    print 'reading data from Guenther+ 2012 ...'
-    a = asciitable.read(filename)
-    guenther_data = a.data
-    
-    guenther_data_subset = guenther_data[np.where( (guenther_data['Class'] == 'XYSO') | (guenther_data['Class'] == 'I*') | (guenther_data['Class'] == 'I') | (guenther_data['Class'] == 'II*') | (guenther_data['Class'] == 'II') | (guenther_data['Class'] == 'III') | (guenther_data['Class'] == 'III*')  | (guenther_data['Class'] == 'star')  )[0]]
-    
-    return (guenther_data, guenther_data_subset)
-
 
 def makeclassinteger(guenther_data_yso):
     # assigns an integer to the Guenther+ 2012 classes. 0=XYSO, 1=I+I*, 2=II+II*, 3=III, 4=star
@@ -509,10 +361,7 @@ def merge_lc(d, bands, t_simul=0.01):
     for name in names:
         tab.add_column(astropy.table.Column(name=name, length=0, dtype=np.float))
 
-    allbandsthere = True
-    for band in bands:
-        allbandsthere = allbandsthere and ('t'+band in d.keys())
-    if allbandsthere:
+    if set(['m'+b for b in bands]).issubset(d.keys()):
         for i, t in enumerate(d['t'+bands[0]]):
             minind = np.zeros(len(bands), dtype = np.int)
             diff_t = np.zeros(len(bands))
@@ -643,7 +492,7 @@ def check_dataset(data, min_number_of_times = 5, match_dist = 1./3600.):
     '''check dataset for anomalies, cross-match problems etc.
     
     Of course, not every problem can be detected here, but every time I find
-    something I add a check sp that next time this routine will warn me of the 
+    something I add a check so that next time this routine will warn me of the 
     same problem.
     
     Parameters
@@ -691,19 +540,6 @@ def check_dataset(data, min_number_of_times = 5, match_dist = 1./3600.):
 
 #### The big table / Atlas class that holds the data and does some cool processing ##
 
-valfuncdict = {'mean': np.mean, 'median': np.median, 'stddev': lambda x: np.std(x, ddof = 1), 'min': np.min, 'max': np.max, 'mad': mad, 'delta': delta, 'skew': scipy.stats.skew, 'kurtosis': scipy.stats.kurtosis, 'isnormal': lambda x: scipy.stats.normaltest(x)[1]}
-'''
-mad: median absolute deviation
-stddev: standard deviation calculated fron non-biased variance
-skew:  biased (no correction for dof) skew
-kurtosis:  biased (no correction for dof) Fischer kurtosis
-'''
-
-valerrfuncdict = {'redchi2tomean': redchi2tomean, 'wmean': wmean}
-'''
-redchi2tomean - reduced chi^2 to mean value
-wmean - error weighted mean
-'''
 
 class YSOVAR_atlas(astropy.table.Table):
     '''
@@ -739,17 +575,17 @@ class YSOVAR_atlas(astropy.table.Table):
     band `36` respectively. Data read with :meth:`dict_from_csv`
     atomatically has the required format.
 
-    More function may be added to this magic list later. Check::
+    More functions may be added to this magic list later. Check::
 
-        import ysovar_atlas as atlas
-        atlas.valfuncdict
-        atlas.valerrfuncdict
+        import YSOVAR.registry 
+        YSOVAR.registry.list_lcfuncs()
 
     to see which functions are implemented.
+    More function can be added.
 
-    :class:`YSOVAR_atlas` also includes some more functions (which need to
-    be called explicitly) to add columns that contain period, LS peaks,
-    etc.  See the documentation of the individual methods.
+    Also, table columns can be added to an ``YSOVAR_atlas`` object manually,
+    giving you all the freedome to to arbitrary calculations to arrive at those
+    vales.
     '''
     def __init__(self, *args, **kwargs):
         self.t_simul=0.01
@@ -766,8 +602,13 @@ class YSOVAR_atlas(astropy.table.Table):
     def __getitem__(self, item):
         
         if isinstance(item, basestring) and item not in self.colnames:
-            newcol = self.autocalc_newcol(item)
-            self.add_column(astropy.table.Column(data = newcol, name = item))
+            self.autocalc_newcol(item)
+            # safeguard against infinite loops, because there is no direct
+            # control, if the new column is really called item
+            if item in self.colnames:
+                return self[item]
+            else:
+                raise Exception('Attempted to calculate {0}, but the columns added are not called {1}'.format(item, item))
 
         # In thiscase astropy.table.Table would return a Row object
         # not a new Table
@@ -782,7 +623,8 @@ class YSOVAR_atlas(astropy.table.Table):
         table = YSOVAR_atlas(lclist = self.lclist[slice_])
         # delete the columns that are autogenerated and just copy everything
         table.remove_columns(['ra', 'dec', 'YSOVAR2_id','ISOY_NAME'])
-        table.meta = deepcopy(self.meta)
+        table.meta.clear()
+        table.meta.update(deepcopy(self.meta))
         cols = self.columns.values()
         names = [col.name for col in cols]
         data = self._data[slice_]
@@ -810,28 +652,126 @@ class YSOVAR_atlas(astropy.table.Table):
     def autocalc_newcol(self, name):
         '''automatically calcualte some columns on the fly'''
         splitname = name.split('_')
-        #make newcol of type float
-        newcol = astropy.table.Column(name = name, length = len(self), dtype = np.float)
-        newcol[:] = np.nan
-        if (len(splitname) == 2 and splitname[0] in valfuncdict):
-            func = valfuncdict[splitname[0]]
-            for i in np.arange(0,len(self)):
-                if 'm'+splitname[1] in self.lclist[i]:
-                    newcol[i] = func(self.lclist[i]['m'+splitname[1]])
-        elif (len(splitname) == 2) and (splitname[0] in valerrfuncdict):
-            func = valerrfuncdict[splitname[0]]
-            for i in np.arange(0, len(self)):
-                if ('m'+splitname[1] in self.lclist[i]) and ('m'+splitname[1]+'_error' in self.lclist[i]):
-                     newcol[i] = func(self.lclist[i]['m'+splitname[1]], self.lclist[i]['m'+splitname[1]+'_error'])
-        elif (len(splitname) == 2) and (splitname[0] == 'n'):
-            #want newcol of type int
-            newcol = astropy.table.Column(name = name, data = np.zeros(len(self), dtype = np.int))
-            for i in np.arange(0,len(self)):
-                if 'm'+splitname[1] in self.lclist[i]:
-                    newcol[i] = len(self.lclist[i]['m'+splitname[1]])
+        try:
+            self.calc(splitname[0], splitname[1:], colnames = [splitname[0]])
+        except:
+            raise ValueError('Column '+ name + ' not found and cannot be autogenerated. Use ``calc`` to explictly calculate')
+
+    def calc(self, name, bands, timefilter = None, data_preprocessor = None, colnames = [], overwrite = True, t_simul = None, **kwargs):
+        '''calculate Lomb-Scagle periodograms for all sources
+
+        A new column is added to the datatable that contains the result.
+        (If the column exists before, it is overwritten).
+    
+        Parameters
+        ----------
+        name : string
+            name of the function in the function registry for YSOVAR
+            (see :mod:`registry`)
+        bands : list of strings
+            Band identifiers
+        timefilter : function or None
+            If not  ``None``, this function accepts a np.ndarray of observation times and
+            it should return an index array selecteing those time to be
+            included in the calculation.
+            The default function selects all times. An example how to use this
+            keyword include certain times only is shown below::
+
+                cat.calc('mean', '36', timefilter = lambda x : x < 55340)
+
+        data_preprocessor : function or None
+            If not None, for each source, a row from the present table is
+            extracted as ``source = self[id]``. This yields a :class:`YSOVAR_atlas`
+            object with one row. This row is passed to
+            ``data_preprocessor``, which can modify the data (e.g. smooth
+            a lightcurve), but should keep the structure of the object
+            intact. Here is an example for a possible ``data_preprocessor``
+            function::
+
+                def smooth(source):
+                    lc = source.lclist[0]
+                    w = np.ones(5)
+                    if 'm36' in lc and len(lc['m36'] > 10):
+                        lc['m36'] = np.convolve(w/w.sum(),lc['m36'],mode='valid')
+                        # need to keep m36 and t36 same length
+                        lc['t36'] = lc['t36'][0:len(lc['m36'])]
+            return source
+                
+        colnames : list of strings
+            Basenames of columns to be hold the output of the calculation.
+            If not present already, the bands are added automatically with
+            ``dtype = np.float``::
+
+                cat.calc('mean', '36', colnames = ['stuff'])
+
+            would add the column ``stuff_36``.
+            If this is left empty, its default is set based on the function.
+            If colnames has less elements than the function returns, only the
+            first few are kept.
+        overwrite : bool
+            If True, values in existing columns are silently overwritten.
+        t_simul : float
+            max distance in days to accept datapoints in band 1 and 2 as simultaneous
+            In L1688 and IRAS 20050+2720 the distance between band 1 and 2 coverage
+            is within a few minutes, so a small number is sufficent to catch 
+            everything and to avoid false matches.
+            If ``None`` is given, this defaults to ``self.t_simul``.
+
+        All remaining keywords are passed to the function identified by ``name``.
+        '''
+        t_simul = t_simul or self.t_simul
+        if name not in registry.lc_funcs:
+            raise ValueError('{0} not found in registry of function for autogeneration of columns'.format(name))
+        # If band or colnames is just a string, make it a list
+        if isinstance(bands, basestring): bands = [bands]
+        if isinstance(colnames, basestring): colnames = [colnames]
+        
+        func = registry.lc_funcs[name]
+        if func.n_bands != len(bands):
+            raise ValueError('{0} requires {1} bands, but input was {2}'.format(name, func.n_bands, bands))
+                             
+        if colnames == []:
+            colnames = func.default_colnames.keys()
+            coltypes = func.default_colnames.values()
         else:
-            raise ValueError('Column '+ name + ' not found and cannot be autogenerated.')
-        return newcol
+            coltypes = [np.float] * len(colnames)
+        colnames = [c + '_' + '_'.join(bands) for c in colnames]
+        tband = set(['t'+b for b in bands])
+        if not overwrite and not set(colnames).isdisjoint(set(self.colnames)):
+            raise Excpetion('overwrite = False, but the following columns exist and would be overwritten: {0}'.format(set(colnames).intersection(set(self.colnames))))
+
+        #add new columns as required
+        for c,d in zip(colnames, coltypes):
+            if c not in self.colnames:
+                self.add_column(astropy.table.Column(name = c, dtype = d, length = len(self)))
+                if d == np.float:
+                    self[c][:] = np.nan
+
+        for i in np.arange(0,len(self)):
+            if tband.issubset(set(self.lclist[i].keys())):
+                # need to make copy before we change the content
+                source  = self[i]
+                source.lclist = np.array([deepcopy(self.lclist[i])])
+                if data_preprocessor:
+                    source = data_preprocessor(source)
+                lc = merge_lc(source.lclist[0], bands, t_simul = t_simul)
+                if timefilter:
+                    ind = timefilter(lc['t'])
+                    lc = lc[ind]
+
+                args = []
+                if func.time: args.append(lc['t'])
+                for b in bands:
+                    args.append(lc['m'+b])
+                if func.error:
+                    for b in bands:
+                        args.append(lc['m'+b+'_error'])
+                out = func(*args, **kwargs)
+                # If out contains several values, it is a tuple. If not, make it one
+                if not isinstance(out, tuple): out = (out, )
+                for res, col in zip(out, colnames):
+                    self[col][i] = res 
+
 
     def add_catalog_data(self, catalog, radius = 1./3600., names = None, ra1 = 'RA', dec1 = 'DE', ra2 = 'RA', dec2 = 'DE'):
         '''add information from a different Table
@@ -925,260 +865,10 @@ class YSOVAR_atlas(astropy.table.Table):
         band : string
             name of band for which the calcualtion should be performed
         '''
-        for f in valfuncdict.keys():
-            temp = self[f+'_'+band]
-        for f in valerrfuncdict.keys():
-            temp = self[f+'_'+band]
-
-
-
-    def calc_stetson(self, band1, band2, t_simul = None):
-        '''calculates the steson index between two bands for all lightcurves
-
-        A new column is added to the datatable that contains the result.
-        (If the column existed before, it is overwritten).
-        
-        Parameters
-        ----------
-        band1, band2 : string
-            name of the bands to be used for the calculation
-        t_simul : float
-            max distance in days to accept datapoints in band 1 and 2 as simultaneous
-            In L1688 and IRAS 20050+2720 the distance between band 1 and 2 coverage
-            is within a few minutes, so a small number is sufficent to catch 
-            everything and to avoid false matches.
-            If `None` is given, this defaults to `self.t_simul`.
-        '''
-        t_simul = t_simul or self.t_simul
-        name = 'stetson_'+band1+'_'+band2
-        if name not in self.colnames:
-            self.add_column(astropy.table.Column(name = name, length = len(self), dtype = np.float))
-        self[name][:] = np.nan
-        for i in np.arange(len(self)):
-            data = merge_lc(self.lclist[i],[band1, band2], t_simul = t_simul)
-            self[name][i] = stetson(data['m'+band1], data['m'+band1+'_error'],
-                                    data['m'+band2], data['m'+band2+'_error'])
-
-    def cmd_slope_simple(self, band1='36', band2='45', redvec=redvec_36_45, t_simul = None):
-        '''Fit straight line to color-magnitude diagram
-
-        A new column is added to the datatable that contains the result.
-        (If the column existed before, it is overwritten).
-        
-        Parameters
-        ----------
-        band1, band2 : string
-            name of the bands to be used for the calculation
-        t_simul : float
-            max distance in days to accept datapoints in band 1 and 2 as simultaneous
-            In L1688 and IRAS 20050+2720 the distance between band 1 and 2 coverage
-            is within a few minutes, so a small number is sufficent to catch 
-            everything and to avoid false matches.
-            If `None` is given, this defauls to `self.t_simul`.
-        '''
-        t_simul = t_simul or self.t_simul
-        names = ['cmd_m_plain', 'cmd_b_plain', 'cmd_m_redvec', 'cmd_b_redvec']
-        for name in names:
-            if name not in self.colnames:
-                self.add_column(astropy.table.Column(name = name, length = len(self), dtype = np.float))
-            self[name][:] = np.nan
-        for i in np.arange(len(self)):
-            data = merge_lc(self.lclist[i],[band1, band2], t_simul = t_simul)
-            if len(data) > 1:
-                m,b,m2,b2,chi2,ch2_2 = fit_cmdslope_simple(
-                    data['m'+band1], data['m'+band1+'_error'],
-                    data['m'+band2], data['m'+band2+'_error'],
-                    redvec)
-                self['cmd_m_plain'][i] = m
-                self['cmd_b_plain'][i] = b
-                self['cmd_m_redvec'][i] = m2
-                self['cmd_b_redvec'][i] = b2
-
-    def cmd_slope_odr(self, outroot = None, n_bootstrap = None, band1='36', band2='45', redvec=redvec_36_45, t_simul = None):
-        '''Performs straight line fit to CMD for all sources.
-
-        Adds fitted parameters to info structure.
-    
-        Parameters
-        ----------
-        outroot : string or None
-            dictionary where to save the plot, set to `None` for no plotting
-        n_bootstrap : integer or None
-            how many bootstrap trials, set to `None` for no bootstrapping
-        band1, band2 : string
-            name of the bands to be used for the calculation
-        t_simul : float
-            max distance in days to accept datapoints in band 1 and 2 as simultaneous
-            In L1688 and IRAS 20050+2720 the distance between band 1 and 2 coverage
-            is within a few minutes, so a small number is sufficent to catch 
-            everything and to avoid false matches.
-            If `None` is given, this defaults to `self.t_simul`.
-    
-        '''
-        t_simul = t_simul or self.t_simul
-        names = ['cmd_alpha2', 'cmd_alpha2_error', 'cmd_m2', 'cmd_b2', 'cmd_m2_error', 'cmd_b2_error', 'cmd_x_spread', 'cmd_alpha1', 'cmd_alpha1_error', 'cmd_m', 'cmd_b', 'cmd_m_error', 'cmd_b_error', 'cmd_x_spread']
-
-        for name in names:
-            if name not in self.colnames:
-                self.add_column(astropy.table.Column(name = name, length = len(self), dtype = np.float))
-            self[name][:] = np.nan
-        if ('cmd_m_plain' not in self.colnames) or ('cmd_b_plain' not in self.colnames):
-            self.cmd_slope_simple( band1, band2, redvec, t_simul)
-        for i in np.arange(len(self)):
-            data = merge_lc(self.lclist[i],[band1, band2], t_simul = t_simul)
-            if len(data) > 1:
-                # use the result of the plain least squares fitting as a first parameter guess.
-                p_guess = (self['cmd_m_plain'][i], self['cmd_b_plain'][i])
-            
-                (fit_output, bootstrap_output, bootstrap_raw, alpha, alpha_error, x_spread) = fit_twocolor_odr(data, i, p_guess, outroot, n_bootstrap, True)
-                self['cmd_alpha2'][i] = alpha
-                self['cmd_alpha2_error'][i] = alpha_error
-                self['cmd_m2'][i] = fit_output.beta[0]
-                self['cmd_b2'][i] = fit_output.beta[1]
-                self['cmd_m2_error'][i] = fit_output.sd_beta[0]
-                self['cmd_b2_error'][i] = fit_output.sd_beta[1]
-                self['cmd_x_spread'][i] = x_spread
-
-                (fit_output, bootstrap_output, bootstrap_raw, alpha, alpha_error, x_spread) = fit_twocolor_odr(data, i, p_guess, outroot, n_bootstrap, False)
-                self['cmd_alpha1'][i] = alpha
-                self['cmd_alpha1_error'][i] = alpha_error
-                self['cmd_m'][i] = fit_output.beta[0]
-                self['cmd_b'][i] = fit_output.beta[1]
-                self['cmd_m_error'][i] = fit_output.sd_beta[0]
-                self['cmd_b_error'][i] = fit_output.sd_beta[1]
-                self['cmd_x_spread'][i] = x_spread
-
-    def good_slope_angle(self):
-        '''Checks if ODR fit to slope encountered some pathological case
-        
-        Checks if the ODR fit with switched X and Y axes yields a more
-        constrained fit than the original axes. This basically catches the
-        pathological cases with a (nearly) vertical fit with large nominal errors.
-        '''
-        names = ['cmd_alpha', 'cmd_alpha_error']
-
-        for name in names:
-            if name not in self.colnames:
-                self.add_column(astropy.table.Column(name = name, length = len(self), dtype = np.float))
-            self[name][:] = np.nan
-
-        good = self['cmd_alpha1'] > -99999.
-        comp = self['cmd_alpha1_error']/self['cmd_alpha1'] < self['cmd_alpha2_error']/self['cmd_alpha2']
-        self['cmd_alpha'][good] = np.where(comp, self['cmd_alpha1'], self['cmd_alpha2'])[good]
-        self['cmd_alpha_error'][good] = np.where(comp, self['cmd_alpha1_error'], self['cmd_alpha2_error'])[good]
-
-
-
-    def cmd_dominated_by(self, redvec = redvec_36_45):
-        '''crude classification of CMD slope
-
-        This is some crude classification of the cmd slope.
-        anything that goes up and has a relative slope error of <40% is
-        "accretion-dominated", anythin that is within some cone around
-        the theoratical reddening and has error <40% is "extinction-dominated",
-        anything else is "other".
-        If slope is classified as extinction, the spread in the CMD is converted
-        to AV and stored.
-        '''
-        alpha_red = math.asin(redvec[0]/np.sqrt(redvec[0]**2 + 1**2)) # angle of standard reddening
-        if 'cmd_dominated' not in self.colnames:
-            self.add_column(astropy.table.Column(name = 'cmd_dominated', length = len(self), dtype = 'S10'))
-        if 'AV' not in self.colnames:
-            self.add_column(astropy.table.Column(name = 'AV', length = len(self), dtype = np.float))
-        self['AV'][:] = np.nan
-            
-        self['cmd_dominated'] = 'no data'
-        self['cmd_dominated'][self['cmd_alpha'] > -99999] = 'bad'
-        self['cmd_dominated'][(self['cmd_dominated'] == 'bad') & (self['cmd_alpha_error']/self['cmd_alpha'] <=0.3)] = 'extinc.' 
-        self['cmd_dominated'][(self['cmd_dominated'] == 'extinc.') & (self['cmd_alpha'] < 0.)] = 'accr.'
-        ind = (self['cmd_dominated'] == 'extinc.') 
-        self['AV'][ind] = self['cmd_x_spread'][ind]/redvec[1]
-
-    def describe_autocorr(self, band, scale = 0.1):
-        '''Describe the autocorrelation for all lightcurves
-
-        Three new columns are added to the datatable that contain the result.
-        (If the columns existed before, they are overwritten).
-    
-        Parameters
-        ----------
-        band : string
-            Band identifier
-        scale : float
-            Since the lightcurves are unevenly sampeled, the resulting
-            autocorrelation function needs to be binned. `scale` sets
-            the width of those bins.
-        '''
-        colnames = ['tcorr_', 'tauto_', 'valauto_']
-        for cname in colnames:
-            if cname+band not in self.colnames:
-                self.add_column(astropy.table.Column(name = cname+band, dtype=np.float, length = len(self)))
-                self[cname+band][:] = np.nan
-
-        for i in np.arange(0,len(self)):
-            if 't'+band in self.lclist[i].keys():
-                t1 = self.lclist[i]['t'+band]
-                m1 = self.lclist[i]['m'+band]
-                if len(t1) > 5:
-                    (tcorr, tauto, valauto) = lightcurves.describe_autocorr(t1, m1, scale = scale)
-                    self['tcorr_'+band][i] = tcorr
-                    self['tauto_'+band][i] = tauto
-                    self['valauto_'+band][i] = valauto
-
-        
- 
-    def calc_ls(self, band, maxper, oversamp = 4, maxfreq = 1., timefilter = np.isfinite):
-        '''calculate Lomb-Scagle periodograms for all sources
-
-        A new column is added to the datatable that contains the result.
-        (If the column exists before, it is overwritten).
-    
-        Parameters
-        ----------
-        band : string
-            Band identifier
-        maxper : float
-            periods above this value will be ignored
-        oversamp : integer
-            oversampling factor
-        maxfreq : float
-            max freq of LS periodogram is maxfeq * "average" Nyquist frequency
-            For very inhomogenously sampled data, values > 1 can be useful
-        timefilter : function
-            This function has to accept a np.ndarray of observation times and
-            it should return an index array selecteing those time that should
-            be used for the LS periodogram.
-            The default function selects all times. An example how to use this
-            keyword to restrict the LS periodogram to include certain times only
-            is shown below::
-
-                cat.calc_ls('36',15., timefilter = lambda x : x < 55340)
-        '''
-        colnames = ['period_', 'peak_', 'FAP_']
-        for cname in colnames:
-            if cname+band not in self.colnames:
-                self.add_column(astropy.table.Column(name = cname+band, dtype=np.float, length = len(self)))
-                self[cname+band][:] = np.nan
-
-        for i in np.arange(0,len(self)):
-            if 't'+band in self.lclist[i].keys():
-                t1 = self.lclist[i]['t'+band]
-                ind = timefilter(t1)
-                t1 = t1[ind]
-                m1 = self.lclist[i]['m'+band][ind]
-                if len(t1) > 2:
-                    test1 = ysovar_lombscargle.fasper(t1,m1,oversamp,maxfreq)
-                    good = np.where(1/test1[0] < maxper)[0]
-                    # be sensitive only to periods shorter than maxper
-                    if len(good) > 0:
-                        max1 = np.argmax(test1[1][good]) # find peak
-                        sig1 = test1[1][good][max1]
-                        period1 = 1./test1[0][good][max1]
-                        self['period_'+band][i] = period1
-                        self['peak_'+band][i] = sig1
-                        self['FAP_'+band][i] = ysovar_lombscargle.getSignificance(
-                            test1[0][good], test1[1][good], good.sum(), oversamp)[max1]
-  
+        for f in registry.lc_funcs:
+            func = registry.lc_funcs[f]
+            if func.n_bands ==1:
+                self.calc(f, band)
 
     def is_there_a_good_period(self, power, minper, maxper, bands=['36','45']):
         '''check if a strong periodogram peak is found
@@ -1224,193 +914,3 @@ class YSOVAR_atlas(astropy.table.Table):
         anygood = np.any(good, axis=1)
         self['good_period'][anygood] = periods[np.arange(peaks.shape[0]),bestpeak][anygood]
         self['good_peak'][anygood] = peaks[np.arange(peaks.shape[0]),bestpeak][anygood]
-
-
-
-
-def fit_twocolor_odr(dataset, index, p_guess, outroot = None,  n_bootstrap = None, xyswitch = False):
-    '''Fits a straight line to a single CMD, using a weighted orthogonal least squares algorithm (ODR).
-    
-    Parameters
-    ----------
-    dataset : np.ndarray
-        data collection for one detected source
-    index : integer
-        the index of the dataset within the data structure
-    p_guess : tuple
-        initial fit parameters derived from fit_twocolor
-    outroot : string or None
-        dictionary where to save the plot, set to `None` for no plotting
-    n_bootstrap : integer or None
-        how many bootstrap trials, set to `None` for no bootstrapping
-    xyswitch : boolean
-        if the X and Y axis will be switched for the fit or not. This has nothing to do with bisector fitting! The fitting algorithm used here takes care of errors in x and y simultaneously; the xyswitch is only for taking care of pathological cases where a vertical fitted line would occur without coordinate switching.
-    
-    Returns
-    -------
-    result : tuple
-        contains output = fit parameters, bootstrap_output = results from the bootstrap, bootstrap_raw = the actual bootstrapped data, alpha = the fitted slope angle, sd_alpha = the error on the fitted slope angle, x_spread = the spread of the data along the fitted line (0.5*(90th percentile - 10th percentile)))
-    '''
-    
-    #define the fitting function (in this case a straight line)
-    def fitfunc(p, x):
-        return p[0]*x + p[1]
-    
-    # define what the x and y data is:
-    if not(xyswitch):
-        x_data = dataset['m36'] - dataset['m45']
-        y_data = dataset['m36']
-        x_error = np.sqrt( (dataset['m36_error'])**2 + (dataset['m45_error'])**2 )
-        y_error = dataset['m36_error']
-    else:
-        y_data = dataset['m36'] - dataset['m45']
-        x_data = dataset['m36']
-        y_error = np.sqrt( (dataset['m36_error'])**2 + (dataset['m45_error'])**2 )
-        x_error = dataset['m36_error']
-    
-    # load data into ODR
-    data = scipy.odr.RealData(x=x_data, y=y_data, sx=x_error, sy=y_error)
-    # tell ODR what the fitting function is:
-    model = scipy.odr.Model(fitfunc)
-    # now do the fit:
-    fit = scipy.odr.ODR(data, model, p_guess, maxit=1000) 
-    output = fit.run()
-    
-    p = output.beta # the fitted function parameters
-    delta = output.delta # array of estimated errors in input variables
-    eps   = output.eps # array of estimated errors in response variables
-    #print output.stopreason[0]
-    bootstrap_output = np.array([np.NaN, np.NaN, np.NaN, np.NaN])
-    bootstrap_raw = (np.NaN, np.NaN, np.NaN)
-    # calculate slope angle. This is vs. horizontal axis.
-    hyp = np.sqrt(output.beta[0]**2 + 1**2)
-    alpha = math.asin(output.beta[0]/hyp)
-    # calculate error on slope angle by taking the mean difference of the angles derived from m+m_error and m-m_error.
-    alpha_plus  = math.asin((output.beta[0]+output.sd_beta[0])/np.sqrt((output.beta[0]+output.sd_beta[0])**2 + 1**2))
-    alpha_minus = math.asin((output.beta[0]-output.sd_beta[0])/np.sqrt((output.beta[0]-output.sd_beta[0])**2 + 1**2))
-    sd_alpha = 0.5*( np.abs(alpha - alpha_plus) + np.abs(alpha - alpha_minus) ) 
-    # define the spread along the fitted line. Use 90th and 10th quantile.
-    # output.xplus and output.y are the x and y values of the projection of the original data onto the fit.
-    # okay, first transform coordinate system so that x axis is along fit. To do this, first shift everything by -p[1] (this is -b), then rotate by -alpha. New x and y coordinates are then:
-    #
-    # |x'|   |cos(-alpha) -sin(-alpha)| | x |
-    # |  | = |                        | |   |
-    # |y'|   |sin(-alpha)  cos(-alpha)| |y-b|
-    #
-    x_new = math.cos(-alpha) * output.xplus - math.sin(-alpha)*(output.y - p[1])
-    y_new = math.sin(-alpha) * output.xplus + math.cos(-alpha)*(output.y - p[1])
-    # The y_new values are now essentially zero. (As they should.)
-    # Now sort x_new and get 90th and 10th quantile:
-    x_new.sort()
-    x_spread = scipy.stats.mstats.mquantiles(x_new, prob=0.9)[0] - scipy.stats.mstats.mquantiles(x_new, prob=0.1)[0]
-    #print x_spread
-    
-    
-    if outroot is not None:
-        # I got the following from a python script from http://www.physics.utoronto.ca/~phy326/python/odr_fit_to_data.py, I have to check this properly.
-        # This does a residual plot, and some bootstrapping if desired.
-        # error ellipses:
-        xstar = x_error*np.sqrt( ((y_error*delta)**2) / ( (y_error*delta)**2 + (x_error*eps)**2 ) )
-        ystar = y_error*np.sqrt( ((x_error*eps)**2) / ( (y_error*delta)**2 + (x_error*eps)**2 ) )
-        adjusted_err = np.sqrt(xstar**2 + ystar**2)
-        residual = np.sign(y_data - fitfunc(p,x_data))*np.sqrt(delta**2 + eps**2)
-        fig = plt.figure()
-        fit = fig.add_subplot(211)
-        fit.set_xticklabels( () ) 
-        plt.ylabel("[3.6]")
-        plt.title("Orthogonal Distance Regression Fit to Data")
-        # plot data as circles and model as line
-        x_model = np.arange(min(x_data),max(x_data),(max(x_data)-min(x_data))/1000.)
-        fit.plot(x_data,y_data,'ro', x_model, fitfunc(p,x_model))
-        fit.errorbar(x_data, y_data, xerr=x_error, yerr=y_error, fmt='r+')
-        fit.set_yscale('linear')
-        
-        a = np.array([output.xplus,x_data])   # output.xplus: x-values of datapoints projected onto fit
-        b = np.array([output.y,y_data])  # output.y: y-values of datapoints projected onto fit
-        fit.plot(np.array([a[0][0],a[1][0]]), np.array([b[0][0],b[1][0]]), 'k-', label = 'Residuals')
-        print np.array([a[0][0],a[1][0]])
-        print np.array([b[0][0],b[1][0]])
-        for i in range(1,len(y_data)):
-            fit.plot(np.array([a[0][i],a[1][i]]), np.array([b[0][i],b[1][i]]),'k-')
-        
-        fit.set_ylim([min(y_data)-0.05, max(y_data)+0.05])
-        fit.set_ylim(fit.get_ylim()[::-1])
-        fit.legend(loc='lower left')
-        # separate plot to show residuals
-        residuals = fig.add_subplot(212) # 3 rows, 1 column, subplot 2
-        residuals.errorbar(x=a[0][:],y=residual,yerr=adjusted_err, fmt="r+", label = "Residuals")
-        # make sure residual plot has same x axis as fit plot
-        residuals.set_xlim(fit.get_xlim())
-        residuals.set_ylim(residuals.get_ylim()[::-1])
-        # Draw a horizontal line at zero on residuals plot
-        plt.axhline(y=0, color='b')
-        # Label axes
-        plt.xlabel("[3.6] - [4.5]")
-        plt.ylabel("Residuals")
-        plt.savefig(outroot + str(index) + '_odrfit.eps')
-    
-    if n_bootstrap is not None:
-        print 'bootstrapping...'
-        # take a random half of the data and do the fit (choosing without replacement, standard bootstrap). Do this a lot of times and construct a cumulative distribution function for the slope and the intercept of the fitted line.
-        # now what I actually want is the slope angle a, not m.
-        m = np.array([])
-        b = np.array([])
-        for i in np.arange(0, n_bootstrap):
-            indices = np.arange(0,len(x_data))
-            np.random.shuffle(indices)
-            ind = indices[0:len(x_data)/2] # dividing by integer on purpose.
-            dat = scipy.odr.RealData(x=x_data[ind], y=y_data[ind], sx=x_error[ind], sy=y_error[ind])
-            fit = scipy.odr.ODR(dat, model, p_guess, maxit=5000,job=10) 
-            out = fit.run()
-            m = np.append(m, out.beta[0])
-            b = np.append(b, out.beta[1])
-        
-        a = np.arctan(m) # in radian
-        # plot histograms for m and b:
-        plt.clf()
-        n_m, bins_m, patches_m = plt.hist(m, 100, normed=True )
-        plt.savefig('m_hist.eps')
-        plt.clf()
-        n_b, bins_b, patches_b = plt.hist(b, 100, normed=True)
-        plt.savefig('b_hist.eps')
-        plt.clf()
-        n_a, bins_a, patches_a = plt.hist(a, 100, normed=True)
-        plt.savefig('a_hist.eps')
-        plt.clf()
-        # get median and symmetric 68% interval for m, b and alpha:
-        m_median = np.median(m)
-        m_down = np.sort(m)[ int(round(0.16*len(m))) ]
-        m_up   = np.sort(m)[ int(round(0.84*len(m))) ]
-        m_error = np.mean([abs(m_down-m_median), abs(m_up-m_median)])
-        #print (m_median, m_up, m_down, m_error)
-        b_median = np.median(b)
-        b_down = np.sort(b)[ int(round(0.16*len(b))) ]
-        b_up   = np.sort(b)[ int(round(0.84*len(b))) ]
-        b_error = np.mean([abs(b_down-b_median), abs(b_up-b_median)])
-        #print (b_median, b_up, b_down, b_error)
-        a_median = np.median(a)
-        a_down = np.sort(a)[ int(round(0.16*len(a))) ]
-        a_up   = np.sort(a)[ int(round(0.84*len(a))) ]
-        a_error = np.mean([abs(a_down-a_median), abs(a_up-a_median)])
-        #print (b_median, b_up, b_down, b_error)
-        
-        bootstrap_output = np.array([m_median, m_error, b_median, b_error, a_median, a_error])
-        bootstrap_raw = (m, b, a)
-    
-    if xyswitch:
-        # re-transform slope and intercept to original xy system
-        # x = m * y + b
-        # y = 1/m * x - b/m
-        output.beta[1] = -output.beta[1]/output.beta[0] # b
-        output.beta[0] = 1./output.beta[0] # m
-        alpha = np.pi/2 - alpha
-    
-    result = (output, bootstrap_output, bootstrap_raw, alpha, sd_alpha, x_spread)
-    return result
-
-
-
-
-
-
-
