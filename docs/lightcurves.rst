@@ -6,6 +6,6 @@ for periodograms.
 
 
 
-.. automodule:: lightcurves
+.. automodule:: YSOVAR.lightcurves
    :members:
    :undoc-members:

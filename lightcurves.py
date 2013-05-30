@@ -253,7 +253,7 @@ def describe_autocorr(t, val, scale = 0.1, autocorr_scale = 0.5, autosum_limit =
 
     This is based on the definitions used by Maria for the Orion paper.
     A visual definition is given `on the YSOVAR wiki (restriced access)
-    <http://ysovar.ipac.caltech.edu/private/wiki/images/3/3c/Acfdefn.jpg>_`.
+    <http://ysovar.ipac.caltech.edu/private/wiki/images/3/3c/Acfdefn.jpg>`_.
 
     Parameters
     ----------

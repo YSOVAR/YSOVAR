@@ -683,7 +683,7 @@ class YSOVAR_atlas(astropy.table.Table):
                         lc['m36'] = np.convolve(w/w.sum(),lc['m36'],mode='valid')
                         # need to keep m36 and t36 same length
                         lc['t36'] = lc['t36'][0:len(lc['m36'])]
-            return source
+                    return source
                 
         colnames : list of strings
             Basenames of columns to be hold the output of the calculation.

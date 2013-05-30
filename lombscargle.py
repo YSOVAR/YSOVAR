@@ -220,7 +220,7 @@ def getSignificance(wk1, wk2, nout, ofac):
     sig[ind] = 1.0-(1.0-expy[ind])**effm
     return sig
 
-def lomb_scargle(time, mag, maxper=15., oversamp = 4, maxfreq = 1.):
+def lombscargle(time, mag, maxper=15., oversamp = 4, maxfreq = 1.):
     '''calculate Lomb-Scagle periodograms for all sources
 
     A new column is added to the datatable that contains the result.
@@ -252,4 +252,4 @@ def lomb_scargle(time, mag, maxper=15., oversamp = 4, maxfreq = 1.):
             return period1, sig1, fap
     return nan, nan, nan
 
-register(lomb_scargle, n_bands = 1, time = True, error = False, default_colnames = ['period', 'peak', 'FAP'], name = 'lombscargle')
+register(lombscargle, n_bands = 1, time = True, error = False, default_colnames = ['period', 'peak', 'FAP'])
