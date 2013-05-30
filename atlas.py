@@ -106,18 +106,6 @@ def val_from_dict(data, name):
     return col
     
 
-def makeclassinteger(guenther_data_yso):
-    # assigns an integer to the Guenther+ 2012 classes. 0=XYSO, 1=I+I*, 2=II+II*, 3=III, 4=star
-    guenther_class = np.ones(len(guenther_data_yso),int)*-9
-    guenther_class[np.where(guenther_data_yso['Class'] == 'XYSO' )[0]] = 0
-    guenther_class[np.where((guenther_data_yso['Class'] == 'I*') | (guenther_data_yso['Class'] == 'I'))[0]] = 1
-    guenther_class[np.where((guenther_data_yso['Class'] == 'II*') | (guenther_data_yso['Class'] == 'II'))[0]] = 2
-    guenther_class[np.where((guenther_data_yso['Class'] == 'III') | (guenther_data_yso['Class'] == 'III*'))[0]] = 3
-    guenther_class[np.where(guenther_data_yso['Class'] == 'star')[0]] = 4
-    return guenther_class
-
-
-
 
 def makecrossids(data1, data2, radius, ra1='RAdeg', dec1='DEdeg', ra2='ra', dec2='dec'):
     '''Cross-match two lists of coordinates, return closest match

@@ -12,11 +12,11 @@ import matplotlib
 import matplotlib.pyplot as plt
 import pylab
 
-from . import ysovar_lombscargle
+from . import lombscargle
 from . import lightcurves as lc
 from .autofuncs import redvecs
 
-from .ysovar_atlas import *
+from .atlas import *
 
 filetype = ['.eps']
 mjdoffset = 55000
@@ -744,13 +744,13 @@ def make_ls_plots(atlas, outroot, maxper, oversamp, maxfreq, verbose = True):
             t1 = data['t36']
             m1 = data['m36']
             if len(t1) > 2:
-                test1 = ysovar_lombscargle.fasper(t1,m1,oversamp,maxfreq)
+                test1 = lombscargle.fasper(t1,m1,oversamp,maxfreq)
                 ax.plot(1/test1[0],test1[1],linewidth=2, label = r'3.6 $\mu$m')
         if 't45' in  data.keys():
             t2 = data['t45']
             m2 = data['m45']
             if len(t2) > 2:
-                test2 = ysovar_lombscargle.fasper(t2,m2,oversamp,maxfreq)
+                test2 = lombscargle.fasper(t2,m2,oversamp,maxfreq)
                 ax.plot(1/test2[0],test2[1],linewidth=2, label = r'4.5 $\mu$m')
 
         if ('t36' in data.keys() and (np.isfinite(test1[1]).sum() > 1)) or ('t45' in data.keys() and (np.isfinite(test2[1]).sum() > 1)):
