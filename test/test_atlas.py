@@ -32,6 +32,17 @@ def test_makecrossids_all():
         assert len(ids[i]) == 0
 
 @pytest.mark.usefixtures("data")
+class Test_atlas_functions():
+    def test_get_row(self, data):
+        t4 = data[4]
+        assert t4.lclist[0] == data.lclist[4]
+
+    def test_get_slice(self, data):
+        t4step = data[0:10:4]
+        assert t4step.lclist[1]  == data.lclist[4]
+
+
+@pytest.mark.usefixtures("data")
 class Test_expected_results():
     def test_ignore_short_lcs(self, data):
         assert '-998' not in set(data['YSOVAR2_id'])

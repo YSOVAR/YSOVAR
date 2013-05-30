@@ -58,18 +58,18 @@ def wmean(data, error):
     return np.average(data, weights=1./error**2.)
 
 for func in [np.mean, np.median, mad, delta]:
-    register(func, n_bands = 1, error = False, time = False)
+    register(func, n_bands = 1, error = False, time = False, force = True)
 
-register(len, n_bands = 1, error = False, time = False, name = 'n', other_cols = OrderedDict([('n', int)]))
-register(np.min, n_bands = 1, error = False, time = False, name = 'min')
-register(np.max, n_bands = 1, error = False, time = False, name = 'max')
-register(np.std, n_bands = 1, time = False, error = False, name = 'stddev', description = 'standard deviation calculated fron non-biased variance', kwargs = {'ddof': 1})
-register(scipy.stats.skew, n_bands = 1, error = False, time = False, description = 'biased (no correction for dof) skew')
-register(scipy.stats.kurtosis, n_bands = 1, error = False, time = False, description = 'biased (no correction for dof) kurtosis')
-register(lambda x: scipy.stats.normaltest(x)[1], n_bands = 1, error = False, time = False, name = 'isnormal', description = 'p-value for a 2-sided chi squared probability that the distribution is normal')
+register(len, n_bands = 1, error = False, time = False, name = 'n', other_cols = OrderedDict([('n', int)]), force = True)
+register(np.min, n_bands = 1, error = False, time = False, name = 'min', force = True)
+register(np.max, n_bands = 1, error = False, time = False, name = 'max', force = True)
+register(np.std, n_bands = 1, time = False, error = False, name = 'stddev', description = 'standard deviation calculated fron non-biased variance', kwargs = {'ddof': 1}, force = True)
+register(scipy.stats.skew, n_bands = 1, error = False, time = False, description = 'biased (no correction for dof) skew', force = True)
+register(scipy.stats.kurtosis, n_bands = 1, error = False, time = False, description = 'biased (no correction for dof) kurtosis', force = True)
+register(lambda x: scipy.stats.normaltest(x)[1], n_bands = 1, error = False, time = False, name = 'isnormal', description = 'p-value for a 2-sided chi squared probability that the distribution is normal', force = True)
 
 for func in [redchi2tomean, wmean]:
-    register(func, n_bands = 1, time = False, error = True)
+    register(func, n_bands = 1, time = False, error = True, force = True)
 
 
 ### functions for two bands ###
@@ -116,7 +116,7 @@ def stetson(data1, data2, data1_error, data2_error):
     else:
         return np.nan
 
-register(stetson, n_bands = 2, error = True, time = False)
+register(stetson, n_bands = 2, error = True, time = False, force = True)
 
 
 
@@ -186,7 +186,7 @@ def cmd_slope_simple(data1, data2, data1_error, data2_error, redvec = redvecs['3
     
     return m,b,m2,b2,redchi2,redchi2_2
 
-register(cmd_slope_simple, n_bands = 2, error = True, time = False, default_colnames = ['cmd_m_plain', 'cmd_b_plain', 'cmd_m_redvec', 'cmd_b_redvec'], name = 'cmdslopesimple' )
+register(cmd_slope_simple, n_bands = 2, error = True, time = False, default_colnames = ['cmd_m_plain', 'cmd_b_plain', 'cmd_m_redvec', 'cmd_b_redvec'], name = 'cmdslopesimple', force = True)
 
 def fit_twocolor_odr(band1, band2, band1_err, band2_err, outroot = None,  n_bootstrap = None, xyswitch = False, p_guess = None, redvec = redvecs['36_45']):
     '''Fits a straight line to a single CMD, using a weighted orthogonal least squares algorithm (ODR).
@@ -228,7 +228,11 @@ def fit_twocolor_odr(band1, band2, band1_err, band2_err, outroot = None,  n_boot
         return p[0]*x + p[1]
 
     if p_guess is None:
-        p_guess = cmd_slope_simple(band1, band2, band1_err, band2_err)
+        p_guess = list(cmd_slope_simple(band1, band2, band1_err, band2_err))
+        if ~np.isfinite(p_guess[0]): # pathological case
+            p_guess[0] = 0
+        if ~np.isfinite(p_guess[1]): # pathological case
+            p_guess[1] = np.mean(band1-band2)
     
     # define what the x and y data is:
     x_data = band1 - band2
@@ -456,4 +460,4 @@ def cmdslope_odr(band1, band2, band1_err, band2_err, p_guess = None, redvec = re
 
     return alpha, alpha_error, cmd_m, cmd_b, cmd_m_error, cmd_b_error, AV, cmd_dominated
 
-register(cmdslope_odr, n_bands= 2, error = True, time = False, default_colnames = ['cmd_alpha', 'cmd_alpha_error', 'cmd_m', 'cmd_b', 'cmd_m_error', 'cmd_b_error', 'AV'], other_cols = OrderedDict([['cmd_dominated', 'S10']]), name = 'cmdslopeodr')
+register(cmdslope_odr, n_bands= 2, error = True, time = False, default_colnames = ['cmd_alpha', 'cmd_alpha_error', 'cmd_m', 'cmd_b', 'cmd_m_error', 'cmd_b_error', 'AV'], other_cols = OrderedDict([['cmd_dominated', 'S10']]), name = 'cmdslopeodr', force = True)
