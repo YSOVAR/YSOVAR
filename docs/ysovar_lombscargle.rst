@@ -1,5 +1,5 @@
 Lomb-Scargle periodograms
 =========================
 
-.. automodule:: ysovar_lombscargle
+.. automodule:: YSOVAR.lombscargle
    :members:

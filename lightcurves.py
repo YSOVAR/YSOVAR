@@ -7,11 +7,23 @@ import scipy.odr as odr
 import scipy.signal
 import matplotlib.pylab as plt
 import astropy.table
-#import statsmodels.tsa.stattools as tsatools
-#import statsmodels.tsa.ar_model as ar
 
-import ysovar_atlas as atlas
+# Run even if statsmodels is not available
+# This package is needed for few task only
+try:
+    import statsmodels.tsa.stattools as tsatools
+    import statsmodels.tsa.ar_model as ar
+    _has_statsmodels = True
+except ImportError:
+    try:
+        # In some python installations statsmodels is part of scikits
+        import scikits.statsmodels.tsa.stattools as tsatools
+        import scikits.statsmodels.tsa.ar_model as ar
+        _has_statsmodels = True
+    except ImportError:
+        _has_statsmodels = False
 
+from .registry import register
 
 def combinations_with_replacement(iterable, r):
     '''defined here for backwards compatibility
@@ -243,7 +255,7 @@ def describe_autocorr(t, val, scale = 0.1, autocorr_scale = 0.5, autosum_limit =
 
     This is based on the definitions used by Maria for the Orion paper.
     A visual definition is given `on the YSOVAR wiki (restriced access)
-    <http://ysovar.ipac.caltech.edu/private/wiki/images/3/3c/Acfdefn.jpg>_`.
+    <http://ysovar.ipac.caltech.edu/private/wiki/images/3/3c/Acfdefn.jpg>`_.
 
     Parameters
     ----------
@@ -266,24 +278,29 @@ def describe_autocorr(t, val, scale = 0.1, autocorr_scale = 0.5, autosum_limit =
 
     Returns
     -------
+    cumsumtime : float
+        time when the cumulative sum of a finely binned autocorrelation function
+        exceeds ``autosum_limit`` for the first time; ``np.inf`` is returned
+        if the autocorrelation function never reaches this value.
     coherence_time : float
         time when the autocorrelation function falls below ``autocorr_scale``
     autocorr_time : float
         position of first positive peak
     autocorr_val : float
         value of first positive peak
-    cumsumtime : float
-        time when the cumulative sum of a finely binned autocorrelation function
-        exceeds ``autosum_limit`` for the first time; ``np.inf`` is returned
-        if the autocorrelation function never reaches this value.
     '''
     if len(t) != len(val):
         raise ValueError('Time t and vector val must have same length.')
+
+    if len(t) < 5:
+        return np.nan, np.nan, np.nan, np.nan
     
     trebin = np.arange(np.min(t), np.max(t), scale)
     valrebin = np.interp(trebin, t, val)
     valnorm = normalize(valrebin)
     trebin = trebin - trebin[0]
+    if not _has_statsmodels:
+        raise ImportError('stats models not found')
     acf = tsatools.acf(valnorm, nlags = 100./scale)
     
     coherence_time = trebin[np.min(np.where(acf < autocorr_scale))]
@@ -315,79 +332,9 @@ def describe_autocorr(t, val, scale = 0.1, autocorr_scale = 0.5, autosum_limit =
     else:
         cumsumtime = np.inf
 
-    return coherence_time, autocorr_time, autocorr_val, cumsumtime
+    return cumsumtime, coherence_time, autocorr_time, autocorr_val, cumsumtime
 
-def describe_all_acf(data, verbose = True, bands=['36','45'], scale = 0.1, autocorr_scale = 0.5, autosum_limit = 1.75, timefilter = np.isfinite):
-    '''describe the time scales of time series using an autocorrelation function
-
-    This procedure takes an unevenly sampled time series and computes
-    the autocorrelation function from that. The result is binned in time bins
-    of width `scale` and three numbers are derived from the shape of the
-    autocorrelation function.
-
-    This is based on the definitions used by Maria for the Orion paper.
-    A visual definition is given `on the YSOVAR wiki (restriced access)
-    <http://ysovar.ipac.caltech.edu/private/wiki/images/3/3c/Acfdefn.jpg>_`.
-
-    If add two columns for the coherence time and the cumsumtime of the ACF
-    to ``data``. If those columns existed befroe, they are overwritten.
-
-    Parameters
-    ----------
-    data : astropy.table.Table
-        structure with the defined object properties.
-    verbose : bool
-        Switch for extra verbosity.
-    bands : list of strings
-        Band identifiers, e.g. ['36', '45'], can also be a list with one
-        entry, e.g. ['36']
-    scale : float
-        In order to accept irregular time series, the calculated autocorrelation
-        needs to be binned in time. ``scale`` sets the width of those bins.
-    autocorr_scale : float
-        ``coherence_time`` is the time when the autocorrelation falls below
-        ``autocorr_scale``. ``0.5`` is a common value, but for sparse sampling
-        ``0.2`` might give better results.
-    autosum_limit : float
-        The autocorrelation function is also calculated with a time binning
-        of ``scale``. To get a robust measure of this, the function
-        calculate the time scale for the cumularitve sum of the autocorrelation
-        function to exceed ``autosum_limit``.
-    timefilter : function
-        This function has to accept a np.ndarray of observation times and
-        it should return an index array selecteing those time that should
-        be used for the LS periodogram.
-        The default function selects all times. An example how to use this
-        keyword to restrict the LS periodogram to include certain times only
-        is shown below::
-
-            lc.describe_all_acf(cat, timefilter = lambda x : x < 55340)
-    '''
-
-    for n in ['ACFcoherencetime', 'ACFcumsumtime']:
-        for band in bands:
-            if n + '_' +band not in data.colnames:
-                data.add_column(astropy.table.Column(name = n + '_' + band, dtype= np.float, length = len(data)))
-         
-    for i in range(len(data)):
-        if verbose and (np.mod(i, 100) == 0):
-            print 'Calculating ACF for dataset: ', i, ' of ', len(data)
-        for band in bands:
-            coherence_time = np.nan
-            cumsumtime = np.nan
-            if 't' + band in data.lclist[i].keys():
-                t = data.lclist[i]['t'+band]
-                ind = timefilter(t)
-                t = t[ind]
-                m = data.lclist[i]['m'+band][ind]
-                if len(t) > 25:
-                    coherence_time, autocorr_time, autocorr_val, cumsumtime = \
-                        describe_autocorr(t, m, scale = scale,
-                                          autocorr_scale = autocorr_scale,
-                                          autosum_limit = autosum_limit)
-            data['ACFcoherencetime_'+band][i] = coherence_time
-            data['ACFcumsumtime_'+band][i] = cumsumtime
-
+register(describe_autocorr, n_bands = 1, error= False, time = True, default_colnames = ['cumsumtime', 'coherence_time'], name='ACF')
 
 def ARmodel(t, val, degree = 2, scale = 0.5):
     '''Fit an auto-regressive (AR) model to data and retrn some parameters
@@ -417,7 +364,8 @@ def ARmodel(t, val, degree = 2, scale = 0.5):
     '''
     if len(t) != len(val):
         raise ValueError('Time t and vector val must have same length.')
-    
+    if not _has_statsmodels:
+        raise ImportError('statsmodels not found')
     trebin = np.arange(np.min(t), np.max(t), scale)
     valrebin = np.interp(trebin, t, val)
     valrebin = normalize(valrebin)
@@ -425,8 +373,7 @@ def ARmodel(t, val, degree = 2, scale = 0.5):
     resar = modar.fit(degree)
     return  resar.params, resar.sigma2, resar.aic
 
-
-def fit_poly(x, y, yerr, degree):
+def fit_poly(x, y, yerr, degree = 2):
     ''' Fit a polynom to a dataset
     
     ..note:: 
@@ -448,19 +395,23 @@ def fit_poly(x, y, yerr, degree):
     
     Returns
     -------
+    res_var : float
+        residual of the fit
     shift : float
         shift applied to x value for numerical stability.
     beta : list
         fit parameters
-    res_var : float
-        residual of the fit
     '''
+    if len(x) < degree + 1:
+        return np.nan, np.nan, np.nan
     guess = [1.] * degree
     model = odr.Model(np.polyval)
     mydata = odr.RealData(x-x[0], y, sy = yerr)
     myodr = odr.ODR(mydata, model, beta0 = guess)
     myoutput = myodr.run()
-    return x[0], myoutput.beta, myoutput.res_var
+    return myoutput.res_var, x[0], myoutput.beta
+
+register(fit_poly, n_bands = 1, time = True, error = False, name = 'fitpoly')
 
 def plot_all_polys(x, y, yerr, title = ''):
     '''plot polynomial fit of degree 1-6 for a dataset
@@ -486,7 +437,7 @@ def plot_all_polys(x, y, yerr, title = ''):
     temp = ax.scatter(x, y, c = x)
     xlong = np.arange(np.min(x), np.max(x))
     for i in np.arange(1,6):
-        shift, param, chi = fit_poly(x, y, yerr, i)
+        chi, shift, param = fit_poly(x, y, yerr, i)
         temp = ax.plot(xlong, np.polyval(param, xlong-shift), label = '{0:5.1f}'.format(chi))
     temp = ax.set_title(str(title))
     temp = ax.legend(loc = 'best')
@@ -495,7 +446,7 @@ def plot_all_polys(x, y, yerr, title = ''):
     ax.set_ylim(ylim[1], ylim[0])
     return fig
 
-def calc_poly_chi(data, verbose = True, bands=['36','45']):
+def calc_poly_chi(data, bands=['36','45']):
     '''Fits polynoms of degree 1..6 to all lightcurves in data
     
     One way to adress if a lightcurve is "smooth" is to fit a low-order
@@ -506,8 +457,6 @@ def calc_poly_chi(data, verbose = True, bands=['36','45']):
     ----------
     data : astropy.table.Table
         structure with the defined object properties.
-    verbose : bool
-        Switch for extra verbosity.
     bands : list of strings
         Band identifiers, e.g. ['36', '45'], can also be a list with one
         entry, e.g. ['36']
@@ -515,36 +464,5 @@ def calc_poly_chi(data, verbose = True, bands=['36','45']):
     '''
     for deg in np.arange(1,6):
         for band in bands:
-            if 'chi2poly_'+str(deg) + '_' +band not in data.colnames:
-                data.add_column(astropy.table.Column(name = 'chi2poly_'+str(deg) + '_' + band, dtype= np.float, length = len(data)))
-         
-    for i in range(len(data)):
-        if verbose and (np.mod(i, 100) == 0):
-            print 'Fitting polynomials to dataset: ', i, ' of ', len(data)
-        for deg in np.arange(1,6):
-            for band in bands:
-                if 't' + band in data.lclist[i].keys():
-                    shift, coeff, chi2 = fit_poly(data.lclist[i]['t'+band], data.lclist[i]['m'+band], data.lclist[i]['m'+band+'_error'], deg)
-                    #data['chi2poly_'+str(deg) + '_' + band][i] = chi2
-                    data['chi2poly_'+str(deg) + band][i] = chi2
-                else:
-                    #data['chi2poly_'+str(deg) + '_' + band][i] = np.nan
-                    data['chi2poly_'+str(deg) + band][i] = np.nan
+            data.calc('fitpoly', degree = deg, colnames = ['chi2poly_'+str(deg)])
 
-
-
-
-# plots to make for a standard ysovar paper (result of November workweek):
-#SED
-#3.6 vs. t light curve
-#4.5 vs. t light curve
-#delta 3.6 vs delta (3.6-4.5)
-#delta 3.6 vs. delta t (points and/or some sort of density map)
-#delta 4.5 vs. delta t (points and/or some sort of density map)
-#delta (3.6-4.5) vs. delta t (points and/or some sort of density map)
-#derivative (deltaM/deltaT) vs t
-#periodogram
-#RMS
-##maybe: zero crossings/40d - via smoothed or unsmoothed
-#stetson (i1 and i2)
-#chisq

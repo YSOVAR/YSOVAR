@@ -3,6 +3,6 @@ Plot the atlas
 
 
 
-.. automodule:: plot_atlas
+.. automodule:: YSOVAR.plot
    :members:
    :undoc-members:

@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from astropy.table import Table
 
-import ysovar_atlas as atlas
+from .. import atlas
 
 def test_makecrossids():
     d1 = np.rec.array([[0,0],[23,45],[45,89],[230,-50], [255,-66]], dtype=[('ra', np.float),('dec', np.float)])
@@ -31,18 +31,16 @@ def test_makecrossids_all():
     for i in np.arange(1, len(data1)):
         assert len(ids[i]) == 0
 
+@pytest.mark.usefixtures("data")
+class Test_atlas_functions():
+    def test_get_row(self, data):
+        t4 = data[4]
+        assert t4.lclist[0] == data.lclist[4]
 
-@pytest.fixture(scope = "module")
-def data():
-    datadict = atlas.dict_from_csv('test/data/expected_results.csv', floor_error = {'IRAC1': 0., 'IRAC2': 0.})
-    dat = atlas.YSOVAR_atlas(lclist = datadict)
-    dat.calc_ls('36', 100)
-    dat.calc_ls('45', 100)
-    dat.is_there_a_good_period(20, 1,100)
-    dat.cmd_slope_odr()
-    dat.good_slope_angle()
-    dat.cmd_dominated_by()
-    return dat
+    def test_get_slice(self, data):
+        t4step = data[0:10:4]
+        assert t4step.lclist[1]  == data.lclist[4]
+
 
 @pytest.mark.usefixtures("data")
 class Test_expected_results():
@@ -60,7 +58,7 @@ class Test_expected_results():
         assert abs(data['mad_36'][ind1]) < 1e-6
         assert abs(data['delta_36'][ind1]) < 1e-6
         assert abs(data['redchi2tomean_36'][ind1]) < 1e-6
-        assert data['cmd_dominated'][ind1] == 'no data'
+        assert data['cmd_dominated_36_45'][ind1] == ''
 
     def test_const_lc_45(self, data):
         ind1 = np.where(data['YSOVAR2_id'] == '-1001')[0][0]
@@ -122,31 +120,51 @@ class Test_expected_results():
 
     def test_cmd_flat(self, data):
         ind = np.where(data['YSOVAR2_id'] == '-2500')[0][0]
-        assert abs(data['cmd_m'][ind]) < 0.1
-        assert data['cmd_b_error'][ind] < 0.001
-        assert data['cmd_m_error'][ind] < 0.001
-        assert abs(data['cmd_b'][ind] - 12.) < 0.001
-        assert data['cmd_alpha_error'][ind] < 0.001
+        assert abs(data['cmd_m_36_45'][ind]) < 0.1
+        assert data['cmd_b_error_36_45'][ind] < 0.001
+        assert data['cmd_m_error_36_45'][ind] < 0.001
+        assert abs(data['cmd_b_36_45'][ind] - 12.) < 0.001
+        assert data['cmd_alpha_error_36_45'][ind] < 0.001
 
     def test_cmd_random(self, data):
         ind = np.where(data['YSOVAR2_id'] == '-2501')[0][0]
-        assert data['cmd_b_error'][ind] > 0.01
-        assert data['cmd_m_error'][ind] > 0.01
-        assert data['cmd_alpha_error'][ind] > 0.01
+        assert data['cmd_b_error_36_45'][ind] > 0.01
+        assert data['cmd_m_error_36_45'][ind] > 0.01
+        assert data['cmd_alpha_error_36_45'][ind] > 0.01
 
     def test_cmd_slope(self, data):
         ind = np.where(data['YSOVAR2_id'] == '-2502')[0][0]
-        assert abs(data['cmd_m'][ind] - 6.12) < 0.1
-        assert data['cmd_b_error'][ind] < 0.001
-        assert data['cmd_m_error'][ind] < 0.001
-        assert abs(data['cmd_b'][ind] - 5.8) < 0.5
-        assert data['cmd_alpha_error'][ind] < 0.001
-        assert data['cmd_dominated'][ind] == 'extinc.'
+        assert abs(data['cmd_m_36_45'][ind] - 6.12) < 0.1
+        assert data['cmd_b_error_36_45'][ind] < 0.001
+        assert data['cmd_m_error_36_45'][ind] < 0.001
+        assert abs(data['cmd_b_36_45'][ind] - 5.8) < 0.5
+        assert data['cmd_alpha_error_36_45'][ind] < 0.001
+        assert data['cmd_dominated_36_45'][ind] == 'extinc.'
 
     def test_stetson(self, data):
-        data.calc_stetson('36', '45')
+        data.calc('stetson', ['36', '45'])
         for ind, res in zip(['-2700', '-2701', '-2702', '-2703', '-2704'], [0.0,0.0, 10.1012, 10.1012, -10.1012]):
             print 'number:', ind, ' -- expected: ', res
             i = np.where(data['YSOVAR2_id'] == ind)[0][0]
             assert np.abs(data['stetson_36_45'][i] - res) < 0.01
+
+    def test_data_preprocessor(self, data):
+        def smooth(source):
+            lc = source.lclist[0]
+            w = np.ones(5)
+            if 'm36' in lc and len(lc['m36'] > 10):
+                lc['m36'] = np.convolve(w/w.sum(),lc['m36'],mode='valid')
+                # need to keep m36 and t36 same length
+                lc['t36'] = lc['t36'][0:len(lc['m36'])]
+            return source
+
+        data.calc('stddev', '36', data_preprocessor = smooth, colnames = 'stdsmooth')
+        ind = np.where(data['YSOVAR2_id'] == '-2501')[0][0]
+        assert data['stdsmooth_36'][ind] < data['stddev_36'][ind]
+
+    def test_timefiltering(self, data):
+        data.calc('n','36', timefilter = lambda x : x < 55303.,
+                  colnames = ['filtern'])
+        ind = np.where(data['YSOVAR2_id'] == '-1000')[0][0]
+        assert data['filtern_36'][ind] == 3
         

@@ -1,7 +1,7 @@
 import numpy as np
 
 import pytest
-import lightcurves as lc
+from .. import lightcurves as lc
 
 
 def test_norm():
@@ -80,10 +80,3 @@ def test_delta_corr_points2():
     assert np.all(n == np.arange(100,0,-1))
 
 
-
-#import sys
-#sys.path.append('/data/hguenther/soft/lib//python2.6/site-packages/py-1.4.5-py2.6.egg')
-#sys.path.append('/data/hguenther/soft/lib//python2.6/site-packages/pytest-2.2.0-py2.6.egg')
-
-#import pytest
-#pytest.main()
