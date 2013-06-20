@@ -908,9 +908,12 @@ class YSOVAR_atlas(astropy.table.Table):
         for k in range(len(self)):
             if len(cross_ids[k]) > 0:
                 ind = np.array(cross_ids[k])
-                self.lclist[k]['t'+channel].extend(data[band[2]][ind].tolist())
-                self.lclist[k]['m'+channel].extend(data[band[0]][ind].tolist())
-                self.lclist[k]['m'+channel+'_error'].extend(data[band[1]][ind].tolist())
+                #self.lclist[k]['t'+channel].extend(data[band[2]][ind].tolist())
+                #self.lclist[k]['m'+channel].extend(data[band[0]][ind].tolist())
+                #self.lclist[k]['m'+channel+'_error'].extend(data[band[1]][ind].tolist())
+                self.lclist[k]['t'+channel].extend(data[band[2]][ind])
+                self.lclist[k]['m'+channel].extend(data[band[0]][ind])
+                self.lclist[k]['m'+channel+'_error'].extend(data[band[1]][ind])
 
     def calc_allstats(self, band):
         '''calcualte all simple statistical descriptors for a single band

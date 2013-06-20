@@ -7,8 +7,8 @@ import scipy.odr as odr
 import scipy.signal
 import matplotlib.pylab as plt
 import astropy.table
-import statsmodels.tsa.stattools as tsatools
-import statsmodels.tsa.ar_model as ar
+#import statsmodels.tsa.stattools as tsatools
+#import statsmodels.tsa.ar_model as ar
 
 import ysovar_atlas as atlas
 
