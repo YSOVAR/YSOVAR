@@ -330,9 +330,9 @@ def describe_autocorr(t, val, scale = 0.1, autocorr_scale = 0.5, autosum_limit =
     else:
         cumsumtime = np.inf
 
-    return cumsumtime, coherence_time, autocorr_time, autocorr_val, cumsumtime
+    return cumsumtime, coherence_time, autocorr_time, autocorr_val
 
-register(describe_autocorr, n_bands = 1, error= False, time = True, default_colnames = ['cumsumtime', 'coherence_time'], name='ACF')
+register(describe_autocorr, n_bands = 1, error= False, time = True, default_colnames = ['cumsumtime', 'coherence_time'], name='ACF', force = True)
 
 def ARmodel(t, val, degree = 2, scale = 0.5):
     '''Fit an auto-regressive (AR) model to data and retrn some parameters
@@ -409,7 +409,7 @@ def fit_poly(x, y, yerr, degree = 2):
     myoutput = myodr.run()
     return myoutput.res_var, x[0], myoutput.beta
 
-register(fit_poly, n_bands = 1, time = True, error = False, name = 'fitpoly')
+register(fit_poly, n_bands = 1, time = True, error = True, name = 'fitpoly', force = True)
 
 def plot_all_polys(x, y, yerr, title = ''):
     '''plot polynomial fit of degree 1-6 for a dataset
@@ -462,4 +462,4 @@ def calc_poly_chi(data, bands=['36','45']):
     '''
     for deg in np.arange(1,6):
         for band in bands:
-            data.calc('fitpoly', degree = deg, colnames = ['chi2poly_'+str(deg)])
+            data.calc('fitpoly', band, degree = deg, colnames = ['chi2poly_'+str(deg)])

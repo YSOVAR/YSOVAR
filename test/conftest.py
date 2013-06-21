@@ -3,7 +3,7 @@ import os
 import pytest
 
 from .. import atlas
-
+from .. import lightcurves
 
 @pytest.fixture(scope = 'module')
 def data():
@@ -15,4 +15,5 @@ def data():
     data.calc('cmdslopesimple', ['36', '45'])
     data.calc('cmdslopeodr', ['36', '45'])
     data.calc('stetson', ['36','45'])
+    lightcurves.calc_poly_chi(data, ['36', '45'])
     return data
