@@ -342,30 +342,40 @@ def merge_lc(d, bands, t_simul=0.01):
     '''
     if not isinstance(d, dict):
         raise ValueError('d must be a dictionary that contains lightcurves.')
-    tab = astropy.table.Table()
-    names = ['t']
-    for band in bands:
-        names.extend(['m'+band,'m'+band+'_error'])
-    for name in names:
-        tab.add_column(astropy.table.Column(name=name, length=0, dtype=np.float))
 
-    if set(['m'+b for b in bands]).issubset(d.keys()):
-        for i, t in enumerate(d['t'+bands[0]]):
-            minind = np.zeros(len(bands), dtype = np.int)
-            diff_t = np.zeros(len(bands))
-            for j, band in enumerate(bands):
-                deltat = np.abs(t - d['t'+band])
-                #index of closest matching time in each band
-                minind[j] = np.argmin(deltat)
-                diff_t[j] = np.min(deltat)
-                
-            if np.all(diff_t < t_simul):
-                tlist = [ d['t'+band][minind[j]] for j,band in enumerate(bands) ]
-                newrow = [np.mean(tlist)]
+    if len(bands) ==1:
+        band = bands[0]
+        # no matching necessary
+        # The else block would also work for one band only,
+        # but the matching process is very slow.
+        tab = astropy.table.Table({'t': d['t'+band],
+                                   'm'+band: d['m'+band],
+                                   'm'+band+'_error': d['m'+band+'_error']})
+    else:
+        tab = astropy.table.Table()
+        names = ['t']
+        for band in bands:
+            names.extend(['m'+band,'m'+band+'_error'])
+        for name in names:
+            tab.add_column(astropy.table.Column(name=name, length=0, dtype=np.float))
+
+        if set(['m'+b for b in bands]).issubset(d.keys()):
+            for i, t in enumerate(d['t'+bands[0]]):
+                minind = np.zeros(len(bands), dtype = np.int)
+                diff_t = np.zeros(len(bands))
                 for j, band in enumerate(bands):
-                    newrow.extend([d['m'+band][minind[j]],
-                                   d['m'+band+'_error'][minind[j]]])
-                tab.add_row(newrow)
+                    deltat = np.abs(t - d['t'+band])
+                    #index of closest matching time in each band
+                    minind[j] = np.argmin(deltat)
+                    diff_t[j] = np.min(deltat)
+
+                if np.all(diff_t < t_simul):
+                    tlist = [ d['t'+band][minind[j]] for j,band in enumerate(bands) ]
+                    newrow = [np.mean(tlist)]
+                    for j, band in enumerate(bands):
+                        newrow.extend([d['m'+band][minind[j]],
+                                       d['m'+band+'_error'][minind[j]]])
+                    tab.add_row(newrow)
     return tab
 
 def phase_fold(time, period):
@@ -737,12 +747,14 @@ class YSOVAR_atlas(astropy.table.Table):
 
         for i in np.arange(0,len(self)):
             if tband.issubset(set(self.lclist[i].keys())):
-                # need to make copy before we change the content
-                source  = self[i]
-                source.lclist = np.array([deepcopy(self.lclist[i])])
                 if data_preprocessor:
+                    # need to make copy before we change the content
+                    source  = self[i]
+                    source.lclist = np.array([deepcopy(self.lclist[i])])
                     source = data_preprocessor(source)
-                lc = merge_lc(source.lclist[0], bands, t_simul = t_simul)
+                    lc = merge_lc(source.lclist[0], bands, t_simul = t_simul)
+                else:
+                    lc = merge_lc(self.lclist[i], bands, t_simul = t_simul)
                 if timefilter:
                     ind = timefilter(lc['t'])
                     lc = lc[ind]
