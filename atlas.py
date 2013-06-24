@@ -300,7 +300,7 @@ def dict_cleanup(data, channels, min_number_of_times = 0, floor_error = {}):
         d['dec'] = np.mean(d['dec'])
         # take the set of those two things and convert to a string
         d['ISOY_NAME'] = set(d['ISOY_NAME'])
-        d['ISOY_NAME'] = ', '.join(d['ISOY_NAME'])
+        d['ISOY_NAME'] = ', '.join(str(d['ISOY_NAME']))
         d['YSOVAR2_id'] = set(d['YSOVAR2_id'])
         d['YSOVAR2_id'] = ', '.join([str(n) for n in d['YSOVAR2_id']])
         for channel in channels:
@@ -410,7 +410,8 @@ def Isoy2radec(isoy):
     dec = np.sign(float(s[9:])) * (float(s[10:12]) + int(s[12:14]) /60. + float(s[14:])/3600.)
     return ra, dec
 
-def dict_from_csv(csvfile,  match_dist = 1.0/3600., min_number_of_times = 5, channels = {'IRAC1': '36', 'IRAC2': '45'}, data = [], floor_error = {'IRAC1': 0.01, 'IRAC2': 0.007}, mag = 'mag1', emag = 'emag1', time = 'hmjd', bg = None, source_name = 'sname',  verbose = True):
+
+def dict_from_csv(csvfile,  match_dist = 1.0/3600., min_number_of_times = 5, channels = {'IRAC1': '36', 'IRAC2': '45'}, data = [], floor_error = {'IRAC1': 0.01, 'IRAC2': 0.007}, mag = 'mag1', emag = 'emag1', time = 'hmjd', bg = None, source_name = 'sname',  verbose = True, readra = 'ra', readdec = 'de', sourceid = 'ysovarid', channelcolumn='fname'):
     '''Build YSOVAR lightcurves from database csv file
     
     Parameters
@@ -455,12 +456,12 @@ def dict_from_csv(csvfile,  match_dist = 1.0/3600., min_number_of_times = 5, cha
     if verbose: print 'Reading csv file - This may take a few minutes...'
     tab = asciitable.read(csvfile)
     radec = {'RA':[], 'DEC': []}
-    for i, n in enumerate(set(tab['sname'])):
+    for i, n in enumerate(set(tab[source_name])):
         if verbose and (np.mod(i,100)==0):
-            print 'Processing dict for source ' + str(i) + ' of ' + str(len(set(tab['sname'])))
-        ind = (tab['sname'] == n)
-        ra = tab[ind][0]['ra']
-        dec = tab[ind][0]['de'] 
+            print 'Processing dict for source ' + str(i) + ' of ' + str(len(set(tab[source_name])))
+        ind = (tab[source_name] == n)
+        ra = tab[ind][0][readra]
+        dec = tab[ind][0][readdec] 
         if len(data) > 0:
             distance = dist_radec_fast(ra, dec, np.array(radec['RA']), np.array(radec['DEC']), scale = match_dist, unit ='deg')
         if len(data) > 0 and min(distance) <= match_dist:
@@ -474,15 +475,16 @@ def dict_from_csv(csvfile,  match_dist = 1.0/3600., min_number_of_times = 5, cha
         dict_temp['ra'].extend([ra] * ind.sum())
         dict_temp['dec'].extend([dec] * ind.sum())
         dict_temp['ISOY_NAME'].append(n)
-        dict_temp['YSOVAR2_id'].append(tab['ysovarid'][ind][0])
+        dict_temp['YSOVAR2_id'].append(tab[sourceid][ind][0])
         for channel in channels.keys():
-            good = ind & (tab[time] >= 0.) & (tab['fname'] == channel)
+            good = ind & (tab[time] >= 0.) & (tab[channelcolumn] == channel)
             if np.sum(good) > 0:
                 dict_temp['t'+channels[channel]].extend((tab[time][good]).tolist())
                 dict_temp['m'+channels[channel]].extend((tab[mag][good]).tolist())
                 dict_temp['m'+channels[channel]+'_error'].extend((tab[emag][good]).tolist())
                 if bg is not None:
                     dict_temp['m'+channels[channel]+'_bg'].extend((tab[bg][good]).tolist())
+        
     if verbose: print 'Cleaning up dictionaries'
     data = dict_cleanup(data, channels = channels, min_number_of_times = min_number_of_times, floor_error = floor_error)
     return data
@@ -853,9 +855,12 @@ class YSOVAR_atlas(astropy.table.Table):
         for k in range(len(self)):
             if len(cross_ids[k]) > 0:
                 ind = np.array(cross_ids[k])
-                self.lclist[k]['t'+channel].extend(data[band[2]][ind].tolist())
-                self.lclist[k]['m'+channel].extend(data[band[0]][ind].tolist())
-                self.lclist[k]['m'+channel+'_error'].extend(data[band[1]][ind].tolist())
+                #self.lclist[k]['t'+channel].extend(data[band[2]][ind].tolist())
+                #self.lclist[k]['m'+channel].extend(data[band[0]][ind].tolist())
+                #self.lclist[k]['m'+channel+'_error'].extend(data[band[1]][ind].tolist())
+                self.lclist[k]['t'+channel].extend(data[band[2]][ind])
+                self.lclist[k]['m'+channel].extend(data[band[0]][ind])
+                self.lclist[k]['m'+channel+'_error'].extend(data[band[1]][ind])
 
     def calc_allstats(self, band):
         '''calcualte all simple statistical descriptors for a single band
@@ -876,6 +881,7 @@ class YSOVAR_atlas(astropy.table.Table):
             func = registry.lc_funcs[f]
             if func.n_bands ==1:
                 self.calc(f, band)
+
 
     def is_there_a_good_period(self, power, minper, maxper, bands=['36','45']):
         '''check if a strong periodogram peak is found

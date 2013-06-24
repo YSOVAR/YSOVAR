@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import itertools
 
 import numpy as np
@@ -243,13 +244,14 @@ def normalize(data):
     '''
     return (data - data.mean()) / np.std(data)
 
+
 def describe_autocorr(t, val, scale = 0.1, autocorr_scale = 0.5, autosum_limit = 1.75):
     '''describe the time scales of time series using an autocorrelation function
-
-    This procedure takes an unevenly sampled time series and computes
-    the autocorrelation function from that. The result is binned in time bins
-    of width `scale` and three numbers are derived from the shape of the
-    autocorrelation function.
+    
+    #This procedure takes an unevenly sampled time series and computes
+    #the autocorrelation function from that. The result is binned in time bins
+    #of width `scale` and three numbers are derived from the shape of the
+    #autocorrelation function.
 
     This is based on the definitions used by Maria for the Orion paper.
     A visual definition is given `on the YSOVAR wiki (restriced access)
