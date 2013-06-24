@@ -79,4 +79,21 @@ def test_delta_corr_points2():
     assert np.all(np.abs(x - sxlc) < 1e-10)
     assert np.all(n == np.arange(100,0,-1))
 
+def test_ACF_little_data():
+    t = np.array([0.,1.,2.5,8.])
+    val = t
+    out = lc.describe_autocorr(t, val)
+    assert len(out) == 4
+    assert np.all(np.isnan(out))
+
+def test_ACF_uneven_data():
+    with pytest.raises(ValueError):
+        lc.describe_autocorr(np.arange(49), np.arange(50))
+
+def test_ACF_sparse_data():
+    # Even for sparse data all results should be finite
+    t = np.array([0.,1.,2.5,8., 10.5, 12.,15.])
+    val = t
+    out = lc.describe_autocorr(t, val)
+    assert(np.all(np.isfinite(out)))
 
