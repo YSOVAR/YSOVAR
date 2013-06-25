@@ -13,12 +13,13 @@ Keywords:
   DATA SAMPLING, FAST FOURIER TRANSFORMATIONS, 
   SPECTRUM ANALYSIS, SIGNAL  PROCESSING
 
-Example:
-  > import numpy
-  > import lomb
-  > x = numpy.arange(10)
-  > y = numpy.sin(x)
-  > fx,fy, nout, jmax, prob = lomb.fasper(x,y, 6., 6.)
+Example::
+    
+  >>> import numpy
+  >>> import lomb
+  >>> x = numpy.arange(10)
+  >>> y = numpy.sin(x)
+  >>> fx,fy, nout, jmax, prob = lomb.fasper(x,y, 6., 6.)
 
 Reference: 
   Press, W. H. & Rybicki, G. B. 1989

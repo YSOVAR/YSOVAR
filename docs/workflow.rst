@@ -210,8 +210,8 @@ Write latex files for atlas. In this case we select for YSOs (numerical class < 
     plot_atlas.make_latexfile(mycloud, outroot_stars, 'atlas_ysos', ind_ysos)
 
 
-Write (parts of) catalog to file
---------------------------------
+Write (parts of) a catalog to file
+----------------------------------
 `astropy.table.Table
 <http://docs.astropy.org/en/stable/table/index.html>`_ 
 offers several methods to quickly look at the data,
@@ -221,8 +221,6 @@ terminal. See the documentation for details.
 Here, is one example of output to LaTeX::
 
     import astropy.io.ascii as ascii
-
-    f42 = format_or_string('%4.2f')
 
     ascii.write(mycloud, sys.stdout, Writer = ascii.Latex,
           names = mycloud.colnames,

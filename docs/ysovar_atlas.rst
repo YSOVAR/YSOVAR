@@ -1,7 +1,7 @@
 Generate atlas
 ==============
 
-This module collects all procedues that are required to make the
+This module collects all procedures that are required to make the
 atlas. This starts with reading in the csv file from the YSOVAR2
 database and includes the calculation of the some fits and quantities.
 More specific tasks for the analysis of the lightcurve can be found in
@@ -11,7 +11,7 @@ The basic structure for the YSOVAR analysis is the
 :class:`YSOVAR.atlas.YSOVAR_atlas`. 
 To initialize an atlas object pass is a numpy array wich all the lightcurves::
     
-    import atlas
+    from YSOVAR import atlas
     data = atlas.dict_from_csv('/path/tp/my/irac.csv', match_dist = 0.)
     MyRegion = atlas.YSOVAR_atlas(lclist = data)
 

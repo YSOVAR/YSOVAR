@@ -546,9 +546,9 @@ class YSOVAR_atlas(astropy.table.Table):
     '''
     The basic structure for the YSOVAR analysis is the
     :class:`YSOVAR_atlas`. 
-    To initialize an atlas object pass is a numpy array wich all the lightcurves::
+    To initialize an atlas object pass in a numpy array with all the lightcurves::
 
-        import ysovar_atlas as atlas
+        from YSOVAR import atlas
         data = atlas.dict_from_csv('/path/tp/my/irac.csv', match_dist = 0.)
         MyRegion = atlas.YSOVAR_atlas(lclist = data)
 
@@ -558,22 +558,23 @@ class YSOVAR_atlas(astropy.table.Table):
     documentation for the syntax on how to acess the data or add a column.
 
     Some columns are auto-generated, when they are first
-    used. Specifically, these are the 
-    - median
-    - mean
-    - stddev
-    - min
-    - max
-    - mad (median absolute deviation)
-    - delta (90% quantile - 10% quantile)
-    - redchi2tomean
-    - wmean (uncertainty weighted average).
+    used. Some examples are
+    
+        - median
+        - mean
+        - stddev
+        - min
+        - max
+        - mad (median absolute deviation)
+        - delta (90% quantile - 10% quantile)
+        - redchi2tomean
+        - wmean (uncertainty weighted average).
 
-    When you ask for `MyRegion['min_36']` it first checks if that column is already
-    present. If not, if adds the new column called `min_36` and calculates
-    the minimum of the lightcurve in band `36` for each object in the
-    atlas, that has `m36` and `t36` entries (for magnitude and time in
-    band `36` respectively. Data read with :meth:`dict_from_csv`
+    When you ask for ``MyRegion['min_36']`` it first checks if that column is already
+    present. If not, if adds the new column called ``min_36`` and calculates
+    the minimum of the lightcurve in band ``36`` for each object in the
+    atlas, that has ``m36`` and ``t36`` entries (for magnitude and time in
+    band ``36`` respectively. Data read with :meth:`dict_from_csv`
     atomatically has the required format.
 
     More functions may be added to this magic list later. Check::
@@ -585,7 +586,7 @@ class YSOVAR_atlas(astropy.table.Table):
     More function can be added.
 
     Also, table columns can be added to an ``YSOVAR_atlas`` object manually,
-    giving you all the freedome to to arbitrary calculations to arrive at those
+    giving you all the freedom to do arbitrary calculations to arrive at those
     vales.
     '''
     def __init__(self, *args, **kwargs):
