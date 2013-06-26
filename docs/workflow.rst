@@ -185,6 +185,15 @@ your own table columns and add them to ``mycloud`` as to any other
 `astropy.table.Table
 <http://docs.astropy.org/en/stable/table/index.html>`_.
 
+The slope of the SED can be calculated (according to the definitions used by
+Luisa in the big data paper) like this::
+
+    mycloud.classify_SED_slope()
+
+The command adds the ``IRclass`` column to ``mycloud``, which takes the values
+``I``, ``F``, ``II`` and ``III``, for class I, flat-spectrum, class II and 
+class III sources, respectively.
+
 Make all the pretty plots
 -------------------------
 We write all the stuff in ``outroot`` and determine that a pdf will be good format.

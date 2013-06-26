@@ -110,7 +110,7 @@ def val_from_dict(data, name):
 def makecrossids(data1, data2, radius, ra1='RAdeg', dec1='DEdeg', ra2='ra', dec2='dec'):
     '''Cross-match two lists of coordinates, return closest match
 
-    This routine is not very clever and not very fast. If should be fine
+    This routine is not very clever and not very fast. It should be fine
     up to a few thousand entries per list. 
 
     Parameters
@@ -193,14 +193,70 @@ def makecrossids_all(data1, data2, radius, ra1='RAdeg', dec1='DEdeg', ra2='ra', 
 
 ''' Format:
     dictionary of bands, where the name of the band mag is the key
-    entries are lists of [name of error field, wavelength in micron, zero_magnitude_flux_freq in Jy = 1e-23 erg s-1 cm-2 Hz-1]'''
-sed_bands = {'Umag': ['e_Umag', 0.355, 1500], 'Bmag': ['e_Bmag', 0.430, 4000.87], 'Vmag': ['e_Vmag', 0.623, 3597.28], 'Rmag': ['e_Rmag', 0.759, 3182], 'Imag': ['e_Imag', 0.798, 2587], 'Jmag': ['e_Jmag', 1.235, 1594], 'Hmag': ['e_Hmag', 1.662, 1024], 'Kmag': ['e_Kmag', 2.159, 666.7], '3.6mag': ['e_3.6mag', 3.6, 280.9], '4.5mag': ['e_4.5mag', 4.5, 179.7], '5.8mag': ['e_5.8mag', 5.8, 115.0], '8.0mag': ['e_8.0mag', 8.0, 64.13], '24mag': ['e_24mag', 24.0, 7.14], 'Hamag': ['e_Hamag', 0.656, 2974.4], 'rmag': ['e_rmag', 0.622, 3173.3], 'imag': ['e_imag', 0.763, 2515.7], 'nomad_Bmag': [None, 0.430, 4000.87], 'nomad_Vmag': [None, 0.623, 3597.28], 'nomad_Rmag': [None, 0.759, 3182], 'simbad_B': [None, 0.430, 4000.87], 'simbad_V': [None, 0.623, 3597.28]}
-# using Sloan wavelengths for r and i
-# compare: http://casa.colorado.edu/~ginsbura/filtersets.htm
-# from: http://coolwiki.ipac.caltech.edu/index.php/Central_wavelengths_and_zero_points
-# from: http://arxiv.org/pdf/1011.2020.pdf for SLoan u', r', i' (Umag, Rmag, Imag)
+    entries are lists of::
 
-def get_sed(data, sed_bands = sed_bands):
+        [name of error field, 
+         wavelength in micron, 
+         zero_magnitude_flux_freq in Jy = 1e-23 erg s-1 cm-2 Hz-1]
+
+using Sloan wavelengths for r and i
+http://casa.colorado.edu/~ginsbura/filtersets.htm
+http://coolwiki.ipac.caltech.edu/index.php/Central_wavelengths_and_zero_points
+http://arxiv.org/pdf/1011.2020.pdf for SLoan u', r', i' (Umag, Rmag, Imag)
+
+'''
+sed_bands = {'Umag': ['e_Umag', 0.355, 1500], 
+             'Bmag': ['e_Bmag', 0.430, 4000.87], 
+             'Vmag': ['e_Vmag', 0.623, 3597.28], 
+             'Rmag': ['e_Rmag', 0.759, 3182], 
+             'Imag': ['e_Imag', 0.798, 2587], 
+             'Jmag': ['e_Jmag', 1.235, 1594], 
+             'Hmag': ['e_Hmag', 1.662, 1024], 
+             'Kmag': ['e_Kmag', 2.159, 666.7], 
+             '3.6mag': ['e_3.6mag', 3.6, 280.9], 
+             '4.5mag': ['e_4.5mag', 4.5, 179.7], 
+             '5.8mag': ['e_5.8mag', 5.8, 115.0], 
+             '8.0mag': ['e_8.0mag', 8.0, 64.13], 
+             '24mag': ['e_24mag', 24.0, 7.14], 
+             'Hamag': ['e_Hamag', 0.656, 2974.4], 
+             'rmag': ['e_rmag', 0.622, 3173.3], 
+             'imag': ['e_imag', 0.763, 2515.7], 
+             'nomad_Bmag': [None, 0.430, 4000.87], 
+             'nomad_Vmag': [None, 0.623, 3597.28], 
+             'nomad_Rmag': [None, 0.759, 3182], 
+             'simbad_B': [None, 0.430, 4000.87], 
+             'simbad_V': [None, 0.623, 3597.28]
+            }
+
+def sed_slope(data, sed_bands=sed_bands):
+    '''fit the SED slope to data for all bands in ``data`` and ``sed_bands``
+
+    Parameters
+    ----------
+    data : np.rec.array or atpy.table or dict
+        input data that has arrays of magnitudes for different bands
+    sed_bands : dict 
+        keys must be the name of the field that contains the magnitudes in each
+        band,  entries are lists of [name of error field, wavelength in micron,
+        zero_magnitude_flux_freq in Jy]
+    
+    Returns
+    -------
+    slope : float
+        slope of the SED determined with a least squares fit.
+        Return ``np.nan`` if there is too little data.
+    '''
+    sed = get_sed(data, sed_bands, valid=True)
+    slope = np.nan
+    if len(sed[0]) >= 2:
+        out = np.polyfit(np.log10(sed[0]), np.log10(sed[0]*sed[3]), 1, full=True)
+        # check rank of matrix. If less than 2, fit is ill-conditioned
+        # e.g. one data point only
+        if out[2] == 2:
+            slope = out[0][0] # slope
+    return slope
+    
+def get_sed(data, sed_bands = sed_bands, valid = False):
     '''make SED by collecting info from the input data
     
     Parameters
@@ -208,9 +264,12 @@ def get_sed(data, sed_bands = sed_bands):
     data : np.rec.array or atpy.table or dict
         input data that has arrays of magnitudes for different bands
     sed_bands : dict 
-        keys must be the name of the field that contains the magnitudes in each band
-        entries are lists of [name of error field, wavelength in micron,
+        keys must be the name of the field that contains the magnitudes in each
+        band,  entries are lists of [name of error field, wavelength in micron,
         zero_magnitude_flux_freq in Jy]
+    valid : bool
+        If true, return only bands with finite flux, otherwise return all bands
+        that exist in both ``data`` and ``sed_bands``.
         
     Returns
     -------
@@ -250,6 +309,19 @@ def get_sed(data, sed_bands = sed_bands):
     # nu * f_nu = lambda * f_lambda 
     zero_magnitude_flux_wavlen = zero_magnitude_flux_freq * 1e-23 * freq / wavelen
     sed = 2.5**(-mags)*zero_magnitude_flux_wavlen
+
+    # sort by wavelength
+    ind = np.argsort(wavelen)
+    wavelen = wavelen[ind]
+    mags = mags[ind]
+    mags_error = mags_error[ind]
+    sed = sed[ind]
+    if valid:
+        ind = np.isfinite(sed)
+        wavelen = wavelen[ind]
+        mags = mags[ind]
+        mags_error = mags_error[ind]
+        sed = sed[ind]
     return (wavelen, mags, mags_error, sed)
 
 def dict_cleanup(data, channels, min_number_of_times = 0, floor_error = {}):
@@ -300,7 +372,7 @@ def dict_cleanup(data, channels, min_number_of_times = 0, floor_error = {}):
         d['dec'] = np.mean(d['dec'])
         # take the set of those two things and convert to a string
         d['ISOY_NAME'] = set(d['ISOY_NAME'])
-        d['ISOY_NAME'] = ', '.join(str(d['ISOY_NAME']))
+        d['ISOY_NAME'] = ', '.join(d['ISOY_NAME'])
         d['YSOVAR2_id'] = set(d['YSOVAR2_id'])
         d['YSOVAR2_id'] = ', '.join([str(n) for n in d['YSOVAR2_id']])
         for channel in channels:
@@ -424,9 +496,9 @@ def dict_from_csv(csvfile,  match_dist = 1.0/3600., min_number_of_times = 5, cha
         Remove all sources with less than min_number_of_times datapoints
         from the list
     channels : dictionary
-        This dictionary traslantes the names of channels in the csv file to
+        This dictionary translates the names of channels in the csv file to
         the names in the output structure, e.g.
-        that for `'IRAC1'` will be `'m36'` (magnitudes) and `'t36'` (times).
+        that for ``IRAC1`` will be ``m36`` (magnitudes) and ``t36`` (times).
     data : list of dicts
         New entries will be added to data. It can be empty (the default).
     mag : string
@@ -441,8 +513,7 @@ def dict_from_csv(csvfile,  match_dist = 1.0/3600., min_number_of_times = 5, cha
     floor_error : dict
         Floor errors will be added in quadrature to all error values.
         The keys in the dictionary should be the same as in the channels
-        dictionary.
-    
+        dictionary.   
     verbose : bool
        If True, print progress status.
         
@@ -532,7 +603,8 @@ def check_dataset(data, min_number_of_times = 5, match_dist = 1./3600.):
     print 'The following sources are less than ', match_dist, ' deg apart'
     radec = radec_from_dict(data)
     for i in range(len(data)-1):
-        dist = dist_radec_fast(radec['RA'][i], radec['DEC'][i], radec['RA'][i+1:], radec['DEC'][i+1:], scale = match_dist, unit = 'deg')
+        dist = dist_radec_fast(radec['RA'][i], radec['DEC'][i],
+                               radec['RA'][i+1:], radec['DEC'][i+1:], scale = match_dist, unit = 'deg')
         if np.min(dist) < match_dist:
             print 'distance', i, i+np.argmin(dist), ' is only ', np.min(dist)
     print '----------------------------------------------------------------------------'
@@ -598,7 +670,7 @@ class YSOVAR_atlas(astropy.table.Table):
             raise ValueError('Need to pass a list of lightcurves with lclist=')
         super(YSOVAR_atlas, self).__init__(*args, **kwargs)
         for name in ['ra', 'dec', 'YSOVAR2_id','ISOY_NAME']:
-             col = astropy.table.Column(name = name, data = val_from_dict(self.lclist, name))
+             col = astropy.table.Column(name=name, data=val_from_dict(self.lclist, name))
              self.add_column(col)
     
     def __getitem__(self, item):
@@ -883,6 +955,57 @@ class YSOVAR_atlas(astropy.table.Table):
             if func.n_bands ==1:
                 self.calc(f, band)
 
+    def classify_SED_slope(self, colname = 'IRclass', include24 = True):
+        '''Classify the SED slope of an object
+
+        This function calculates the SED slope for each object according
+        to the prescription outlined by Luisa in the big data paper.
+
+        It uses all available datapoints in the IR from 2 to 24$\mu$m. 
+        If no measurement is present (e.g. missing or upper limit only)
+        this band is ignored. The procedure performs a least-squares fit
+        and then classifies the resulting slope into class I, flat-spectrum,
+        II and III sources.
+
+        Parameters
+        ----------
+        colname : string
+            The classification will be placed in this column. If it exists
+            it is overwritten.
+        include24 : bool
+            Decides if a MIPS 24 mu point is included in the fit (if present)
+        '''
+        sed_ir = {}
+        # K band and IRAC cold mission
+        bands = ['Kmag', '3.6mag', '4.5mag', '5.8mag', '8.0mag']
+        # MIPS cold mission
+        if include24:
+            bands.append('24mag')
+        for b in bands:
+            sed_ir[b] = sed_bands[b]
+        # mean from current lightcurves
+        sed_ir['mean_36'] = ['stddev_36', sed_bands['3.6mag'][1], sed_bands['3.6mag'][2]]
+        sed_ir['mean_45'] = ['stddev_45', sed_bands['4.5mag'][1], sed_bands['4.5mag'][2]]
+        # calculate those cols, if not present
+        for col in ['mean_36', 'stddev_36', 'mean_45', 'stddev_45']:
+            temp = self[col]
+        if colname in self.colnames:
+            self.remove_columns(colname)
+        self.add_column(astropy.table.Column(
+                       name=colname, length=len(self), dtype='S3'))
+        for i, star in enumerate(self):
+            slope = sed_slope(star, sed_ir)
+            if slope >= 0.3:
+                irclass = 'I'
+            elif slope >= -0.3:
+                irclass = 'F'
+            elif slope >= -1.6:
+                irclass = 'II'
+            elif np.isfinite(slope):
+                irclass = 'III'
+            else:
+                irclass = ''
+            self[colname][i] = irclass
 
     def is_there_a_good_period(self, power, minper, maxper, bands=['36','45']):
         '''check if a strong periodogram peak is found

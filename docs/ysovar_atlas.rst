@@ -20,9 +20,9 @@ The :class:`YSOVAR.atlas.YSOVAR_atlas` is build on top of a `astropy.table.Table
 <http://docs.astropy.org/en/v0.2/table/index.html>`_ object. See that
 documentation for the syntax on how to acess the data or add a column.
 
-Ths :class:`YSOVAR.atlas.YSOVAR_atlas` auto-generates some content in the background, so I really
-encourage you to read the documentation (I promise it's only a few
-lines because I am too lazy to type much more).
+This :class:`YSOVAR.atlas.YSOVAR_atlas` auto-generates some content in the 
+background, so I really encourage you to read the documentation (I promise it's
+only a few lines because I am too lazy to type much more).
 
 .. automodule:: YSOVAR.atlas
    :members:
