@@ -480,23 +480,24 @@ def plot_lc(ax, data, mergedlc):
         ax.scatter(mergedlc['t']-mjdoffset, mergedlc['m36'], lw=0, s=30, marker='o', c=mergedlc['t'])
         ax.scatter(mergedlc['t']-mjdoffset, mergedlc['m45'], lw=2, s=40, marker='+', c=mergedlc['t'])
 
-def lc_plot(catalog, xlim = None, twinx = True):
-    '''plot one or two lcs for a single object
+def setup_lcplot_axes(data, xlim, twinx = True, fig = None):
+    '''set up axis containers for one or two lcs for a single object.
+
+    This function checks the xlim and divides the space in the figure
+    so that the xaxis has the same scale in each subplot.
     
     Parameters
     ----------
-    catalog : singe row from ysovar_atlas.YSOVAR_atlas
-        contains 't1' and / or 't2' as time for lightcurves and 
-        'm1' and / or 'm2' as magnitues for lightcurves
+    data : dict
+        This lightcurve is inspected for the number of bands present
     xlim : None or list
         None auto scales the x-axis
         list of [x0, x1] scales the xaxis form x1 to x2
         list of lists [[x00,x01], [x10, x11], ...] splits in multiple panels and
-        each [x0, x1] pais gives teh limits for one panel.
+        each [x0, x1] pair gives the limits for one panel.
     twinx : boolean
         if true make seperate y axes for IRAC1 and IRAC2 if both are present
     '''
-    data = catalog.lclist[0]
     # twin axis only if really t1 and t2 are present
     if not(('t36' in data.keys()) and ('t45' in data.keys())): twinx=False
     if xlim is None:
@@ -505,12 +506,6 @@ def lc_plot(catalog, xlim = None, twinx = True):
         if ('t45' in data.keys()): xlim = [data['t45'][0], data['t45'][-1]]
         if ('t36' in data.keys()) and ('t45' in data.keys()):
             xlim = [min(data['t36'][0], data['t45'][0]), max(data['t36'][-1], data['t45'][-1])]
-    # make an xlim for min(time) to max(time)
-    if ('t36' in data.keys()): ylim = [np.max(data['m36']), np.min(data['m36'])]
-    if ('t45' in data.keys()) and not twinx: ylim = [np.max(data['m45']), np.min(data['m45'])]
-    if ('t36' in data.keys()) and ('t45' in data.keys()) and not twinx:
-        allmagvals = np.hstack([data['m36'], data['m45']])
-        ylim = [np.max(allmagvals), np.min(allmagvals)]
     # test if xlim is a list of lists. If not, add one layer of [ ]
     try:  
         temp = xlim[0][0]
@@ -524,37 +519,30 @@ def lc_plot(catalog, xlim = None, twinx = True):
     y0 = .15 #leave space for label on bottom
     y1 = .95 #leave space for title
 
-    fig = plt.figure()
+    if fig is None:
+        fig = plt.figure()
     axes = []
     taxes = []
     for i,xl in enumerate(xlim):
-        xl = np.array(xl, dtype = float) - mjdoffset # ensure it's float for devisions
+        xl = np.array(xl, dtype = float) - mjdoffset # ensure it's float for divisions
         axpos = [x0 + xlen[0:i].sum() / xtot * (x1-x0), y0, (xl[1] - xl[0]) / xtot * (x1-x0), y1-y0]
         if i == 0:
-            ax = fig.add_axes(axpos, xlim = xl, ylim = ylim)
+            ax = fig.add_axes(axpos, xlim = xl)
             ax.set_ylabel('mag')
         else:
             ax = fig.add_axes(axpos, xlim = xl,sharey = axes[0])
         axes.append(ax)
-        mergedlc = merge_lc(data, ['36','45'])
         if twinx:
             tax = ax.twinx()
             tax.ticklabel_format(useOffset=False, axis='y') 
             tax.set_xlim(xl)
             taxes.append(tax)
-            ax.scatter(data['t36']-mjdoffset, data['m36'], lw=0, s=20, marker='o', color='k', label = '[3.6], symbol: o')
-            tax.scatter(data['t45']-mjdoffset, data['m45'], lw=1, s=20, marker='+', color='k', label = '[4.5], symbol: +')            
-            if len(mergedlc) > 0:
-                ax.scatter(mergedlc['t']-mjdoffset, mergedlc['m36'], lw=0, s=30, marker='o', c=mergedlc['t'])
-                tax.scatter(mergedlc['t']-mjdoffset, mergedlc['m45'], lw=2, s=30, marker='+', c= 'r')
             tax.tick_params(axis='y', colors='r')
         else:
-            plot_lc(ax, data, mergedlc)
+            taxes.append(None)
         # Special cases where e.g. first axes is treated differently
         if np.mod(i,2) == 0: ax.set_xlabel('time (MJD - '+str(mjdoffset)+' )')
-        if i ==0: 
-            if not twinx: ax.legend()
-        else:
+        if i !=0: 
             plt.setp(ax.get_yticklabels(), visible=False)
         if twinx and i!= len(xlim)-1:
             plt.setp(tax.get_yticklabels(), visible=False)
@@ -567,12 +555,53 @@ def lc_plot(catalog, xlim = None, twinx = True):
             y1, y2 = tax1.get_ylim()
             for tax in taxes[1:]:
                 tax.set_ylim(y1,y2)
-                #tax.figure.canvas.draw()
 
         taxes[0].callbacks.connect("ylim_changed", update_twinx)
         taxes[0].set_ylim([np.max(data['m45']), np.min(data['m45'])])
         taxes[-1].set_ylabel('[4.5]', color = 'r')
         axes[0].set_ylabel('[3.6]')
+        taxes[0].invert_yaxis()
+    axes[0].invert_yaxis()
+    return fig, axes, taxes
+
+
+def lc_plot(catalog, xlim = None, twinx = True):
+    '''plot one or two lcs for a single object
+    
+    Parameters
+    ----------
+    catalog : single row from YSOVAR.atlas.YSOVAR_atlas
+        contains 't1' and / or 't2' as time for lightcurves and 
+        'm1' and / or 'm2' as magnitues for lightcurves
+    xlim : None or list
+        None auto scales the x-axis
+        list of [x0, x1] scales the xaxis form x1 to x2
+        list of lists [[x00,x01], [x10, x11], ...] splits in multiple panels and
+        each [x0, x1] pair gives the limits for one panel.
+    twinx : boolean
+        if true make seperate y axes for IRAC1 and IRAC2 if both are present
+    '''
+    data = catalog.lclist[0]
+    fig, axes, taxes = setup_lcplot_axes(data, xlim=xlim, twinx=twinx)
+
+    mergedlc = merge_lc(data, ['36','45'])
+    for ax, tax in zip(axes, taxes):
+        if twinx:
+            ax.scatter(data['t36']-mjdoffset, data['m36'], lw=0, s=20, marker='o', color='k', label = '[3.6], symbol: o')
+            tax.scatter(data['t45']-mjdoffset, data['m45'], lw=1, s=20, marker='+', color='k', label = '[4.5], symbol: +')            
+            if len(mergedlc) > 0:
+                ax.scatter(mergedlc['t']-mjdoffset, mergedlc['m36'], lw=0, s=30, marker='o', c=mergedlc['t'])
+                tax.scatter(mergedlc['t']-mjdoffset, mergedlc['m45'], lw=2, s=30, marker='+', c=mergedlc['t'])
+            tax.tick_params(axis='y', colors='r')
+        else:
+            plot_lc(ax, data, mergedlc)
+
+    if tax is None:
+        ax.legend()
+    else:
+        taxes[0].invert_yaxis() # required here again, because ylim was reset
+                                # in plotting in between
+
     return fig
 
 
