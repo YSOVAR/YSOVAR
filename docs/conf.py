@@ -66,7 +66,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'pYSOVAR'
-copyright = u'2013, H. H. Guenther, K. Poppenhaeger for the YSOVAR team'
+copyright = u'2013, H. M. Günther, K. Poppenhaeger for the YSOVAR team'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
