@@ -16,7 +16,7 @@ import sys, os
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-sys.path.insert(0, os.path.abspath('../../'))
+sys.path.insert(0, os.path.abspath('../'))
 
 # ------- readthedocs specifics -------------------------------------
 # creat mock module for those things that readthedocs does not provide
@@ -38,7 +38,7 @@ class Mock(object):
         else:
             return Mock()
 
-MOCK_MODULES = ['matplotlib', 'matplotlib.pyplot', 'pylab', 'pyfits', 'matplotlib.pylab']
+MOCK_MODULES = ['matplotlib', 'matplotlib.pyplot', 'pylab', 'matplotlib.pylab']
 for mod_name in MOCK_MODULES:
     sys.modules[mod_name] = Mock()
 

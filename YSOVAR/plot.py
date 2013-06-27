@@ -1,4 +1,50 @@
 # -*- coding: utf-8 -*-
+'''This module holds specialized plotting function for YSOVAR data.
+
+This module hold some plotting functions for YSOVAR data, i.e. lightcurves
+and color-color or color-magnitude diagrams.
+All the plotting is done with matplotlib.
+
+Plotting functions
+------------------
+
+The most important purpose of this module is to provide functions that can
+generate a big atlas, which holds some key diagnostic plots (e.g. the
+lightcurve, color-mag diagram) for every star in a :class:`YSOVAR.atlas.YSOVARatlas` 
+object. However, some of the functions are also useful for stand-alone plots.
+Functions that generate multiple plot have a often start with ``make`` and have
+a plural name (e.g. :func:`YSOVAR.plot.make_lc_plots`). These function then
+call a function that makes the individual plot (and sometimes that is broken
+down again into one function that sets up the figure and the axis and a 
+second one that executes the actual plot command), see
+:func:`YSOVAR.plot.plot_lc` and :func:`YSOVAR.plot.lc_plot`.
+
+Use those functions to plot individual lightcurves e.g. for a paper.
+
+Module level variables
+----------------------
+
+There are several module level variables, that define defaults for plots.
+
+Default offset of x-axis for lightcurve plots::
+
+    YSOVAR.plot.mjdoffset = 55000
+
+List of all formats for output for those routines that make e.g. the 
+lightcurve plot for each source. This has to be a list *even if it contains 
+only one element*. List multiple formats to obtain each image in each format::
+
+    YSOVAR.plot.filetype  = ['.eps']
+
+This routine can connect to the internet and download thumbnail images from
+the YSOVAR database. To do so, you need to set the username and password
+for the YSOVAR database::
+
+    YSOVAR.plots.YSOVAR_USERNAME = 'username'
+    YSOVAR.plots.YSOVAR_PASSWORD = 'password'
+
+'''
+
 import urllib
 import urllib2
 import math
@@ -475,7 +521,7 @@ def lc_plot(catalog, xlim = None, twinx = True):
     xtot = xlen.sum()
     x0 = .1 #leave enough space for labels on the left
     x1 = .9 
-    y0 = .15 #leave space for label on botton
+    y0 = .15 #leave space for label on bottom
     y1 = .95 #leave space for title
 
     fig = plt.figure()
@@ -504,7 +550,7 @@ def lc_plot(catalog, xlim = None, twinx = True):
             tax.tick_params(axis='y', colors='r')
         else:
             plot_lc(ax, data, mergedlc)
-        # Special cases where e.g. first axes is treated different
+        # Special cases where e.g. first axes is treated differently
         if np.mod(i,2) == 0: ax.set_xlabel('time (MJD - '+str(mjdoffset)+' )')
         if i ==0: 
             if not twinx: ax.legend()

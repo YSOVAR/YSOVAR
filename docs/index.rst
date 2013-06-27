@@ -27,8 +27,9 @@ since we document methods only after we know they work):
    :maxdepth: 2
 
    ysovar_atlas
-   ysovar_lombscargle
+   registry
    plot_atlas
+   ysovar_lombscargle
    lightcurves
    great_circle_dist
 

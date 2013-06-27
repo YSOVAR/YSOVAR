@@ -1,4 +1,8 @@
 # -*- coding: utf-8 -*-
+'''The routines here are for non-periodic timing, see :mod:`YSOVAR.lombscargle`
+for periodograms.
+'''
+
 import itertools
 
 import numpy as np
