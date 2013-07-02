@@ -1,3 +1,4 @@
+# Copyright (C) 2013 H.M.Guenther & K.Poppenhaeger. See Licence.rst for details.
 '''
 Provide a registry of functions to analyse lightcurves.
 

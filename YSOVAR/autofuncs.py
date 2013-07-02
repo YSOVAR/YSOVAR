@@ -1,3 +1,4 @@
+# Copyright (C) 2013 H.M.Guenther & K.Poppenhaeger. See Licence.rst for details.
 '''Define and register some common functions for the autogeneration of columns.
 
 This module defines some commonly used functions (e.g. stetson) for the analysis
@@ -57,6 +58,13 @@ def wmean(data, error):
     '''error weighted mean'''
     return np.average(data, weights=1./error**2.)
 
+def isnormal(data):
+    'p-value for a 2-sided chi squared probability that the distribution is normal'
+    if len(data) >=20:
+        return scipy.stats.normaltest(data)[1]
+    else:
+        return np.nan
+
 for func in [np.mean, np.median, mad, delta]:
     register(func, n_bands = 1, error = False, time = False, force = True)
 
@@ -66,7 +74,7 @@ register(np.max, n_bands = 1, error = False, time = False, name = 'max', force =
 register(np.std, n_bands = 1, time = False, error = False, name = 'stddev', description = 'standard deviation calculated fron non-biased variance', kwargs = {'ddof': 1}, force = True)
 register(scipy.stats.skew, n_bands = 1, error = False, time = False, description = 'biased (no correction for dof) skew', force = True)
 register(scipy.stats.kurtosis, n_bands = 1, error = False, time = False, description = 'biased (no correction for dof) kurtosis', force = True)
-register(lambda x: scipy.stats.normaltest(x)[1], n_bands = 1, error = False, time = False, name = 'isnormal', description = 'p-value for a 2-sided chi squared probability that the distribution is normal', force = True)
+register(isnormal, n_bands = 1, error = False, time = False, force = True)
 
 for func in [redchi2tomean, wmean]:
     register(func, n_bands = 1, time = False, error = True, force = True)

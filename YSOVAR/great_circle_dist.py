@@ -1,3 +1,4 @@
+# Copyright (C) 2013 H.M.Guenther & K.Poppenhaeger. See Licence.rst for details.
 '''Calculate distances on the celestial sphere
 
 Methods in here are required as helper functions for cross-matching sources by position.

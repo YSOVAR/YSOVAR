@@ -1,3 +1,4 @@
+# Copyright (C) 2013 H.M.Guenther & K.Poppenhaeger. See Licence.rst for details.
 """ Fast algorithm for spectral analysis of unevenly sampled data
 
 The Lomb-Scargle method performs spectral analysis on unevenly sampled
@@ -11,15 +12,15 @@ conventional FFT periodogram analysis.
 
 Keywords:
   DATA SAMPLING, FAST FOURIER TRANSFORMATIONS, 
-  SPECTRUM ANALYSIS, SIGNAL  PROCESSING
+  SPECTRUM ANALYSIS, SIGNAL PROCESSING
 
 Example::
     
   >>> import numpy
-  >>> import lomb
+  >>> import lombscargle
   >>> x = numpy.arange(10)
   >>> y = numpy.sin(x)
-  >>> fx,fy, nout, jmax, prob = lomb.fasper(x,y, 6., 6.)
+  >>> fx,fy, nout, jmax, prob = lombscargle.fasper(x,y, 6., 6.)
 
 Reference: 
   Press, W. H. & Rybicki, G. B. 1989
@@ -76,15 +77,15 @@ def fasper(x,y,ofac,hifac, MACC=4):
     """ function fasper
     
     Given abscissas x (which need not be equally spaced) and ordinates
-    y, and given a desired oversampling factor ofac (a typical value
-    being 4 or larger). this routine creates an array wk1 with a
-    sequence of nout increasing frequencies (not angular frequencies)
-    up to hifac times the "average" Nyquist frequency, and creates
-    an array wk2 with the values of the Lomb normalized periodogram at
-    those frequencies. The arrays x and y are not altered. This
-    routine also returns jmax such that wk2(jmax) is the maximum
-    element in wk2, and prob, an estimate of the significance of that
-    maximum against the hypothesis of random noise. A small value of prob
+    y, and given a desired oversampling factor ``ofac`` (a typical value
+    being 4 or larger). This routine creates an array ``wk1`` with a
+    sequence of ``nout`` increasing frequencies (not angular frequencies)
+    up to ``hifac`` times the "average" Nyquist frequency, and creates
+    an array ``wk2`` with the values of the Lomb normalized periodogram at
+    those frequencies. The arrays ``x`` and ``y`` are not altered. This
+    routine also returns ``jmax`` such that ``wk2[jmax]`` is the maximum
+    element in ``wk2``, and ``prob``, an estimate of the significance of that
+    maximum against the hypothesis of random noise. A small value of ``prob``
     indicates that a significant periodic signal is present.
   
     Reference: 
@@ -222,7 +223,7 @@ def getSignificance(wk1, wk2, nout, ofac):
     return sig
 
 def lombscargle(time, mag, maxper=15., oversamp = 4, maxfreq = 1.):
-    '''calculate Lomb-Scagle periodograms for all sources
+    '''calculate Lomb-Scargle periodograms for all sources
 
     A new column is added to the datatable that contains the result.
     (If the column exists before, it is overwritten).
@@ -230,7 +231,7 @@ def lombscargle(time, mag, maxper=15., oversamp = 4, maxfreq = 1.):
     Parameters
     ----------
     time : np.ndarray
-        times of obseration
+        times of observation
     mag : np.ndarray
         Observed magnitudes
     maxper : float

@@ -131,6 +131,7 @@ class Test_expected_results():
         assert data['cmd_b_error_36_45'][ind] > 0.01
         assert data['cmd_m_error_36_45'][ind] > 0.01
         assert data['cmd_alpha_error_36_45'][ind] > 0.01
+        assert data['isnormal_36'][ind] < 0.5
 
     def test_cmd_slope(self, data):
         ind = np.where(data['YSOVAR2_id'] == '-2502')[0][0]

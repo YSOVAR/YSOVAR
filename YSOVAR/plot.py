@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# Copyright (C) 2013 H.M.Guenther & K.Poppenhaeger. See Licence.rst for details.
 '''This module holds specialized plotting function for YSOVAR data.
 
 This module hold some plotting functions for YSOVAR data, i.e. lightcurves

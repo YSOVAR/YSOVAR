@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# Copyright (C) 2013 H.M.Guenther & K.Poppenhaeger. See Licence.rst for details.
 '''Generate an atlas of YSOVAR lightcurves
 
 This module collects all procedures that are required to make the

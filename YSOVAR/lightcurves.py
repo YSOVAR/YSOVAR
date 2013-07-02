@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# Copyright (C) 2013 H.M.Guenther & K.Poppenhaeger. See Licence.rst for details.
 '''The routines here are for non-periodic timing, see :mod:`YSOVAR.lombscargle`
 for periodograms.
 '''
