@@ -48,13 +48,33 @@ from . import lightcurves
 from . import registry
 
 ### Helper functions, simple one liners to do some math needed later on etc. ###
-           
+def coord_add_RADEfromhmsdms(dat, rah, ram, ras, design, ded, dem, des):
+    '''transform RA and DEC in table from hms, dms to degrees
+
+    Parameters
+    ----------
+    dat : astropy.table.Table
+        with columns in the CDS format (e.g. from reading a CDS table with
+        :mod:`astropy.io.ascii`)
+    rah, ram, ras, ded, dem, des: np.ndarray
+        RA and DEC hms, dms values
+    design: +1 or -1
+        Sign of the DE coordinate (integer of float, not string)
+    '''
+
+    radeg = rah*15. + ram / 4. + ras/4./60.
+    dedeg = design*(np.abs(ded + dem / 60. + des/3600.))
+
+    coltype = type(dat.columns[0])  # could be Column or MaskedColumn
+    dat.add_column(coltype(name = 'RAdeg', data = radeg))
+    dat.add_column(coltype(name = 'DEdeg', data = dedeg))
+  
 
 def coord_CDS2RADEC(dat):
     '''transform RA and DEC from CDS table to degrees
 
     CDS tables have a certain format of string columns to store coordinates
-    (`RAh`, `RAm`, `RAs`, `DE-`, `DEd`, `DEm`, `DEs`). This procedure
+    (`RAh``, `RAm`, `RAs`, `DE-`, `DEd`, `DEm`, `DEs`). This procedure
     parses that and calculates new values for RA and DEC in degrees.
     These are added to the Table as `RAdeg` and `DEdeg`.
 
@@ -62,13 +82,10 @@ def coord_CDS2RADEC(dat):
     ----------
     dat : astropy.table.Table
         with columns in the CDS format (e.g. from reading a CDS table with
-        `astropy.io.ascii`)
+        :mod:``astropy.io.ascii``)
     '''
-    radeg = dat['RAh']*15. + dat['RAm'] / 4. + dat['RAs']/4./60.
-    dedeg = ((dat['DE-'] !='-')*2-1) * (dat['DEd'] + dat['DEm'] / 60. + dat['DEs']/3600.)
-    coltype = type(dat.columns[0])  # could be Column or MaskedColumn
-    dat.add_column(coltype(name = 'RAdeg', data = radeg))
-    dat.add_column(coltype(name = 'DEdeg', data = dedeg))
+    coord_add_RADEfromhmsdms(dat['RAh'], dat['RAm'], dat['RAs'],
+                             (dat['DE-'] !='-')*2-1, dat['DEd'], dat['DEm'], dat['DEs'])
 
 def coord_hmsdms2RADEC(dat, ra = ['RAh', 'RAm', 'RAs'],dec = ['DEd', 'DEm','DEs']):
     '''transform RA and DEC from table to degrees
@@ -87,10 +104,35 @@ def coord_hmsdms2RADEC(dat, ra = ['RAh', 'RAm', 'RAs'],dec = ['DEd', 'DEm','DEs'
     dec : list of three strings
         names of DEC column names for deg, min, sec
     '''
-    radeg = dat[ra[0]]*15. + dat[ra[1]] / 4. + dat[ra[2]]/4./60.
-    dedeg = dat[dec[0]] + dat[dec[1]] / 60. + dat[dec[2]]/3600.
-    dat.add_column(astropy.table.Column(name = 'RAdeg', data = radeg))
-    dat.add_column(astropy.table.Column(name = 'DEdeg', data = dedeg))
+    sign = [-1 if d[0]=='-' else 1 for d in dat[dec]]
+    coord_add_RADEfromhmsdms(dat, dat[ra[0]], dat[ra[1]], dat[ra[2]],
+                             sign, np.abs(dat[dec[0]]), dat[dec[1]], dat[dec[2]])
+
+def coord_strhmsdms2RADEC(dat, ra = 'RA', dec = 'DEC'):
+    '''transform RA and DEC from table to degrees
+
+    Tables where RA and DEC are encoded as string columns each like
+    `hh:mm:ss` `dd:mm:ss` can be converted into decimal deg.
+    This procedure parses that and calculates new values for RA and DEC in degrees.
+    These are added to the Table as `RAdeg` and `DEdeg`.
+
+    Parameters
+    ----------
+    dat : astropy.table.Table
+        with columns in the format given above
+    ra : string
+        name of RA column names for hour, min, sec
+    dec : string
+        name of DEC column names for deg, min, sec
+    '''
+    raarr = astropy.io.ascii.read(dat[ra], Reader=astropy.io.ascii.NoHeader,
+                               delimiter=':', names=['h','m','s'])
+    dearr = astropy.io.ascii.read(dat[dec], Reader=astropy.io.ascii.NoHeader,
+                               delimiter=':', names=['d','m','s'])
+    sign = [-1 if d[0]=='-' else 1 for d in dat[dec]]
+    coord_add_RADEfromhmsdms(dat, raarr['h'], raarr['m'], raarr['s'],
+                             sign, np.abs(dearr['d']), dearr['m'], dearr['s'])
+
 
 ### Everything that deals with the lightcurve dictionaries and only with those ###
 
@@ -986,32 +1028,29 @@ class YSOVAR_atlas(astropy.table.Table):
             if func.n_bands ==1:
                 self.calc(f, band)
 
-    def classify_SED_slope(self, colname = 'IRclass', include24 = True):
+    def classify_SED_slope(self, bands=['mean_36', 'mean_45', 'Kmag', '3.6mag', '4.5mag', '5.8mag', '8.0mag'], colname = 'IRclass'):
         '''Classify the SED slope of an object
 
         This function calculates the SED slope for each object according
         to the prescription outlined by Luisa in the big data paper.
 
-        It uses all available datapoints in the IR from 2 to 24$\mu$m. 
+        It uses all available datapoints in the IR from the bands given
         If no measurement is present (e.g. missing or upper limit only)
         this band is ignored. The procedure performs a least-squares fit
-        and then classifies the resulting slope into class I, flat-spectrum,
-        II and III sources.
+        with equal weight for each band and then classifies the resulting
+        slope into class I, flat-spectrum, II and III sources.
 
         Parameters
         ----------
+        bands : list of strings
+            List of names for all bands to be used. Bands must be defined in
+            ``YSOVAR.atlas.sed_bands``.
         colname : string
             The classification will be placed in this column. If it exists
             it is overwritten.
-        include24 : bool
-            Decides if a MIPS 24 mu point is included in the fit (if present)
         '''
         sed_ir = {}
-        # K band and IRAC cold mission
-        bands = ['Kmag', '3.6mag', '4.5mag', '5.8mag', '8.0mag']
-        # MIPS cold mission
-        if include24:
-            bands.append('24mag')
+
         for b in bands:
             sed_ir[b] = sed_bands[b]
         # mean from current lightcurves

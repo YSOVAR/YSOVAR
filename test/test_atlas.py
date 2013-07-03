@@ -4,6 +4,28 @@ from astropy.table import Table
 
 from .. import atlas
 
+def test_coord_strhmsdmx2RADEC():
+    dat = Table({'r':['10:10:10.234', '20:20:20','0:30:30'],
+                    'd':['+10:10:10.234', '+0:10:30','-10:10:10']})
+    atlas.coord_strhmsdms2RADEC(dat, ra = 'r', dec = 'd')
+    assert np.all((dat['RAdeg']-np.array([152.54264167, 305.08333333,7.625])<1e-5)
+    assert np.all((dat['RAdeg']-np.array([10.16950944, 0.175, -10.16944444])<1e-5)
+
+def test_coord_hmsdmx2RADEC():
+    dat = Table({'r1': [10.,20,0], 'r2':[10., 20, 30], r3: [10.234, 20,30],
+                 'd1': [10,0,-10.], 'd2':[10,10,10], d3:[10.234, 30,10]})
+    atlas.coord_hmsdms2RADEC(dat, ra = ['r1','r2','r3'], dec = ['d1','d2','d3'])
+    assert np.all((dat['RAdeg']-np.array([152.54264167, 305.08333333,7.625])<1e-5)
+    assert np.all((dat['RAdeg']-np.array([10.16950944, 0.175, -10.16944444])<1e-5)
+
+def test_coord_strhmsdmx2RADEC():
+    dat = Table({'r':['10:10:10.234', '20:20:20','0:30:30'],
+                    'd':['+10:10:10.234', '+0:10:30','-10:10:10']})
+    atlas.coord_strhmsdms2RADEC(dat, ra = 'r', dec = 'd')
+    assert np.all((dat['RAdeg']-np.array([152.54264167, 305.08333333,7.625])<1e-5)
+    assert np.all((dat['RAdeg']-np.array([10.16950944, 0.175, -10.16944444])<1e-5)
+
+
 def test_makecrossids():
     d1 = np.rec.array([[0,0],[23,45],[45,89],[230,-50], [255,-66]], dtype=[('ra', np.float),('dec', np.float)])
     d2 = np.rec.array([[.01,0.9],[23,44.1],[55,89.4],[229.8,-50.1], [23, 44.05], [23.01,44.05]], dtype=[('ra', np.float),('dec', np.float)])
