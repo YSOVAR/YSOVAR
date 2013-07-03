@@ -906,6 +906,11 @@ class YSOVAR_atlas(astropy.table.Table):
 
         for n in names:
             self.add_column(astropy.table.Column(name = n, length  = len(self), dtype = catalog[n].dtype))
+            # select all types of floats
+            if np.issubdtype(catalog[n].dtype, np.inexact):
+                self[n][:] = np.nan
+            elif np.issubdtype(catalog[n].dtype, np.int):
+                self[n][:] = -99999
 
         for i in range(len(self)):
             if ids[i] >=0:
