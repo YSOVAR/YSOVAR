@@ -6,22 +6,6 @@ This module hold some plotting functions for YSOVAR data, i.e. lightcurves
 and color-color or color-magnitude diagrams.
 All the plotting is done with matplotlib.
 
-Plotting functions
-------------------
-
-The most important purpose of this module is to provide functions that can
-generate a big atlas, which holds some key diagnostic plots (e.g. the
-lightcurve, color-mag diagram) for every star in a :class:`YSOVAR.atlas.YSOVARatlas` 
-object. However, some of the functions are also useful for stand-alone plots.
-Functions that generate multiple plot have a often start with ``make`` and have
-a plural name (e.g. :func:`YSOVAR.plot.make_lc_plots`). These function then
-call a function that makes the individual plot (and sometimes that is broken
-down again into one function that sets up the figure and the axis and a 
-second one that executes the actual plot command), see
-:func:`YSOVAR.plot.plot_lc` and :func:`YSOVAR.plot.lc_plot`.
-
-Use those functions to plot individual lightcurves e.g. for a paper.
-
 Module level variables
 ----------------------
 
@@ -44,6 +28,22 @@ for the YSOVAR database::
     YSOVAR.plots.YSOVAR_USERNAME = 'username'
     YSOVAR.plots.YSOVAR_PASSWORD = 'password'
 
+
+Plotting functions
+------------------
+
+The most important purpose of this module is to provide functions that can
+generate a big atlas, which holds some key diagnostic plots (e.g. the
+lightcurve, color-mag diagram) for every star in a :class:`YSOVAR.atlas.YSOVARatlas` 
+object. However, some of the functions are also useful for stand-alone plots.
+Functions that generate multiple plot have a often start with ``make`` and have
+a plural name (e.g. :func:`YSOVAR.plot.make_lc_plots`). These function then
+call a function that makes the individual plot (and sometimes that is broken
+down again into one function that sets up the figure and the axis and a 
+second one that executes the actual plot command), see
+:func:`YSOVAR.plot.plot_lc` and :func:`YSOVAR.plot.lc_plot`.
+
+Use those functions to plot individual lightcurves e.g. for a paper.
 '''
 
 import urllib
@@ -639,7 +639,7 @@ def make_lc_plots(atlas, outroot, verbose = True, xlim = None, twinx = False, in
         multisave(fig, filename)
         plt.close("all")
 
-def cmd_plot(atlas, mergedlc, verbose = True):
+def cmd_plot(atlas, mergedlc, redvec = None, verbose = True):
     '''
     Parameters
     ----------
@@ -647,7 +647,8 @@ def cmd_plot(atlas, mergedlc, verbose = True):
     mergedlc : np.ndarray
         contains 't' as time for merged lightcurves and 
         'm36' and 'm45' as magnitues for lightcurves
-
+    redvec : float
+        slope of reddening vector in the CMD. If ``None`` use default.
 
     '''
     fig = plt.figure()
@@ -658,23 +659,25 @@ def cmd_plot(atlas, mergedlc, verbose = True):
     # get x and y coordinates of plot
     ylim = ax.get_ylim()
     ax.set_ylim(ylim[1], ylim[0]) # invert y axis!
-    x1 = ax.get_xlim()[0]
-    x2 = ax.get_xlim()[1]
+    xlim = np.array(ax.get_xlim())
+    x1 = xlim[0]
+    x2 = xlim[1]
     y1 = ax.get_ylim()[0]
     y2 = ax.get_ylim()[1]
     # plot line for fit to data:
     m = atlas['cmd_m_36_45']
     b = atlas['cmd_b_36_45']
-    line_x = np.array([x1, x2])
-    line_y = np.array([m*x1+b, m*x2+b])
-    ax.plot(line_x, line_y, 'k-', label = 'measured slope')
+    line_y = m*xlim+b
+    ax.plot(xlim, line_y, 'k-', label = 'measured slope')
     
     # plot line for shifted reddening vector to data:
-    m = atlas['cmd_m_redvec_36_45']
-    b = atlas['cmd_b_redvec_36_45']
-    line_x = np.array([x1, x2])
-    line_y = np.array([m*x1+b, m*x2+b])
-    ax.plot(line_x, line_y, 'k--', label = 'standard reddening')
+    if redvec is None:
+        m = redvecs['36_45'][0]
+    else:
+        m = redvec
+    b = np.mean(ax.get_ylim()) - m*np.mean(xlim)    
+    line_y = m*xlim+b
+    ax.plot(xlim, line_y, 'k--', label = 'standard reddening')
     
     # plot reddening vector: (with length somewhat adjusted to the plot size)
     vector = make_reddeningvector_for_plot(x1, x2, y1, y2)

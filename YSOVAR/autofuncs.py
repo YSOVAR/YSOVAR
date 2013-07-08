@@ -1,6 +1,24 @@
 # Copyright (C) 2013 H.M.Guenther & K.Poppenhaeger. See Licence.rst for details.
 '''Define and register some common functions for the autogeneration of columns.
 
+Module level variables
+----------------------
+This module contains a dictionary of default reddening vectors.
+
+The form of the vectors is a following:
+
+    redvec[0] : slope of reddening law in CMD
+    redvec[1] : reddening value in first band (the $\delta y$ in CMD)
+
+The following command will list all implemented reddening vectors::
+
+    print YSOVAR.plot.redvecs
+
+The reddening vector with the key '36_45' is used as default in most plots if
+no specific reddening vector is specified.
+
+Functions
+----------
 This module defines some commonly used functions (e.g. stetson) for the analysis
 of our lightcurves. It registers all the functions defined here and a bunch
 of simple numpy function with :mod:`registry`, so that they are availvalbe
@@ -37,7 +55,7 @@ redvecs = {'36_45_rieke_Lebofsky85_vsAV': np.array([1.66, 0.058]),
 
 The form of the vectors is a following:
     redvec[0] : slope of reddening law in CMD
-    redvec[1] : reddening value in first band (the detal_y in CMD)
+    redvec[1] : reddening value in first band (the delta_y in CMD)
 '''
 
 
@@ -236,7 +254,7 @@ def fit_twocolor_odr(band1, band2, band1_err, band2_err, outroot = None,  n_boot
         return p[0]*x + p[1]
 
     if p_guess is None:
-        p_guess = list(cmd_slope_simple(band1, band2, band1_err, band2_err))
+        p_guess = list(cmd_slope_simple(band1, band2, band1_err, band2_err))[0:2]
         if ~np.isfinite(p_guess[0]): # pathological case
             p_guess[0] = 0
         if ~np.isfinite(p_guess[1]): # pathological case
@@ -380,14 +398,6 @@ def fit_twocolor_odr(band1, band2, band1_err, band2_err, outroot = None,  n_boot
         bootstrap_output = np.array([m_median, m_error, b_median, b_error, a_median, a_error])
         bootstrap_raw = (m, b, a)
     
-    if xyswitch:
-        # re-transform slope and intercept to original xy system
-        # x = m * y + b
-        # y = 1/m * x - b/m
-        output.beta[1] = -output.beta[1]/output.beta[0] # b
-        output.beta[0] = 1./output.beta[0] # m
-        alpha = np.pi/2 - alpha
-    
     result = (output, bootstrap_output, bootstrap_raw, alpha, sd_alpha, x_spread)
     return result
 
@@ -429,10 +439,10 @@ def cmdslope_odr(band1, band2, band1_err, band2_err, p_guess = None, redvec = re
     # pathological cases with a (nearly) vertical fit with large nominal errors.
     if alpha_error/alpha > alpha_error2/alpha2:
         alpha, alpha_error = (alpha2, alpha_error2)
-        cmd_m = -1./fit_output.beta[0]
-        cmd_b = fit_output.beta[1] / fit_output.beta[0]
-        cmd_m_error = fit_output.sd_beta[0] / cmd_m**2
-        cmd_b_error = np.sqrt((fit_output.sd_beta[1]/cmd_m)**2 +
+        cmd_m = 1./fit_output2.beta[0]
+        cmd_b = -fit_output2.beta[1] / fit_output2.beta[0]
+        cmd_m_error = fit_output2.sd_beta[0] / cmd_m**2
+        cmd_b_error = np.sqrt((fit_output2.sd_beta[1]/cmd_m)**2 +
                               (cmd_b**2*cmd_m_error**2)**2)
     else:
         cmd_m = fit_output.beta[0]
@@ -440,20 +450,21 @@ def cmdslope_odr(band1, band2, band1_err, band2_err, p_guess = None, redvec = re
         cmd_m_error = fit_output.sd_beta[0]
         cmd_b_error = fit_output.sd_beta[1]
  
+    # Make new alpha to avoid confusion in case of x/y switch
+    alpha = math.atan(redvec[0])
 
+    '''crude classification of CMD slope
 
-        '''crude classification of CMD slope
-
-        This is some crude classification of the cmd slope.
-        anything that goes up and has a relative slope error of <40% is
-        "accretion-dominated", anythin that is within some cone around
-        the theoratical reddening and has error <40% is "extinction-dominated",
-        anything else is "other".
-        If slope is classified as extinction, the spread in the CMD is converted
-        to AV and stored.
-        '''
+    This is some crude classification of the cmd slope.
+    anything that goes up and has a relative slope error of <40% is
+    "accretion-dominated", anything that is within some cone around
+    the theoretical reddening and has error <40% is "extinction-dominated",
+    anything else is "other".
+    If slope is classified as extinction, the spread in the CMD is converted
+    to AV and stored.
+    '''
     # angle of standard reddening
-    alpha_red = math.asin(redvec[0]/np.sqrt(redvec[0]**2 + 1**2))
+    alpha_red = math.atan(redvec[0])
 
     cmd_dominated = 'bad'
     AV = np.nan

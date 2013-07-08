@@ -53,7 +53,7 @@ def coord_add_RADEfromhmsdms(dat, rah, ram, ras, design, ded, dem, des):
 
     Parameters
     ----------
-    dat : astropy.table.Table
+    dat : :class:`YSOVAR.atlas.YSOVAR_atlas` or :class:`astropy.table.Table`
         with columns in the CDS format (e.g. from reading a CDS table with
         :mod:`astropy.io.ascii`)
     rah, ram, ras, ded, dem, des: np.ndarray
@@ -74,17 +74,17 @@ def coord_CDS2RADEC(dat):
     '''transform RA and DEC from CDS table to degrees
 
     CDS tables have a certain format of string columns to store coordinates
-    (`RAh``, `RAm`, `RAs`, `DE-`, `DEd`, `DEm`, `DEs`). This procedure
+    (`RAh`, `RAm`, `RAs`, `DE-`, `DEd`, `DEm`, `DEs`). This procedure
     parses that and calculates new values for RA and DEC in degrees.
     These are added to the Table as `RAdeg` and `DEdeg`.
 
     Parameters
     ----------
-    dat : astropy.table.Table
+    dat : :class:`YSOVAR.atlas.YSOVAR_atlas` or :class:`astropy.table.Table`
         with columns in the CDS format (e.g. from reading a CDS table with
-        :mod:``astropy.io.ascii``)
+        :mod:`astropy.io.ascii`)
     '''
-    coord_add_RADEfromhmsdms(dat['RAh'], dat['RAm'], dat['RAs'],
+    coord_add_RADEfromhmsdms(dat, dat['RAh'], dat['RAm'], dat['RAs'],
                              (dat['DE-'] !='-')*2-1, dat['DEd'], dat['DEm'], dat['DEs'])
 
 def coord_hmsdms2RADEC(dat, ra = ['RAh', 'RAm', 'RAs'],dec = ['DEd', 'DEm','DEs']):
@@ -97,7 +97,7 @@ def coord_hmsdms2RADEC(dat, ra = ['RAh', 'RAm', 'RAs'],dec = ['DEd', 'DEm','DEs'
 
     Parameters
     ----------
-    dat : astropy.table.Table
+    dat :  :class:`YSOVAR.atlas.YSOVAR_atlas` or :class:`astropy.table.Table`
         with columns in the format given above
     ra : list of three strings
         names of RA column names for hour, min, sec
@@ -118,7 +118,7 @@ def coord_strhmsdms2RADEC(dat, ra = 'RA', dec = 'DEC'):
 
     Parameters
     ----------
-    dat : astropy.table.Table
+    dat :  :class:`YSOVAR.atlas.YSOVAR_atlas` or :class:`astropy.table.Table`
         with columns in the format given above
     ra : string
         name of RA column names for hour, min, sec
@@ -141,7 +141,7 @@ def radec_from_dict(data, RA = 'ra', DEC = 'dec'):
     
     Parameters
     ----------
-    data : list of dict
+    data : list of several `dict`
     RA, DEC : strings
         keys for RA and DEC in the dictionary
     
@@ -183,7 +183,7 @@ def makecrossids(data1, data2, radius, ra1='RAdeg', dec1='DEdeg', ra2='ra', dec2
 
     Parameters
     ----------
-    data1 : astropy.table.Table or np.recarray
+    data1 : :class"`astropy.table.Table` or np.recarray
         This is the master data, i.e. for each element in data1, the
         results wil have one (or zero) index numbers in data2, that provide
         the best match to this entry in data1.
@@ -224,11 +224,11 @@ def makecrossids_all(data1, data2, radius, ra1='RAdeg', dec1='DEdeg', ra2='ra', 
 
     Parameters
     ----------
-    data1 : astropy.table.Table or np.recarray
+    data1 : :class:`astropy.table.Table` or np.recarray
         This is the master data, i.e. for each element in data1, the
         results wil have one (or zero) index numbers in data2, that provide
         the best match to this entry in data1.
-    data2 : astropt.table.Table or np.recarray
+    data2 : :class:`astropy.table.Table` or np.recarray
         This data is matched to data1.
     radius : np.float
        maximum radius to accept a match (in degrees) 
@@ -301,7 +301,7 @@ def sed_slope(data, sed_bands=sed_bands):
 
     Parameters
     ----------
-    data : np.rec.array or atpy.table or dict
+    data :  :class:`YSOVAR.atlas.YSOVAR_atlas` or :class:`astropy.table.Table`
         input data that has arrays of magnitudes for different bands
     sed_bands : dict 
         keys must be the name of the field that contains the magnitudes in each
@@ -329,7 +329,7 @@ def get_sed(data, sed_bands = sed_bands, valid = False):
     
     Parameters
     ----------
-    data : np.rec.array or atpy.table or dict
+    data :  :class:`YSOVAR.atlas.YSOVAR_atlas` or :class:`astropy.table.Table`
         input data that has arrays of magnitudes for different bands
     sed_bands : dict 
         keys must be the name of the field that contains the magnitudes in each
@@ -403,7 +403,7 @@ def dict_cleanup(data, channels, min_number_of_times = 0, floor_error = {}):
     Parameters
     ----------
     data : list of dictionaries
-        as obtained from :func:`add_ysovar_mags`
+        as obtained from :func:`YSOVAR.atlas.add_ysovar_mags`
     channels : dictionary
         This dictionary traslantes the names of channels in the csv file to
         the names in the output structure, e.g.
@@ -465,7 +465,7 @@ def merge_lc(d, bands, t_simul=0.01):
     Parameters
     ----------
     d : dictionary
-        as obtained from :func:`add_ysovar_mags`
+        as obtained from :func:`YSOVAR.atlas.add_ysovar_mags`
     bands : list of strings
         labels of the spectral bands to be merged, e.g. ['36','45']
     t_simul : float
