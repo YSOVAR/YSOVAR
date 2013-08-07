@@ -284,8 +284,7 @@ def fit_twocolor_odr(band1, band2, band1_err, band2_err, outroot = None,  n_boot
     bootstrap_output = np.array([np.NaN, np.NaN, np.NaN, np.NaN])
     bootstrap_raw = (np.NaN, np.NaN, np.NaN)
     # calculate slope angle. This is vs. horizontal axis.
-    hyp = np.sqrt(output.beta[0]**2 + 1**2)
-    alpha = math.asin(output.beta[0]/hyp)
+    alpha = math.atan(output.beta[0])
     # calculate error on slope angle by taking the mean difference of the angles derived from m+m_error and m-m_error.
     alpha_plus  = math.asin((output.beta[0]+output.sd_beta[0])/np.sqrt((output.beta[0]+output.sd_beta[0])**2 + 1**2))
     alpha_minus = math.asin((output.beta[0]-output.sd_beta[0])/np.sqrt((output.beta[0]-output.sd_beta[0])**2 + 1**2))
@@ -451,7 +450,7 @@ def cmdslope_odr(band1, band2, band1_err, band2_err, p_guess = None, redvec = re
         cmd_b_error = fit_output.sd_beta[1]
  
     # Make new alpha to avoid confusion in case of x/y switch
-    alpha = math.atan(redvec[0])
+    alpha = math.atan(cmd_m)
 
     '''crude classification of CMD slope
 
