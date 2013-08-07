@@ -174,7 +174,7 @@ Try fitting x vs. y (this is NOT like bisector, because we always use both x and
 
     mycloud.calc('cmdslopeodr',['36','45'])
 
-    mycloud.calc('fitpoly')
+    mycloud.calc('fitpoly', ['36'])
 
 Add columns manually
 ^^^^^^^^^^^^^^^^^^^^
@@ -200,6 +200,7 @@ We write all the stuff in ``outroot`` and determine that a pdf will be good form
 All matplotlib output formats are supported. Then, we do all the cool plots::
 
     outroot = '/my/directory/'
+    outroot_stars = outroot + 'stars/'
 
     # set output file type to pdf (for pdflatex)
     plot_atlas.filetype = ['.pdf']
