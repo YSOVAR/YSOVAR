@@ -754,7 +754,7 @@ def plot_polys(atlas, outroot, verbose = True):
         if true print progress in processing
     '''
     for i, d in enumerate(atlas.lclist):
-        if verbose and np.mod(i,100) == 0: print 'lightcurve plots: ' + str(i) + ' of ' + str(len(data))
+        if verbose and np.mod(i,100) == 0: print 'lightcurve plots: ' + str(i) + ' of ' + str(len(atlas))
         # make light curve plot:
         if ('t36' in d.keys()) and (len(d['t36']) > 15):
             fig = lc.plot_all_polys(d['t36'], d['m36'], d['m36_error'], 'IRAC 1')
