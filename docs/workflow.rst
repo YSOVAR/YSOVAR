@@ -164,9 +164,9 @@ perform some filtering or smoothing of the lightcurve.
 As an example, we search for periods. The parameters in the call are the maximum period in days, the oversampling factor, and a multiplier for the maximum frequency (see :func:`YSOVAR.lombscargle.lombscargle` for details)::
 
     mycloud.calc('lombscargle', '36', maxper = 100)
-    mycloud.calc('lombscargle', '36', maxper = 100)
+    mycloud.calc('lombscargle', '45', maxper = 100)
     # If we added the band '3645' as in the example above, we can do:
-    mycloud.calc('lombscargle', '36', maxper = 100)
+    mycloud.calc('lombscargle', '3645', maxper = 100)
 
     mycloud.is_there_a_good_period(20, 1,100)
 
@@ -200,24 +200,23 @@ We write all the stuff in ``outroot`` and determine that a pdf will be good form
 All matplotlib output formats are supported. Then, we do all the cool plots::
 
     outroot = '/my/directory/'
-    outroot_stars = outroot + 'stars/'
 
     # set output file type to pdf (for pdflatex)
     plot_atlas.filetype = ['.pdf']
 
-    plot_atlas.get_stamps(mycloud, outroot_stars)
-    plot_atlas.plot_polys(mycloud, outroot_stars)
-    plot_atlas.make_lc_plots(mycloud, outroot_stars) 
-    plot_atlas.make_cmd_plots(cat, outroot_stars)
-    plot_atlas.make_ls_plots(cat, outroot_stars, 300, 4, 1)
-    plot_atlas.make_phased_lc_cmd_plots(cat, outroot_stars)
-    plot_atlas.make_info_plots(cat, outroot_overview)
-    plot_atlas.make_sed_plots(cat, outroot_stars, title = 'SED')
+    plot_atlas.get_stamps(mycloud, outroot)
+    plot_atlas.plot_polys(mycloud, outroot)
+    plot_atlas.make_lc_plots(mycloud, outroot) 
+    plot_atlas.make_cmd_plots(mycloud, outroot)
+    plot_atlas.make_ls_plots(mycloud, outroot_stars, 300, 4, 1)
+    plot_atlas.make_phased_lc_cmd_plots(mycloud, outroot)
+    plot_atlas.make_info_plots(mycloud, outroot)
+    plot_atlas.make_sed_plots(mycloud, outroot, title = 'SED')
 
 Write latex files for atlas. In this case we select for YSOs (numerical class < 4) only::
 
     ind_ysos = np.where(mycloud['ysoclass'] < 4)[0]
-    plot_atlas.make_latexfile(mycloud, outroot_stars, 'atlas_ysos', ind_ysos)
+    plot_atlas.make_latexfile(mycloud, outroot, 'atlas_ysos', ind_ysos)
 
 
 Write (parts of) a catalog to file
