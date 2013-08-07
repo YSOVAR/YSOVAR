@@ -515,8 +515,11 @@ def setup_lcplot_axes(data, xlim, twinx = True, fig = None):
     
     xlen = np.array([x[1]-x[0] for x in xlim], dtype = np.float)
     xtot = xlen.sum()
-    x0 = .1 #leave enough space for labels on the left
-    x1 = .9 
+    x0 = .13 #leave enough space for labels on the left
+    if twinx:
+        x1 = .87 
+    else:
+        x1 = .95
     y0 = .15 #leave space for label on bottom
     y1 = .95 #leave space for title
 
