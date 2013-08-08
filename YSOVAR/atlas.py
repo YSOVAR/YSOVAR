@@ -59,7 +59,7 @@ def coord_add_RADEfromhmsdms(dat, rah, ram, ras, design, ded, dem, des):
     rah, ram, ras, ded, dem, des: np.ndarray
         RA and DEC hms, dms values
     design: +1 or -1
-        Sign of the DE coordinate (integer of float, not string)
+        Sign of the DE coordinate (integer or float, not string)
     '''
 
     radeg = rah*15. + ram / 4. + ras/4./60.
@@ -293,7 +293,9 @@ sed_bands = {'Umag': ['e_Umag', 0.355, 1500],
              'nomad_Vmag': [None, 0.623, 3597.28], 
              'nomad_Rmag': [None, 0.759, 3182], 
              'simbad_B': [None, 0.430, 4000.87], 
-             'simbad_V': [None, 0.623, 3597.28]
+             'simbad_V': [None, 0.623, 3597.28],
+             'mean_36': ['e_3.6mag', 3.6, 280.9], 
+             'mean_45': ['e_4.5mag', 4.5, 179.7], 
             }
 
 def sed_slope(data, sed_bands=sed_bands):
