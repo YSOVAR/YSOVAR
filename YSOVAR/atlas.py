@@ -744,22 +744,40 @@ class YSOVAR_atlas(astropy.table.Table):
              self.add_column(col)
     
     def __getitem__(self, item):
-        
-        if isinstance(item, basestring) and item not in self.colnames:
-            self.autocalc_newcol(item)
-            # safeguard against infinite loops, because there is no direct
-            # control, if the new column is really called item
-            if item in self.colnames:
-                return self[item]
-            else:
-                raise Exception('Attempted to calculate {0}, but the columns added are not called {1}'.format(item, item))
 
-        # In thiscase astropy.table.Table would return a Row object
-        # not a new Table
-        if isinstance(item, int):
-            item = [item]
-         
-        return super(YSOVAR_atlas, self).__getitem__(item)
+        if isinstance(item, basestring):
+            if item not in self.colnames:
+                self.autocalc_newcol(item)
+                # safeguard against infinite loops, because there is no direct
+                # control, if the new column is really called item
+                if item in self.colnames:
+                    return self[item]
+                else:
+                    raise Exception('Attempted to calculate {0}, but the columns added are not called {1}'.format(item, item))
+            else:
+                return self.columns[item]
+        elif isinstance(item, int):
+            # In thiscase astropy.table.Table would return a Row object
+            # not a new Table - we change this behavior here
+            return self._new_from_slice([item])
+        elif isinstance(item, tuple):
+            if all(isinstance(x, np.ndarray) for x in item):
+                # Item is a tuple of ndarrays as in the output of np.where, e.g.
+                # t[np.where(t['a'] > 2)]
+                return self._new_from_slice(item)
+            elif (all(x in self.colnames for x in item)):
+                # Item is a tuple of strings that are valid column names
+                return astropy.table.Table([self[x] for x in item], meta=deepcopy(self.meta))
+            else:
+                raise ValueError('Illegal item for table item access')
+
+        elif (isinstance(item, slice) or isinstance(item, np.ndarray)
+              or isinstance(item, list)):
+            return self._new_from_slice(item)
+        else:
+            raise ValueError('Illegal type {0} for table item access'
+                             .format(type(item)))
+
 
     def _new_from_slice(self, slice_):
         """Create a new table as a referenced slice from self."""
@@ -1112,11 +1130,22 @@ class YSOVAR_atlas(astropy.table.Table):
         self['good_period'][:] = np.nan
         self['good_peak'][:] = np.nan
 
-        peaknames = tuple(['peak_'+band for band in bands])
-        periodnames = tuple(['period_'+band for band in bands])
 
-        peaks = self[peaknames]._data.view((np.float, len(bands)))
-        periods = self[periodnames]._data.view((np.float, len(bands)))
+        # numpy 1.7.1 introduced a bug in view for arrays that contain objects
+        # see:
+        # https://github.com/numpy/numpy/issues/3253
+        # https://github.com/numpy/numpy/issues/3256‎
+        # So, for now, make am ugly workaround until this problem is fixed
+        # peaknames = ['peak_'+band for band in bands]
+        # periodnames = ['period_'+band for band in bands]
+        # peaks = self._data[peaknames].view((np.float, len(bands)))
+        # periods = self._data[periodnames].view((np.float, len(bands)))
+
+        peaks = np.zeros((len(self), len(bands)))
+        periods = np.zeros_like(peaks)
+        for i, band in enumerate(bands):
+            peaks[:,i] = self['peak_'+band]
+            periods[:,i] = self['period_'+band]
         
         good = (peaks > power) & (periods > minper) & (periods < maxper)
         bestpeak = np.argmax(np.ma.masked_where(~good, peaks), axis=1)
