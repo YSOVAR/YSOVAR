@@ -108,7 +108,7 @@ def coord_hmsdms2RADEC(dat, ra = ['RAh', 'RAm', 'RAs'],dec = ['DEd', 'DEm','DEs'
     coord_add_RADEfromhmsdms(dat, dat[ra[0]], dat[ra[1]], dat[ra[2]],
                              sign, np.abs(dat[dec[0]]), dat[dec[1]], dat[dec[2]])
 
-def coord_strhmsdms2RADEC(dat, ra = 'RA', dec = 'DEC'):
+def coord_strhmsdms2RADEC(dat, ra = 'RA', dec = 'DEC', delimiter=':'):
     '''transform RA and DEC from table to degrees
 
     Tables where RA and DEC are encoded as string columns each like
@@ -124,11 +124,13 @@ def coord_strhmsdms2RADEC(dat, ra = 'RA', dec = 'DEC'):
         name of RA column names for hour, min, sec
     dec : string
         name of DEC column names for deg, min, sec
+    delimiter : string
+        delimiter between elements, e.g. ``:`` in ``01:23:34.3``.
     '''
     raarr = astropy.io.ascii.read(dat[ra], Reader=astropy.io.ascii.NoHeader,
-                               delimiter=':', names=['h','m','s'])
+                               delimiter=delimiter, names=['h','m','s'])
     dearr = astropy.io.ascii.read(dat[dec], Reader=astropy.io.ascii.NoHeader,
-                               delimiter=':', names=['d','m','s'])
+                               delimiter=delimiter, names=['d','m','s'])
     sign = [-1 if d[0]=='-' else 1 for d in dat[dec]]
     coord_add_RADEfromhmsdms(dat, raarr['h'], raarr['m'], raarr['s'],
                              sign, np.abs(dearr['d']), dearr['m'], dearr['s'])
