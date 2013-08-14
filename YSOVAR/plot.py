@@ -762,7 +762,7 @@ def plot_polys(atlas, outroot, verbose = True):
             multisave(fig, filename)
             plt.close(fig)
         elif ('t45' in d.keys()) and (len(d['t45']) > 15):
-            fig = lc.plot_all_polys(d['t45'], d['m45'], d['m2_error'], 'IRAC 2')
+            fig = lc.plot_all_polys(d['t45'], d['m45'], d['m45_error'], 'IRAC 2')
             filename = os.path.join(outroot, str(i) + '_lcpoly')
             multisave(fig, filename)
             plt.close(fig)

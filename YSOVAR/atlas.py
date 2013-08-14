@@ -1082,7 +1082,7 @@ class YSOVAR_atlas(astropy.table.Table):
         for col in ['mean_36', 'stddev_36', 'mean_45', 'stddev_45']:
             temp = self[col]
         if colname in self.colnames:
-            self.remove_columns(colname)
+            self.remove_column(colname)
         self.add_column(astropy.table.Column(
                        name=colname, length=len(self), dtype='S3'))
         for i, star in enumerate(self):
