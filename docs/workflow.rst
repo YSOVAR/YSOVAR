@@ -210,8 +210,6 @@ All matplotlib output formats are supported. Then, we do all the cool plots::
     plot_atlas.make_cmd_plots(mycloud, outroot)
     plot_atlas.make_ls_plots(mycloud, outroot_stars, 300, 4, 1)
     plot_atlas.make_phased_lc_cmd_plots(mycloud, outroot)
-    plot_atlas.make_info_plots(mycloud, outroot)
-    plot_atlas.make_sed_plots(mycloud, outroot, title = 'SED')
 
 Write latex files for atlas. In this case we select for YSOs (numerical class < 4) only::
 
