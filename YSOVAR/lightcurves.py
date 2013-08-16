@@ -339,7 +339,7 @@ def describe_autocorr(t, val, scale = 0.1, autocorr_scale = 0.5, autosum_limit =
 
     return cumsumtime, coherence_time, autocorr_time, autocorr_val
 
-register(describe_autocorr, n_bands = 1, error= False, time = True, default_colnames = ['cumsumtime', 'coherence_time'], name='ACF', force = True)
+register(describe_autocorr, n_bands = 1, error= False, time = True, default_colnames = ['cumsumtime', 'coherence_time'], name='ACF', force = True, default_colunits=['d','d'], default_coldescriptions=['Time until cumulative sum of ACf reaches threshold value', 'decay time of ACF'])
 
 def ARmodel(t, val, degree = 2, scale = 0.5):
     '''Fit an auto-regressive (AR) model to data and retrn some parameters

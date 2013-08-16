@@ -61,7 +61,7 @@ The form of the vectors is a following:
 
 ### simple function for one band ###
 def mad(data):
-    '''Calculate median absolute deviation.'''
+    '''Median absolute deviation.'''
     return np.median(np.abs(data - np.median(data)))
 
 def redchi2tomean(data, error):
@@ -77,21 +77,21 @@ def wmean(data, error):
     return np.average(data, weights=1./error**2.)
 
 def isnormal(data):
-    'p-value for a 2-sided chi squared probability that the distribution is normal'
+    'p-value for a 2-sided chi^2 probability that the distribution is normal'
     if len(data) >=20:
         return scipy.stats.normaltest(data)[1]
     else:
         return np.nan
 
 for func in [np.mean, np.median, mad, delta]:
-    register(func, n_bands = 1, error = False, time = False, force = True)
+    register(func, n_bands = 1, error = False, time = False, force = True, default_colunits=['mag'])
 
-register(len, n_bands = 1, error = False, time = False, name = 'n', other_cols = OrderedDict([('n', int)]), force = True)
-register(np.min, n_bands = 1, error = False, time = False, name = 'min', force = True)
-register(np.max, n_bands = 1, error = False, time = False, name = 'max', force = True)
-register(np.std, n_bands = 1, time = False, error = False, name = 'stddev', description = 'standard deviation calculated fron non-biased variance', kwargs = {'ddof': 1}, force = True)
-register(scipy.stats.skew, n_bands = 1, error = False, time = False, description = 'biased (no correction for dof) skew', force = True)
-register(scipy.stats.kurtosis, n_bands = 1, error = False, time = False, description = 'biased (no correction for dof) kurtosis', force = True)
+register(len, n_bands = 1, error = False, time = False, name = 'n', other_cols = OrderedDict([('n', int)]), force = True, default_coldescriptions=['Number of datapoints'])
+register(np.min, n_bands = 1, error = False, time = False, name = 'min', force = True, default_colunits=['mag'], default_coldescriptions=['minimum magnitude in lightcurve'])
+register(np.max, n_bands = 1, error = False, time = False, name = 'max', force = True, default_colunits=['mag'], default_coldescriptions=['maximum magnitude in lightcurve'])
+register(np.std, n_bands = 1, time = False, error = False, name = 'stddev', description = 'standard deviation calculated fron non-biased variance', kwargs = {'ddof': 1}, force = True, default_colunits=['mag'])
+register(scipy.stats.skew, n_bands = 1, error = False, time = False, description = 'biased (no correction for dof) skew', force = True, default_colunits=['mag'])
+register(scipy.stats.kurtosis, n_bands = 1, error = False, time = False, description = 'biased (no correction for dof) kurtosis', force = True, default_colunits=['mag'])
 register(isnormal, n_bands = 1, error = False, time = False, force = True)
 
 for func in [redchi2tomean, wmean]:
@@ -101,7 +101,7 @@ for func in [redchi2tomean, wmean]:
 ### functions for two bands ###
 
 def stetson(data1, data2, data1_error, data2_error):
-    '''Calculates the Stetson index for a two-band light curve.
+    '''Stetson index for a two-band light curve.
 
     According to eqn (1) in Stetson 1996, PSAP, 108, 851.
     This procedure uses on the matched lightcurves
@@ -147,7 +147,7 @@ register(stetson, n_bands = 2, error = True, time = False, force = True)
 
 
 def cmd_slope_simple(data1, data2, data1_error, data2_error, redvec = redvecs['36_45']):
-    '''measures the slope of the data points in the color-magnitude diagram
+    '''Slope of the data points in the color-magnitude diagram
     
     This is just fitted with ordinary least squares, using the analytic formula.
     This is then used as a first guess for an orthogonal least squares fit with simultaneous treatment of errors in x and y (see fit_twocolor_odr)
@@ -478,4 +478,4 @@ def cmdslope_odr(band1, band2, band1_err, band2_err, p_guess = None, redvec = re
 
     return alpha, alpha_error, cmd_m, cmd_b, cmd_m_error, cmd_b_error, AV, cmd_dominated
 
-register(cmdslope_odr, n_bands= 2, error = True, time = False, default_colnames = ['cmd_alpha', 'cmd_alpha_error', 'cmd_m', 'cmd_b', 'cmd_m_error', 'cmd_b_error', 'AV'], other_cols = OrderedDict([['cmd_dominated', 'S10']]), name = 'cmdslopeodr', force = True)
+register(cmdslope_odr, n_bands= 2, error = True, time = False, default_colnames = ['cmd_alpha', 'cmd_alpha_error', 'cmd_m', 'cmd_b', 'cmd_m_error', 'cmd_b_error', 'AV'], other_cols = OrderedDict([['cmd_dominated', 'S10']]), name = 'cmdslopeodr', force = True, default_colunits=['rad','rad',None, None, None, None, 'mag',None, None], default_coldescriptions=['angle of best-fit line in CMD', 'uncertainty on angle', 'slope in CMD', 'offset of best-fits line', 'uncertainty on slope', 'uncertainty on angle', 'length of reddening vector', 'classification of slope in CMD'])
