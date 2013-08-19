@@ -751,7 +751,7 @@ class YSOVAR_atlas(astropy.table.Table):
         self['IAU_NAME'].description = 'J2000.0 IAU designation (JHHMMSS.ss+DDMMSS.s)'
         self['ra'].units = 'deg'
         self['dec'].units = 'deg'
-        self['ra'].descrption = 'J2000.0 Right ascension'
+        self['ra'].description = 'J2000.0 Right ascension'
         self['dec'].description = 'J2000.0 Declination'
         self['YSOVAR2_id'].description = 'ID in YSOVAR database'
     

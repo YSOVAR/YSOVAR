@@ -83,15 +83,26 @@ def isnormal(data):
     else:
         return np.nan
 
-for func in [np.mean, np.median, mad, delta]:
-    register(func, n_bands = 1, error = False, time = False, force = True, default_colunits=['mag'])
-
-register(len, n_bands = 1, error = False, time = False, name = 'n', other_cols = OrderedDict([('n', int)]), force = True, default_coldescriptions=['Number of datapoints'])
-register(np.min, n_bands = 1, error = False, time = False, name = 'min', force = True, default_colunits=['mag'], default_coldescriptions=['minimum magnitude in lightcurve'])
-register(np.max, n_bands = 1, error = False, time = False, name = 'max', force = True, default_colunits=['mag'], default_coldescriptions=['maximum magnitude in lightcurve'])
-register(np.std, n_bands = 1, time = False, error = False, name = 'stddev', description = 'standard deviation calculated fron non-biased variance', kwargs = {'ddof': 1}, force = True, default_colunits=['mag'])
-register(scipy.stats.skew, n_bands = 1, error = False, time = False, description = 'biased (no correction for dof) skew', force = True, default_colunits=['mag'])
-register(scipy.stats.kurtosis, n_bands = 1, error = False, time = False, description = 'biased (no correction for dof) kurtosis', force = True, default_colunits=['mag'])
+register(np.mean, n_bands = 1, error = False, time = False, force = True, default_colunits=['mag'], 
+         default_coldescriptions=['mean magnitude'])
+register(np.median, n_bands = 1, error = False, time = False, force = True, default_colunits=['mag'],
+         default_coldescriptions=['median magnitude'])
+register(mad, n_bands = 1, error = False, time = False, force = True, default_colunits=['mag'])
+register(delta, n_bands = 1, error = False, time = False, force = True, default_colunits=['mag'])
+register(len, n_bands = 1, error = False, time = False, name = 'n', 
+         other_cols = OrderedDict([('n', int)]), force = True, 
+         default_coldescriptions=['Number of datapoints'])
+register(np.min, n_bands = 1, error = False, time = False, name = 'min', force = True, 
+         default_colunits=['mag'], default_coldescriptions=['minimum magnitude in lightcurve'])
+register(np.max, n_bands = 1, error = False, time = False, name = 'max', force = True, 
+         default_colunits=['mag'], default_coldescriptions=['maximum magnitude in lightcurve'])
+register(np.std, n_bands = 1, time = False, error = False, name = 'stddev', 
+         description = 'standard deviation calculated fron non-biased variance', 
+         kwargs = {'ddof': 1}, force = True, default_colunits=['mag'])
+register(scipy.stats.skew, n_bands = 1, error = False, time = False, 
+         description = 'biased (no correction for dof) skew', force = True, default_colunits=['mag'])
+register(scipy.stats.kurtosis, n_bands = 1, error = False, time = False, 
+         description = 'biased (no correction for dof) kurtosis', force = True, default_colunits=['mag'])
 register(isnormal, n_bands = 1, error = False, time = False, force = True)
 
 for func in [redchi2tomean, wmean]:
