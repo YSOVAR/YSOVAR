@@ -960,6 +960,10 @@ class YSOVAR_atlas(astropy.table.Table):
                 if timefilter:
                     ind = timefilter(lc['t'])
                     lc = lc[ind]
+                    # Check if there is anything left in the lightcurve after
+                    # timefilter
+                    if ind.sum()==0:
+                        continue
 
                 args = []
                 if func.time: args.append(lc['t'])
