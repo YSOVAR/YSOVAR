@@ -1112,12 +1112,7 @@ class YSOVAR_atlas(astropy.table.Table):
 
         for b in bands:
             sed_ir[b] = sed_bands[b]
-        # mean from current lightcurves
-        sed_ir['mean_36'] = ['stddev_36', sed_bands['3.6mag'][1], sed_bands['3.6mag'][2]]
-        sed_ir['mean_45'] = ['stddev_45', sed_bands['4.5mag'][1], sed_bands['4.5mag'][2]]
-        # calculate those cols, if not present
-        for col in ['mean_36', 'stddev_36', 'mean_45', 'stddev_45']:
-            temp = self[col]
+
         if colname in self.colnames:
             self.remove_column(colname)
         self.add_column(astropy.table.Column(
