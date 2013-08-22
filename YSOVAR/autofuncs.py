@@ -441,8 +441,8 @@ def cmdslope_odr(band1, band2, band1_err, band2_err, p_guess = None, redvec = re
     if p_guess is None:
         p_guess = cmd_slope_simple(band1, band2, band1_err, band2_err, redvec = redvec)
 
-    (fit_output2, bootstrap_output2, bootstrap_raw2, alpha2, alpha_error2, AV_length) = fit_twocolor_odr(band1, band2, band1_err, band2_err, xyswitch = True, p_guess = p_guess, redvec = redvec)
-    (fit_output, bootstrap_output, bootstrap_raw, alpha, alpha_error, AV_length) = fit_twocolor_odr(band1, band2, band1_err, band2_err, xyswitch = False, p_guess = p_guess, redvec = redvec)
+    (fit_output2, bootstrap_output2, bootstrap_raw2, alpha2, alpha_error2, spread2) = fit_twocolor_odr(band1, band2, band1_err, band2_err, xyswitch = True, p_guess = p_guess, redvec = redvec)
+    (fit_output, bootstrap_output, bootstrap_raw, alpha, alpha_error, spread) = fit_twocolor_odr(band1, band2, band1_err, band2_err, xyswitch = False, p_guess = p_guess, redvec = redvec)
 
     # Checks if the ODR fit with switched X and Y axes yields a more
     # constrained fit than the original axes. This basically catches the
@@ -454,6 +454,7 @@ def cmdslope_odr(band1, band2, band1_err, band2_err, p_guess = None, redvec = re
         cmd_m_error = fit_output2.sd_beta[0] / cmd_m**2
         cmd_b_error = np.sqrt((fit_output2.sd_beta[1]/cmd_m)**2 +
                               (cmd_b**2*cmd_m_error**2)**2)
+        spread = spread2
     else:
         cmd_m = fit_output.beta[0]
         cmd_b = fit_output.beta[1]
@@ -482,11 +483,11 @@ def cmdslope_odr(band1, band2, band1_err, band2_err, p_guess = None, redvec = re
         cmd_dominated = 'other'
         if np.abs(alpha - alpha_red) < 0.3:
             cmd_dominated = 'extinc.'
-            AV = AV_length/redvec[1]
+            AV = spread/redvec[1]
         if alpha < 0.:
             cmd_dominated = 'accr.'
             
 
-    return alpha, alpha_error, cmd_m, cmd_b, cmd_m_error, cmd_b_error, AV, cmd_dominated
+    return alpha, alpha_error, cmd_m, cmd_b, cmd_m_error, cmd_b_error, AV, cmd_dominated, spread
 
-register(cmdslope_odr, n_bands= 2, error = True, time = False, default_colnames = ['cmd_alpha', 'cmd_alpha_error', 'cmd_m', 'cmd_b', 'cmd_m_error', 'cmd_b_error', 'AV'], other_cols = OrderedDict([['cmd_dominated', 'S10']]), name = 'cmdslopeodr', force = True, default_colunits=['rad','rad',None, None, None, None, 'mag',None, None], default_coldescriptions=['angle of best-fit line in CMD', 'uncertainty on angle', 'slope in CMD', 'offset of best-fits line', 'uncertainty on slope', 'uncertainty on angle', 'length of reddening vector', 'classification of slope in CMD'])
+register(cmdslope_odr, n_bands= 2, error = True, time = False, default_colnames = ['cmd_alpha', 'cmd_alpha_error', 'cmd_m', 'cmd_b', 'cmd_m_error', 'cmd_b_error', 'AV'], other_cols = OrderedDict([['cmd_dominated', 'S10'], ['CMD_length', 'float']]), name = 'cmdslopeodr', force = True, default_colunits=['rad','rad',None, None, None, None, 'mag',None, None, 'mag'], default_coldescriptions=['angle of best-fit line in CMD', 'uncertainty on angle', 'slope in CMD', 'offset of best-fits line', 'uncertainty on slope', 'uncertainty on angle', 'length of reddening vector', 'classification of slope in CMD', '90% spread in slope in CMD'])

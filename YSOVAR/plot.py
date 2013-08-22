@@ -500,12 +500,12 @@ def setup_lcplot_axes(data, xlim, twinx = True, fig = None):
         if true make seperate y axes for IRAC1 and IRAC2 if both are present
     '''
     # twin axis only if really t1 and t2 are present
-    if not(('t36' in data.keys()) and ('t45' in data.keys())): twinx=False
+    if not(('t36' in data) and ('t45' in data)): twinx=False
     if xlim is None:
         # make an xlim for min(time) to max(time)
-        if ('t36' in data.keys()): xlim = [data['t36'][0], data['t36'][-1]]
-        if ('t45' in data.keys()): xlim = [data['t45'][0], data['t45'][-1]]
-        if ('t36' in data.keys()) and ('t45' in data.keys()):
+        if ('t36' in data): xlim = [data['t36'][0], data['t36'][-1]]
+        if ('t45' in data): xlim = [data['t45'][0], data['t45'][-1]]
+        if ('t36' in data) and ('t45' in data):
             xlim = [min(data['t36'][0], data['t45'][0]), max(data['t36'][-1], data['t45'][-1])]
     # test if xlim is a list of lists. If not, add one layer of [ ]
     try:  
@@ -590,7 +590,8 @@ def lc_plot(catalog, xlim = None, twinx = True):
 
     mergedlc = merge_lc(data, ['36','45'])
     for ax, tax in zip(axes, taxes):
-        if twinx:
+        if twinx and ('t36' in data) and ('t45' in data):
+            # for each channel check that there is actually data there
             ax.scatter(data['t36']-mjdoffset, data['m36'], lw=0, s=20, marker='o', color='k', label = '[3.6], symbol: o')
             tax.scatter(data['t45']-mjdoffset, data['m45'], lw=1, s=20, marker='+', color='k', label = '[4.5], symbol: +')            
             if len(mergedlc) > 0:
