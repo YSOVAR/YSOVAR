@@ -417,7 +417,7 @@ def dict_cleanup(data, channels, min_number_of_times = 0, floor_error = {}):
         the names in the output structure, e.g.
         that for `'IRAC1'` will be `'m36'` (magnitudes) and `'t36'` (times).
     min_number_of_times : integer
-        Remove all sources with less than `min_number_of_times` datapoints
+        Remove all lightcurves with less than `min_number_of_times` datapoints
         from the list
     floor_error : dict
         Floor errors will be added in quadrature to all error values.
@@ -433,7 +433,11 @@ def dict_cleanup(data, channels, min_number_of_times = 0, floor_error = {}):
     for i, d in enumerate(data):
         for channel in channels:
             if 'm'+channels[channel] in d:
-                n_datapoints[i] = max(n_datapoints[i], len(d['m'+channels[channel]]))
+                n = len(d['m'+channels[channel]])
+                n_datapoints[i] = max(n_datapoints[i], n)
+                if n < min_number_of_times:
+                    del d['m'+channels[channel]]
+                    del d['t'+channels[channel]]
     # go in reverse direction, otherwise each removal would change index numbers of
     # later entries
     data = data[n_datapoints >= min_number_of_times]
