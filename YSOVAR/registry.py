@@ -38,7 +38,7 @@ columns for the mean values::
 
 .. note::
     In practice, you do not need to register ``np.mean`` because a selection of
-    common functions is automatically registered, when the modules is imported.
+    common functions is automatically registered when the module is imported.
     The following command will list the available functions::
 
         registry.list_lcfuncs()
@@ -54,8 +54,8 @@ Registered functions have to follow a convention on which inputs they accept::
 
     def func([time],band1, band2, ..., [band1_err, band2_err ...])
 
-All inputs will be numby arrays. ``time  = True / False`` controls if the
-inital time array is present, ``error = True / False`` is the uncertainties
+All inputs will be numpy arrays. ``time  = True / False`` controls if the
+time array is present, ``error = True / False`` if the uncertainties
 for  each band are passed in. ``n_bands`` says how many bands are expected
 on input.
 '''
@@ -87,7 +87,14 @@ class LightcurveFunc(object):
     that is wrapped in this object::
 
         help(my_object.func)
+
+    .. note::
+        This class is usually not called directly.
+        Use :func:`YSOVAR.registry.register`.
+
     '''
+
+    ''' hold default keyword arguments for this function'''
     kwargs = {}    
 
     def __init__(self, func, n_bands, error, time, name = '',
@@ -207,7 +214,7 @@ def register(func, n_bands =1, error = False, time = False, force = False, **kwa
         If ``True`` a function of same name that was previously registered
         will be over written.
 
-    All remaining keyword will be passed to :func:`LightcurveFunc.__init__`.
+    All remaining keywords will be passed to :func:`LightcurveFunc.__init__`.
     See that function for description and default values of other
     accepted keywords.
     '''
@@ -224,7 +231,7 @@ def register(func, n_bands =1, error = False, time = False, force = False, **kwa
         lc_funcs[name] = lcfunc
 
 def list_lcfuncs():
-    '''List all function currently registered with a shirt summary'''
+    '''List all function currently registered with a one-line summary'''
     print 'These functions can be used to autogenerate YSOVAR table columns:'
     print '-----------------------------------------------------------------'
     for func in lc_funcs:

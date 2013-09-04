@@ -443,9 +443,9 @@ def plot_all_polys(x, y, yerr, title = ''):
     xlong = np.arange(np.min(x), np.max(x))
     for i in np.arange(1,6):
         chi, shift, param = fit_poly(x, y, yerr, i)
-        temp = ax.plot(xlong, np.polyval(param, xlong-shift), label = '{0:5.1f}'.format(chi))
+        temp = ax.plot(xlong, np.polyval(param, xlong-shift), label = 'n={0}: {1:5.1f}'.format(i,chi))
     temp = ax.set_title(str(title))
-    temp = ax.legend(loc = 'best')
+    temp = ax.legend(loc = 'best', title='Rank of poly: $\\chi^2$')
     # invert y axis!
     ylim = ax.get_ylim()
     ax.set_ylim(ylim[1], ylim[0])

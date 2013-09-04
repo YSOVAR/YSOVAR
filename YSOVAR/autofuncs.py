@@ -91,7 +91,7 @@ register(mad, n_bands = 1, error = False, time = False, force = True, default_co
 register(delta, n_bands = 1, error = False, time = False, force = True, default_colunits=['mag'])
 register(len, n_bands = 1, error = False, time = False, name = 'n', 
          other_cols = OrderedDict([('n', int)]), force = True, 
-         default_coldescriptions=['Number of datapoints'])
+         default_coldescriptions=['Number of datapoints'], default_colunits=['ct'])
 register(np.min, n_bands = 1, error = False, time = False, name = 'min', force = True, 
          default_colunits=['mag'], default_coldescriptions=['minimum magnitude in lightcurve'])
 register(np.max, n_bands = 1, error = False, time = False, name = 'max', force = True, 

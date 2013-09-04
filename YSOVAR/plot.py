@@ -120,7 +120,7 @@ def make_latexfile(atlas, outroot, name, ind = None, plotwidth = '0.45\\textwidt
         format `i + fileextension`.
         This is a list of lists in the form::
 
-            `[[fig1_row1, fig2_row1, fig3_row1], [fig1_row2, ...]]`
+           `[[fig1_row1, fig2_row1, fig3_row1], [fig1_row2, ...]]`
             
         Each row in the figure grid can have a different number of figures,
         but it is the users responsibility to choose `plotwidth` so that they all
@@ -745,7 +745,7 @@ def plot_polys(atlas, outroot, verbose = True):
     
     Parameters
     ----------
-    atlas : ysovar_atlas.YSOVAR_atlas
+    atlas : YSOVAR.atlas.YSOVAR_atlas
         each ls in the atlas contains 't36' and / or 't45' as time
         for lightcurves and 
         'm36' and / or 'm45' as magnitues for lightcurves
