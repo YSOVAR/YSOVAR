@@ -186,7 +186,7 @@ def makecrossids(data1, data2, radius, ra1='RAdeg', dec1='DEdeg', ra2='ra', dec2
 
     Parameters
     ----------
-    data1 : :class"`astropy.table.Table` or np.recarray
+    data1 : :class:`astropy.table.Table` or np.recarray
         This is the master data, i.e. for each element in data1, the
         results wil have one (or zero) index numbers in data2, that provide
         the best match to this entry in data1.
@@ -198,7 +198,7 @@ def makecrossids(data1, data2, radius, ra1='RAdeg', dec1='DEdeg', ra2='ra', dec2
         key for access RA and DEG (in degrees) the the data, i.e. the routine
         uses `data1[ra1]` for the RA values of data1.
 
-    Results
+    Returns
     -------
     cross_ids : np.ndarray
         Will have len(data1). For each elelment it contains the index of data2
@@ -243,7 +243,7 @@ def makecrossids_all(data1, data2, radius, ra1='RAdeg', dec1='DEdeg', ra2='ra', 
         key for access RA and DEG (in degrees) the the data, i.e. the routine
         uses `data1[ra1]` for the RA values of data1.
 
-    Results
+    Returns
     -------
     cross_ids : list of lists
         Will have len(data1). For each elelment it contains the indices of data2
@@ -626,7 +626,7 @@ def dict_from_csv(csvfile,  match_dist = 1.0/3600., min_number_of_times = 5, cha
             radec['DEC'].append(dec)
         dict_temp['ra'].extend([ra] * ind.sum())
         dict_temp['dec'].extend([dec] * ind.sum())
-        dict_temp['IAU_NAME'].append(n.replace('ISY', 'SSTYSV'))
+        dict_temp['IAU_NAME'].append(n.replace('ISY_', 'SSTYSV '))
         dict_temp['YSOVAR2_id'].append(tab[sourceid][ind][0])
         for channel in channels.keys():
             good = ind & (tab[time] >= 0.) & (tab[channelcolumn] == channel)
