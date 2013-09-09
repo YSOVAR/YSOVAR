@@ -435,7 +435,7 @@ def cmdslope_odr(band1, band2, band1_err, band2_err, p_guess = None, redvec = re
     result : tuple
         contains output = fit parameters, bootstrap_output = results from the bootstrap, bootstrap_raw = the actual bootstrapped data, alpha = the fitted slope angle, sd_alpha = the error on the fitted slope angle, x_spread = the spread of the data along the fitted line (0.5*(90th percentile - 10th percentile)))
     '''
-    if len(band1) < 3:
+    if len(band1) < 10:
         return np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, ''
     
     if p_guess is None:
