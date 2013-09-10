@@ -14,7 +14,7 @@ from scipy.io.idl import readsav
 
 from astropy.table import Table, Column
 
-def robscat(filepath):
+def read_cluster_grinder(filepath):
     ''' Import Robs Spitzer data
 
     read Rob's IDL format and make it into a a catalog, 
