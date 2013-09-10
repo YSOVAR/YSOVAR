@@ -32,6 +32,7 @@ since we document methods only after we know they work):
    ysovar_lombscargle
    lightcurves
    great_circle_dist
+   misc
 
 License
 =======
