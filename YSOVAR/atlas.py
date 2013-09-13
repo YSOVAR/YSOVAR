@@ -991,7 +991,7 @@ class YSOVAR_atlas(astropy.table.Table):
                     self[col][i] = res 
 
 
-    def add_catalog_data(self, catalog, radius = 1./3600., names = None, ra1 = 'RA', dec1 = 'DE', ra2 = 'RA', dec2 = 'DE'):
+    def add_catalog_data(self, catalog, radius = 1./3600., names = None, ra1 = 'RA', dec1 = 'DE', ra2 = 'RA', dec2 = 'DE', verbose = True):
         '''add information from a different Table
 
         The tables are automatically cross matched and values are copied only
@@ -1009,10 +1009,18 @@ class YSOVAR_atlas(astropy.table.Table):
             no column of the same name aleady exisits (this will raise an exception).
         ra1, dec1, ra2, dec2 : string
             key for access RA and DEG (in degrees) the the data, i.e. the routine
-            uses `data1[ra1]` for the RA values of data1.    
+            uses `data1[ra1]` for the RA values of data1.
+        verbose : bool
+            control if warnings are printed    
         '''
         names = names or catalog.colnames
         ids = makecrossids(self, catalog, radius, ra1 = ra1 , dec1 = dec1, ra2 = ra2, dec2 = dec2) 
+        if verbose:
+            multmatch = np.where(np.bincount(ids) > 1)[0]
+            if len(multmatch) > 0:
+                print 'add_catalog_data: The following sources in the input catalog'
+                print 'are matched to more than one source in this atlas'
+                print multmatch
 
         for n in names:
             self.add_column(astropy.table.Column(name = n, length  = len(self), dtype=catalog[n].dtype, format=catalog[n].format, units=catalog[n].units, description=catalog[n].description, meta=catalog[n].meta))
