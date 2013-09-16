@@ -182,7 +182,7 @@ def makecrossids(data1, data2, radius, ra1='RAdeg', dec1='DEdeg', ra2='ra', dec2
     '''Cross-match two lists of coordinates, return closest match
 
     This routine is not very clever and not very fast. It should be fine
-    up to a few thousand entries per list. 
+    up to a hundred thousand entries per list. 
 
     Parameters
     ----------
@@ -223,11 +223,11 @@ def makecrossids(data1, data2, radius, ra1='RAdeg', dec1='DEdeg', ra2='ra', dec2
         
     return cross_ids
 
-def makecrossids_all(data1, data2, radius, ra1='RAdeg', dec1='DEdeg', ra2='ra', dec2='dec'):
+def makecrossids_all(data1, data2, radius, ra1='RAdeg', dec1='DEdeg', ra2='ra', dec2='dec', return_distances=False):
     '''Cross-match two lists of coordinates, return all matches within radius
 
     This routine is not very clever and not very fast. If should be fine
-    up to a few thousand entries per list. 
+    up to a hundred thousand entries per list. 
 
     Parameters
     ----------
@@ -242,15 +242,21 @@ def makecrossids_all(data1, data2, radius, ra1='RAdeg', dec1='DEdeg', ra2='ra', 
     ra1, dec1, ra2, dec2 : string
         key for access RA and DEG (in degrees) the the data, i.e. the routine
         uses `data1[ra1]` for the RA values of data1.
+    return_distances : bool
+        decide if distances should be returned
 
     Returns
     -------
     cross_ids : list of lists
         Will have len(data1). For each elelment it contains the indices of data2
         that are within `radius`. If no match within `radius` is found,
-        then entry will be `[]`.
+        then the entry will be `[]`.
+    distances : list of lists
+        If ``return_distances==True`` this has the same format a ``cross_ids``
+        and contains the distance to the match in degrees.
     '''
     cross_ids = []
+    distances = []
 
     for i in range(len(data1)):
         # Pick out only those that are close in dec
@@ -260,10 +266,14 @@ def makecrossids_all(data1, data2, radius, ra1='RAdeg', dec1='DEdeg', ra2='ra', 
         if len(ind) > 0:
             distance = dist_radec(data1[ra1][i], data1[dec1][i], data2[ra2][ind], data2[dec2][ind], unit ='deg') 
             cross_ids.append(ind[distance <= radius])
+            distances.append(distance[distance <= radius])
         else:
             cross_ids.append([])
-
-    return cross_ids
+            distances.append([])
+    if return_distances:
+        return cross_ids, distances
+    else:
+        return cross_ids
 
 
 ''' Format:
@@ -1016,11 +1026,12 @@ class YSOVAR_atlas(astropy.table.Table):
         names = names or catalog.colnames
         ids = makecrossids(self, catalog, radius, ra1 = ra1 , dec1 = dec1, ra2 = ra2, dec2 = dec2) 
         if verbose:
-            multmatch = np.where(np.bincount(ids) > 1)[0]
+            matched = (ids >=0)
+            multmatch = np.where(np.bincount(ids[matched] > 1))[0]
             if len(multmatch) > 0:
                 print 'add_catalog_data: The following sources in the input catalog'
                 print 'are matched to more than one source in this atlas'
-                print multmatch
+                print ids[matched][multmatch]
 
         for n in names:
             self.add_column(astropy.table.Column(name = n, length  = len(self), dtype=catalog[n].dtype, format=catalog[n].format, units=catalog[n].units, description=catalog[n].description, meta=catalog[n].meta))
