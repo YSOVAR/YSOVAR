@@ -1164,10 +1164,10 @@ class YSOVAR_atlas(astropy.table.Table):
         '''check if a strong periodogram peak is found
 
         This method checks if a period exisits with the required
-        power and period in any of of the bands given in `bands`. If
+        power and period in any of of the bands given in ``bands``. If
         the peaks in several bands fullfill the criteria, then the band with
         the peak of highest power is selected. Output is placed in the
-        columns `good_peak` and `good_period`.
+        columns ``good_peak``, ``good_FAP`` and ``good_period``.
 
         New columns are added to the datatable that contains the result.
         (If a column existed before, it is overwritten).
@@ -1192,8 +1192,13 @@ class YSOVAR_atlas(astropy.table.Table):
             self.add_column(astropy.table.Column(name = 'good_peak',
                             dtype=np.float, length = len(self),
                             description='highest peak in periodogram'))
+        if 'good_FAP' not in self.colnames:
+            self.add_column(astropy.table.Column(name = 'good_FAP',
+                            dtype=np.float, length = len(self),
+                            description='FAP for most significant period'))
         self['good_period'][:] = np.nan
         self['good_peak'][:] = np.nan
+        self['good_FAP'][:] = np.nan
 
 
         # numpy 1.7.1 introduced a bug in view for arrays that contain objects
@@ -1208,12 +1213,15 @@ class YSOVAR_atlas(astropy.table.Table):
 
         peaks = np.zeros((len(self), len(bands)))
         periods = np.zeros_like(peaks)
+        FAPs = np.zeros_like(peaks)
         for i, band in enumerate(bands):
             peaks[:,i] = self['peak_'+band]
             periods[:,i] = self['period_'+band]
+            FAPs[:,i] = self['FAP_'+band]
         
         good = (peaks > power) & (periods > minper) & (periods < maxper)
         bestpeak = np.argmax(np.ma.masked_where(~good, peaks), axis=1)
         anygood = np.any(good, axis=1)
-        self['good_period'][anygood] = periods[np.arange(peaks.shape[0]),bestpeak][anygood]
-        self['good_peak'][anygood] = peaks[np.arange(peaks.shape[0]),bestpeak][anygood]
+        self['good_period'][anygood] = periods[:,bestpeak][anygood]
+        self['good_peak'][anygood] = peaks[:,bestpeak][anygood]
+        self['good_FAP'][anygood] = FAPs[:,bestpeak][anygood]
