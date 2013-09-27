@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from ..great_circle_dist import *
+from YSOVAR.great_circle_dist import *
 
 def test_dist_comparison():
     phi_0 = .1

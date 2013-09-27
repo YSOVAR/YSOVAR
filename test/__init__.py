@@ -1,6 +1,6 @@
 import os
 
-from .. import plot
+from YSOVAR import plot
 
 outroot = os.path.join(os.path.dirname(__file__),'testout')
 

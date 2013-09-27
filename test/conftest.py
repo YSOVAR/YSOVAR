@@ -2,8 +2,8 @@ import os
 
 import pytest
 
-from .. import atlas
-from .. import lightcurves
+from YSOVAR import atlas
+from YSOVAR import lightcurves
 
 @pytest.fixture(scope = 'module')
 def data():

@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from .. import plot
+from YSOVAR import plot
 from . import outroot
 
 @pytest.mark.usefixtures("data")

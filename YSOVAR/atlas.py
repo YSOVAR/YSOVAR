@@ -75,9 +75,10 @@ def coord_CDS2RADEC(dat):
     '''transform RA and DEC from CDS table to degrees
 
     CDS tables have a certain format of string columns to store coordinates
-    (`RAh`, `RAm`, `RAs`, `DE-`, `DEd`, `DEm`, `DEs`). This procedure
+    (``RAh``, ``RAm``, ``RAs``, ``DE-``, ``DEd``, ``DEm``, ``DEs``). 
+    This procedure
     parses that and calculates new values for RA and DEC in degrees.
-    These are added to the Table as `RAdeg` and `DEdeg`.
+    These are added to the Table as ``RAdeg`` and ``DEdeg``.
 
     Parameters
     ----------
@@ -88,13 +89,17 @@ def coord_CDS2RADEC(dat):
     coord_add_RADEfromhmsdms(dat, dat['RAh'], dat['RAm'], dat['RAs'],
                              (dat['DE-'] !='-')*2-1, dat['DEd'], dat['DEm'], dat['DEs'])
 
-def coord_hmsdms2RADEC(dat, ra = ['RAh', 'RAm', 'RAs'],dec = ['DEd', 'DEm','DEs']):
+def coord_hmsdms2RADEC(dat, ra=['RAh', 'RAm', 'RAs'], dec=['DEd', 'DEm','DEs']):
     '''transform RA and DEC from table to degrees
 
     Tables where RA and DEC are encoded as three numeric columns each like
-    `hh:mm:ss` `dd:mm:ss` can be converted into decimal deg.
+    ``hh:mm:ss`` and ``dd:mm:ss`` can be converted into decimal deg.
     This procedure parses that and calculates new values for RA and DEC in degrees.
-    These are added to the Table as `RAdeg` and `DEdeg`.
+    These are added to the Table as ``RAdeg`` and ``DEdeg``.
+    
+    .. warning::
+       This format is ambiguous for sources with dec=+/-00:xx:xx, because 
+       python does not differentiate between ``+0`` and ``-0``.
 
     Parameters
     ----------
@@ -105,7 +110,7 @@ def coord_hmsdms2RADEC(dat, ra = ['RAh', 'RAm', 'RAs'],dec = ['DEd', 'DEm','DEs'
     dec : list of three strings
         names of DEC column names for deg, min, sec
     '''
-    sign = [-1 if d[0]=='-' else 1 for d in dat[dec]]
+    sign = [-1 if d < 0 else 1 for d in dat[dec[0]]]
     coord_add_RADEfromhmsdms(dat, dat[ra[0]], dat[ra[1]], dat[ra[2]],
                              sign, np.abs(dat[dec[0]]), dat[dec[1]], dat[dec[2]])
 
@@ -1181,8 +1186,8 @@ class YSOVAR_atlas(astropy.table.Table):
         maxper : float
             maximum period which is considered
         bands : list of strings
-            Band identifiers, e.g. ['36', '45'], can also be a list with one
-            entry, e.g. ['36']
+            Band identifiers, e.g. ``['36', '45']``, can also be a list with one
+            entry, e.g. ``['36']``
         '''
         if 'good_period' not in self.colnames:
             self.add_column(astropy.table.Column(name = 'good_period',
@@ -1222,6 +1227,6 @@ class YSOVAR_atlas(astropy.table.Table):
         good = (peaks > power) & (periods > minper) & (periods < maxper)
         bestpeak = np.argmax(np.ma.masked_where(~good, peaks), axis=1)
         anygood = np.any(good, axis=1)
-        self['good_period'][anygood] = periods[:,bestpeak][anygood]
-        self['good_peak'][anygood] = peaks[:,bestpeak][anygood]
-        self['good_FAP'][anygood] = FAPs[:,bestpeak][anygood]
+        self['good_period'][anygood] = periods[np.arange(len(self)),bestpeak][anygood]
+        self['good_peak'][anygood] = peaks[np.arange(len(self)),bestpeak][anygood]
+        self['good_FAP'][anygood] = FAPs[np.arange(len(self)),bestpeak][anygood]
