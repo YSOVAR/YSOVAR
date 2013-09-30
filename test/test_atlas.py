@@ -195,3 +195,25 @@ class Test_expected_results():
         ind = np.where(data['YSOVAR2_id'] == '-1000')[0][0]
         assert data['filtern_36'][ind] == 3
         
+def test_add_catalog(recwarn):
+    twosources = [{'ra':1.0, 'dec':0.0, 'YSOVAR2_id': -1,'IAU_NAME':'Test1'}, 
+                       {'ra':1e-6, 'dec':0.0, 'YSOVAR2_id': -1,'IAU_NAME':'Test2'}]
+    addsource = Table({'RA':[0.0,5.], 'DE':[0.0,5.], 'DAT': [1.5, 2.5]})
+    cat = atlas.YSOVAR_atlas(lclist = twosources)
+    cat.add_catalog_data(addsource, ra1='ra', dec1='dec')
+    assert np.isnan(cat['DAT'][0])
+    assert cat['DAT'][1] == 1.5
+    assert len(cat) == 2
+
+def test_add_catalog_warning(recwarn):
+    twoclosesources = [{'ra':0.0, 'dec':0.0, 'YSOVAR2_id': -1,'IAU_NAME':'Test1'}, 
+                       {'ra':1e-6, 'dec':0.0, 'YSOVAR2_id': -1,'IAU_NAME':'Test2'}]
+    addsource = Table({'RA':[0.0], 'DE':[0.0], 'DAT': [42]})
+    cat = atlas.YSOVAR_atlas(lclist = twoclosesources)
+    cat.add_catalog_data(addsource, ra1='ra', dec1='dec')
+    w = recwarn.pop(UserWarning)
+    assert issubclass(w.category, UserWarning)
+    assert 'add_catalog_data: The following sources in the input catalog are matched to more than one source in this atlas:' in str(w.message)
+    assert '[0]' in str(w.message)
+    assert np.all(cat['DAT'] == 42)
+    assert len(cat) == 2
