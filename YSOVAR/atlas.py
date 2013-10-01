@@ -1032,7 +1032,7 @@ class YSOVAR_atlas(astropy.table.Table):
         matched = (ids >=0)
         multmatch = np.where(np.bincount(ids[matched]) > 1)[0]
         if len(multmatch) > 0:
-            warn('add_catalog_data: The following sources in the input catalog are matched to more than one source in this atlas: {0}'.format(ids[matched][multmatch]), UserWarning)
+            warn('add_catalog_data: The following sources in the input catalog are matched to more than one source in this atlas: {0}'.format(multmatch), UserWarning)
 
         for n in names:
             self.add_column(astropy.table.Column(name = n, length  = len(self), dtype=catalog[n].dtype, format=catalog[n].format, units=catalog[n].units, description=catalog[n].description, meta=catalog[n].meta))
