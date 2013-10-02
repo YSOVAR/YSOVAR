@@ -70,7 +70,7 @@ def redchi2tomean(data, error):
 
 def delta(data):
     '''width of distribution from 10% to 90%'''
-    return (scipy.stats.mstats.mquantiles(data, prob=0.9) - scipy.stats.mstats.mquantiles(data, prob=0.1))/2.
+    return (scipy.stats.mstats.mquantiles(data, prob=0.9) - scipy.stats.mstats.mquantiles(data, prob=0.1))
 
 def wmean(data, error):
     '''error weighted mean'''

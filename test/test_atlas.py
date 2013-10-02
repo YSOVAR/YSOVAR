@@ -104,7 +104,6 @@ class Test_expected_results():
         assert abs(data['stddev_36'][ind1]- 1./np.sqrt(2.)) < 1e-3
         assert abs(data['mad_36'][ind1] - 0.5) < 1e-6 
         assert abs(data['redchi2tomean_36'][ind1] - 50 ) < 1e-6
-        # too short for testing delta reliably. Add test for that.
 
     def test_lin_lc_45(self, data):
         ind1 = np.where(data['YSOVAR2_id'] == '-1003')[0][0]
@@ -116,7 +115,20 @@ class Test_expected_results():
         assert abs(data['stddev_45'][ind1]- 1./np.sqrt(2.)) < 1e-3
         assert abs(data['mad_45'][ind1] - 0.5) < 1e-6 
         assert abs(data['redchi2tomean_45'][ind1] - 50 ) < 1e-6
-        # too short for testing delta reliably. Add test for that.
+
+    def test_lin_lc_36_long(self, data):
+        ind1 = np.where(data['YSOVAR2_id'] == '-1004')[0][0]
+        assert data['n_36'][ind1] == 100
+        assert abs(data['max_36'][ind1] - 13.) < 1e-6
+        assert abs(data['min_36'][ind1] - 11.) < 1e-6
+        assert abs(data['wmean_36'][ind1] - 12.) < 1e-6
+        assert abs(data['redchi2tomean_36'][ind1] - 50 ) < 1e-2
+        assert abs(data['delta_36'][ind1] - 1.6) < 0.03
+
+    def test_mag_and_err_not_reordered(self, data):
+        ind = np.where(data['YSOVAR2_id'] == '-1010')[0][0]
+        assert abs(data['redchi2tomean_36'][ind] - 0.966514) < 1e-5
+        assert abs(data['wmean_36'][ind] - 12.3179614) < 1e-5
 
     def test_one_period(self, data):
         ind1 = np.where(data['YSOVAR2_id'] == '-1500')[0][0]
