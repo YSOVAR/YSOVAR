@@ -184,7 +184,7 @@ def val_from_dict(data, name):
     
 
 
-def makecrossids(data1, data2, radius, ra1='RAdeg', dec1='DEdeg', ra2='ra', dec2='dec'):
+def makecrossids(data1, data2, radius, ra1='RAdeg', dec1='DEdeg', ra2='ra', dec2='dec', double_match = False):
     '''Cross-match two lists of coordinates, return closest match
 
     This routine is not very clever and not very fast. It should be fine
@@ -203,6 +203,12 @@ def makecrossids(data1, data2, radius, ra1='RAdeg', dec1='DEdeg', ra2='ra', dec2
     ra1, dec1, ra2, dec2 : string
         key for access RA and DEG (in degrees) the the data, i.e. the routine
         uses `data1[ra1]` for the RA values of data1.
+    double_match : bool
+        If true, one source in data2 could be matched to several sources in data1.
+        This can happen, if a source in data2 lies between two sources of data1, 
+        which are both within ``radius``.
+        If this switch is set to ``False``, then a strict one-on-one matching 
+        is enforced, selecting the closest pair in the situation above.
 
     Returns
     -------
@@ -226,6 +232,17 @@ def makecrossids(data1, data2, radius, ra1='RAdeg', dec1='DEdeg', ra2='ra', dec2
             else:
                 if np.any(distance < radius[ind]):
                     cross_ids[i] = ind[np.argmin(distance/radius[ind])]
+
+    if not double_match:
+        matched = (cross_ids >=0)
+        multmatch = np.bincount(cross_ids[matched])
+        for i, m in enumerate(multmatch): 
+            if m > 1:
+                ind = (cross_ids == i)
+                distance = dist_radec(data1[ra1][ind], data1[dec1][ind], data2[ra2][i], data2[dec2][i], unit ='deg')
+                cross_ids[ind.nonzero()[0][~(distance == np.min(distance))]] = -99999
+                
+
         
     return cross_ids
 
@@ -1007,7 +1024,7 @@ class YSOVAR_atlas(astropy.table.Table):
                     self[col][i] = res 
 
 
-    def add_catalog_data(self, catalog, radius = 1./3600., names = None, ra1 = 'RA', dec1 = 'DE', ra2 = 'RA', dec2 = 'DE'):
+    def add_catalog_data(self, catalog, radius = 1./3600., names = None, **kwargs):
         '''add information from a different Table
 
         The tables are automatically cross matched and values are copied only
@@ -1023,12 +1040,12 @@ class YSOVAR_atlas(astropy.table.Table):
             List column names that should be copied. If this is `None` (the default)
             copy all columns. Column names have to be unique. Thus, make sure that
             no column of the same name aleady exisits (this will raise an exception).
-        ra1, dec1, ra2, dec2 : string
-            key for access RA and DEG (in degrees) the the data, i.e. the routine
-            uses `data1[ra1]` for the RA values of data1.
+        
+        All other keywords are passed to :func:`YSOVAR.atlas.makecrossids` (see there
+        for the syntax).
         '''
         names = names or catalog.colnames
-        ids = makecrossids(self, catalog, radius, ra1 = ra1 , dec1 = dec1, ra2 = ra2, dec2 = dec2) 
+        ids = makecrossids(self, catalog, radius, **kwargs) 
         matched = (ids >=0)
         multmatch = np.where(np.bincount(ids[matched]) > 1)[0]
         if len(multmatch) > 0:

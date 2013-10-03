@@ -27,15 +27,29 @@ def test_coord_strhmsdmx2RADEC():
 
 
 def test_makecrossids():
-    d1 = np.rec.array([[0,0],[23,45],[45,89],[230,-50], [255,-66]], dtype=[('ra', np.float),('dec', np.float)])
-    d2 = np.rec.array([[.01,0.9],[23,44.1],[55,89.4],[229.8,-50.1], [23, 44.05], [23.01,44.05]], dtype=[('ra', np.float),('dec', np.float)])
+    d1 = np.rec.array([[0,0.1],[23,45],[45,89],[230,-50], [255,-66], [0,0]], dtype=[('ra', np.float),('dec', np.float)])
+    d2 = np.rec.array([[.01,0.9],[23,44.1],[55,89.4],[229.8,-50.1], [23, 44.05], [23.01,44.05], [100,70]], dtype=[('ra', np.float),('dec', np.float)])
     cid = atlas.makecrossids(d1,d2,1.0,'ra','dec','ra','dec')
     assert cid[0] == 0
     assert cid[1] == 1
     assert cid[2] == 2
     assert cid[3] == 3
     assert cid[4] == -99999
+    assert cid[5] == -99999
     assert len(cid) == len(d1)
+
+def test_makecrossids_double_match():
+    d1 = np.rec.array([[0,0.1],[23,45],[45,89],[230,-50], [255,-66], [0,0]], dtype=[('ra', np.float),('dec', np.float)])
+    d2 = np.rec.array([[.01,0.9],[23,44.1],[55,89.4],[229.8,-50.1], [23, 44.05], [23.01,44.05], [100,70]], dtype=[('ra', np.float),('dec', np.float)])
+    cid = atlas.makecrossids(d1,d2,1.0,'ra','dec','ra','dec', double_match=True)
+    assert cid[0] == 0
+    assert cid[1] == 1
+    assert cid[2] == 2
+    assert cid[3] == 3
+    assert cid[4] == -99999
+    assert cid[5] == 0
+    assert len(cid) == len(d1)
+ 
     
 def test_isoy2radec():
     ra, dec = atlas.IAU2radec('SSTYSV_J162722.02-242114.5')
@@ -207,12 +221,12 @@ class Test_expected_results():
         ind = np.where(data['YSOVAR2_id'] == '-1000')[0][0]
         assert data['filtern_36'][ind] == 3
         
-def test_add_catalog(recwarn):
+def test_add_catalog():
     twosources = [{'ra':1.0, 'dec':0.0, 'YSOVAR2_id': -1,'IAU_NAME':'Test1'}, 
                        {'ra':1e-6, 'dec':0.0, 'YSOVAR2_id': -1,'IAU_NAME':'Test2'}]
     addsource = Table({'RA':[0.0,5.], 'DE':[0.0,5.], 'DAT': [1.5, 2.5]})
     cat = atlas.YSOVAR_atlas(lclist = twosources)
-    cat.add_catalog_data(addsource, ra1='ra', dec1='dec')
+    cat.add_catalog_data(addsource, ra1='ra', dec1='dec', ra2='RA', dec2='DE')
     assert np.isnan(cat['DAT'][0])
     assert cat['DAT'][1] == 1.5
     assert len(cat) == 2
@@ -222,7 +236,7 @@ def test_add_catalog_warning(recwarn):
                        {'ra':1e-6, 'dec':0.0, 'YSOVAR2_id': -1,'IAU_NAME':'Test2'}]
     addsource = Table({'RA':[0.0], 'DE':[0.0], 'DAT': [42]})
     cat = atlas.YSOVAR_atlas(lclist = twoclosesources)
-    cat.add_catalog_data(addsource, ra1='ra', dec1='dec')
+    cat.add_catalog_data(addsource, ra1='ra', dec1='dec', ra2='RA', dec2='DE', double_match=True)
     w = recwarn.pop(UserWarning)
     assert issubclass(w.category, UserWarning)
     assert 'add_catalog_data: The following sources in the input catalog are matched to more than one source in this atlas:' in str(w.message)
