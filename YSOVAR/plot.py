@@ -36,7 +36,7 @@ The most important purpose of this module is to provide functions that can
 generate a big atlas, which holds some key diagnostic plots (e.g. the
 lightcurve, color-mag diagram) for every star in a :class:`YSOVAR.atlas.YSOVARatlas` 
 object. However, some of the functions are also useful for stand-alone plots.
-Functions that generate multiple plot have a often start with ``make`` and have
+Functions that generate multiple plots often start with ``make`` and have
 a plural name (e.g. :func:`YSOVAR.plot.make_lc_plots`). These function then
 call a function that makes the individual plot (and sometimes that is broken
 down again into one function that sets up the figure and the axis and a 
@@ -169,7 +169,7 @@ def make_latexfile(atlas, outroot, name, ind = None, plotwidth = '0.45\\textwidt
             f.write('\\begin{minipage}[l]{6.5in} \n')
             for row in output_figs:
                 for fig in row:
-                    fig_if_exists(f, os.path.join(outroot, str(i) + fig), plotwidth, fileextensions)
+                    fig_if_exists(f, os.path.join(outroot, atlas['YSOVAR2_id'][i] + fig), plotwidth, fileextensions)
                 f.write('~\\newline\n\n')
 
             f.write('Index number in Atlas: ' + str(i) + '\\\ \n')
@@ -225,7 +225,7 @@ def get_stamps(data, outroot, verbose = True):
         req = urllib2.Request(url, dat)
         response = urllib2.urlopen(req)
         try:   # with statement would be shorter, but is not available in python 2.6
-            f = open(os.path.join(outroot, str(i)+'_stamp.png'), 'w')
+            f = open(os.path.join(outroot, data['YSOVAR2_id'][i]+'_stamp.png'), 'w')
             f.write(response.read())
         finally:
             f.close()
@@ -639,7 +639,7 @@ def make_lc_plots(atlas, outroot, verbose = True, xlim = None, twinx = False, in
             plt.close("all")
         # make light curve plot:
         fig = lc_plot(atlas[i], xlim = xlim, twinx = twinx)
-        filename = os.path.join(outroot, str(i) + '_lc')
+        filename = os.path.join(outroot, atlas['YSOVAR2_id'][i] + '_lc')
         multisave(fig, filename)
         plt.close("all")
 
@@ -721,7 +721,7 @@ def make_cmd_plots(atlas, outroot, verbose = True):
         mergedlc = merge_lc(atlas.lclist[i], ['36','45'])
         if len(mergedlc) > 5:
             fig = cmd_plot(atlas[i], mergedlc)
-            filename = os.path.join(outroot,str(i) + '_color')
+            filename = os.path.join(outroot, atlas['YSOVAR2_id'][i] + '_color')
             multisave(fig, filename)
             plt.close(fig)
 
@@ -759,12 +759,12 @@ def plot_polys(atlas, outroot, verbose = True):
         # make light curve plot:
         if ('t36' in d.keys()) and (len(d['t36']) > 15):
             fig = lc.plot_all_polys(d['t36'], d['m36'], d['m36_error'], 'IRAC 1')
-            filename = os.path.join(outroot, str(i) + '_lcpoly')
+            filename = os.path.join(outroot, atlas['YSOVAR2_id'][i] + '_lcpoly')
             multisave(fig, filename)
             plt.close(fig)
         elif ('t45' in d.keys()) and (len(d['t45']) > 15):
             fig = lc.plot_all_polys(d['t45'], d['m45'], d['m45_error'], 'IRAC 2')
-            filename = os.path.join(outroot, str(i) + '_lcpoly')
+            filename = os.path.join(outroot, atlas['YSOVAR2_id'][i] + '_lcpoly')
             multisave(fig, filename)
             plt.close(fig)
 
@@ -844,7 +844,7 @@ def make_ls_plots(atlas, outroot, maxper, oversamp, maxfreq, verbose = True):
             ax.set_xlabel('Period (d)')
             ax.set_ylabel('Periodogram power')
             ax.set_title('Lomb-Scargle Periodogram')
-            multisave(fig, os.path.join(outroot, str(i) + '_ls'))
+            multisave(fig, os.path.join(outroot, atlas['YSOVAR2_id'][i] + '_ls'))
 
 
 def make_phased_lc_cmd_plots(atlas, outroot, bands = ['36','45'], marker = ['o', '+'], lw = [0,1]):
@@ -908,7 +908,7 @@ def make_phased_lc_cmd_plots(atlas, outroot, bands = ['36','45'], marker = ['o',
                 
                 ax.set_title('CMD color-coded by phase, period = ' + str( ("%.2f" % atlas['good_period'][i]) ) + ' d')
                 
-                filename = os.path.join(outroot, str(i) + '_color_phased')
+                filename = os.path.join(outroot, atlas['YSOVAR2_id'][i] + '_color_phased')
                 multisave(fig, filename)
 
 
@@ -938,7 +938,7 @@ def make_sed_plots(infos, outroot, title = 'SED (data from Guenther+ 2012)', sed
         ax.set_title(title)
         ax.set_yscale('log')
         ax.set_xscale('log')
-        multisave(fig, outroot + str(i) + '_sed')
+        multisave(fig, os.path.join(outroot, infos['YSOVAR2_id'][i] + '_sed'))
 
 
 def extraplots_1():
