@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (C) 2013 H.M.Guenther & K.Poppenhaeger. See Licence.rst for details.
 '''Generate an atlas of YSOVAR lightcurves
 
@@ -1178,7 +1177,7 @@ class YSOVAR_atlas(astropy.table.Table):
                 irclass = ''
             self[colname][i] = irclass
 
-    def is_there_a_good_period(self, power, minper, maxper, bands=['36','45']):
+    def is_there_a_good_period(self, power, minper, maxper, bands=['36','45'], FAP=False):
         '''check if a strong periodogram peak is found
 
         This method checks if a period exisits with the required
@@ -1193,7 +1192,7 @@ class YSOVAR_atlas(astropy.table.Table):
         Parameters
         ----------
         power : float
-            required power threshold for "good" period
+            minimum power or maximal FAP for "good" period
         minper : float
             lowest period which is considered
         maxper : float
@@ -1201,7 +1200,18 @@ class YSOVAR_atlas(astropy.table.Table):
         bands : list of strings
             Band identifiers, e.g. ``['36', '45']``, can also be a list with one
             entry, e.g. ``['36']``
+        FAP : boolean
+            If ``True``, then ``power`` is interpreted as maximal FAP for a good
+            period; if ``False`` then ``power`` means the minimum power a peak in
+            the periodogram must have.
+            
         '''
+        if FAP:
+            if not 0. <= power <= 1.:
+                raise ValueError('FAP=True, so parameter power means the maximal FAP. This value must be in the range 0..1')
+        else:
+            if power <= 1.:
+                raise ValueError('FAP=False, so parameter power gives the minimum power in the peak of the periodogram. Values <1 do not make sense.')
         if 'good_period' not in self.colnames:
             self.add_column(astropy.table.Column(name = 'good_period',
                             dtype=np.float, length = len(self), units='d',
@@ -1222,7 +1232,6 @@ class YSOVAR_atlas(astropy.table.Table):
         # numpy 1.7.1 introduced a bug in view for arrays that contain objects
         # see:
         # https://github.com/numpy/numpy/issues/3253
-        # https://github.com/numpy/numpy/issues/3256‎
         # So, for now, make a workaround until this problem is fixed
         # peaknames = ['peak_'+band for band in bands]
         # periodnames = ['period_'+band for band in bands]
@@ -1237,8 +1246,12 @@ class YSOVAR_atlas(astropy.table.Table):
             periods[:,i] = self['period_'+band]
             FAPs[:,i] = self['FAP_'+band]
         
-        good = (peaks > power) & (periods > minper) & (periods < maxper)
-        bestpeak = np.argmax(np.ma.masked_where(~good, peaks), axis=1)
+        if FAP:
+            good = (FAPs < power) & (periods > minper) & (periods < maxper)
+            bestpeak = np.argmax(np.ma.masked_where(~good, FAPs), axis=1)
+        else:
+            good = (peaks > power) & (periods > minper) & (periods < maxper)
+            bestpeak = np.argmax(np.ma.masked_where(~good, peaks), axis=1)
         anygood = np.any(good, axis=1)
         self['good_period'][anygood] = periods[np.arange(len(self)),bestpeak][anygood]
         self['good_peak'][anygood] = peaks[np.arange(len(self)),bestpeak][anygood]
