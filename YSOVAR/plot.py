@@ -34,7 +34,7 @@ Plotting functions
 
 The most important purpose of this module is to provide functions that can
 generate a big atlas, which holds some key diagnostic plots (e.g. the
-lightcurve, color-mag diagram) for every star in a :class:`YSOVAR.atlas.YSOVARatlas` 
+lightcurve, color-mag diagram) for every star in a :class:`YSOVAR.atlas.YSOVAR_atlas` 
 object. However, some of the functions are also useful for stand-alone plots.
 Functions that generate multiple plots often start with ``make`` and have
 a plural name (e.g. :func:`YSOVAR.plot.make_lc_plots`). These function then
@@ -188,8 +188,8 @@ def get_stamps(data, outroot, verbose = True):
 
     The database requires a login. To get past that set the following variables
     before calling this routine:
-    - plot_atlas.YSOVAR_USERNAME
-    - plot_atlas.YSOVARPASSWORD
+    - YSOVAR.plot.YSOVAR_USERNAME
+    - YSOVAR.plot.YSOVAR_PASSWORD
 
     Parameters
     ----------
@@ -610,7 +610,8 @@ def lc_plot(catalog, xlim = None, twinx = True):
     return fig
 
 
-def make_lc_plots(atlas, outroot, verbose = True, xlim = None, twinx = False, ind = None):
+def make_lc_plots(atlas, outroot, verbose = True, xlim = None, twinx = False, ind = None,
+                  filedescription='_lc'):
     '''plot lightcurves into files for all objects in `atlas`
     
     Parameters
@@ -630,6 +631,11 @@ def make_lc_plots(atlas, outroot, verbose = True, xlim = None, twinx = False, in
     ind : list of integers
         index numbers of elements, only for those elements a lightcurve is created.
         If None, make lightcurve for all sources.
+    filedescription : string
+        Output files are named ``YSOVAR2_id + filedescription + extension``. The extension(s)
+        is specified in ``YSOVAR.plots.filetype``.
+        Use the ``filedescription`` parameters if this method is called more than once 
+        per star.
     '''
     if ind is None: ind = np.arange(len(atlas))
     for i in ind:
@@ -639,7 +645,7 @@ def make_lc_plots(atlas, outroot, verbose = True, xlim = None, twinx = False, in
             plt.close("all")
         # make light curve plot:
         fig = lc_plot(atlas[i], xlim = xlim, twinx = twinx)
-        filename = os.path.join(outroot, atlas['YSOVAR2_id'][i] + '_lc')
+        filename = os.path.join(outroot, atlas['YSOVAR2_id'][i] + filedescription)
         multisave(fig, filename)
         plt.close("all")
 
@@ -847,8 +853,8 @@ def make_ls_plots(atlas, outroot, maxper, oversamp, maxfreq, verbose = True):
             multisave(fig, os.path.join(outroot, atlas['YSOVAR2_id'][i] + '_ls'))
 
 
-def make_phased_lc_cmd_plots(atlas, outroot, bands = ['36','45'], marker = ['o', '+'], lw = [0,1]):
-    '''cplots pahsed lightcurves and CMDs for all sources
+def make_phased_lc_cmd_plots(atlas, outroot, bands = ['36','45'], marker = ['o', '+'], lw = [0,1], colorphase=True, lc_name = '_lc_phased'):
+    '''plots phased lightcurves and CMDs for all sources
     
     Parameters
     ----------
@@ -862,6 +868,11 @@ def make_phased_lc_cmd_plots(atlas, outroot, bands = ['36','45'], marker = ['o',
         marker for each band
     lw : list of floats
         linewidth for each band
+    lc_name : string
+        filenames for phased lightcurve plots
+    colorphase : bool
+        If true, entries in the lightcurves will be color coded by phase, if not, by time (to
+        see if there are e.g. phase shifts over time). 
     '''
     # make phase-folded light curve plots for sources with "good" detected periods
     if len(marker) < len(bands): raise ValueError('Need one marker type per band')
@@ -869,7 +880,8 @@ def make_phased_lc_cmd_plots(atlas, outroot, bands = ['36','45'], marker = ['o',
     fig = plt.figure()
     for i in np.arange(0,len(atlas)):
         data = atlas.lclist[i]
-        print 'phase plots: ' + str(i)
+        if np.mod(i, 100) == 0:
+            print 'phase plots: ' + str(i)
         x1 = 0
         x2 = 0
         y1 = 0
@@ -883,12 +895,16 @@ def make_phased_lc_cmd_plots(atlas, outroot, bands = ['36','45'], marker = ['o',
                 if atlas['n_'+band][i] > 0:
                     plotdone = True
                     p = phase_fold(atlas.lclist[i]['t'+band], period)
-                    ax.scatter(p, atlas.lclist[i]['m'+band], marker=marker[j], lw = lw[j], s=40, c=p)
+                    if colorphase:
+                        c = p
+                    else:
+                        c = atlas.lclist[i]['t'+band]
+                    ax.scatter(p, atlas.lclist[i]['m'+band], marker=marker[j], lw = lw[j], s=40, c=c)
             if plotdone:
                 ax.set_xlabel('phase')
                 ax.set_title('phase-folded light curve, period = ' + str( ("%.2f" % period) ) + ' d')
                 ax.set_ylim(ax.get_ylim()[::-1])
-                multisave(fig, os.path.join(outroot, str(i) + '_lc_phased'))
+                multisave(fig, os.path.join(outroot, atlas['YSOVAR2_id'][i] + lc_name))
                 
             # make phased color-magnitude plot
             fig.clf()
