@@ -643,7 +643,7 @@ def make_lc_plots(atlas, outroot, verbose = True, xlim = None, twinx = False, in
         if verbose and np.mod(i,100) == 0: 
             print 'lightcurve plots: ' + str(i) + ' of ' + str(len(atlas))
             plt.close("all")
-        # make light curve plot:
+        # make lightcurve plot:
         fig = lc_plot(atlas[i], xlim = xlim, twinx = twinx)
         filename = os.path.join(outroot, atlas['YSOVAR2_id'][i] + filedescription)
         multisave(fig, filename)
@@ -762,7 +762,7 @@ def plot_polys(atlas, outroot, verbose = True):
     '''
     for i, d in enumerate(atlas.lclist):
         if verbose and np.mod(i,100) == 0: print 'lightcurve plots: ' + str(i) + ' of ' + str(len(atlas))
-        # make light curve plot:
+        # make lightcurve plot:
         if ('t36' in d.keys()) and (len(d['t36']) > 15):
             fig = lc.plot_all_polys(d['t36'], d['m36'], d['m36_error'], 'IRAC 1')
             filename = os.path.join(outroot, atlas['YSOVAR2_id'][i] + '_lcpoly')
@@ -874,7 +874,7 @@ def make_phased_lc_cmd_plots(atlas, outroot, bands = ['36','45'], marker = ['o',
         If true, entries in the lightcurves will be color coded by phase, if not, by time (to
         see if there are e.g. phase shifts over time). 
     '''
-    # make phase-folded light curve plots for sources with "good" detected periods
+    # make phase-folded lightcurve plots for sources with "good" detected periods
     if len(marker) < len(bands): raise ValueError('Need one marker type per band')
     if len(lw) < len(bands): raise ValueError('Need to give linewidth for each band')
     fig = plt.figure()
@@ -902,7 +902,7 @@ def make_phased_lc_cmd_plots(atlas, outroot, bands = ['36','45'], marker = ['o',
                     ax.scatter(p, atlas.lclist[i]['m'+band], marker=marker[j], lw = lw[j], s=40, c=c)
             if plotdone:
                 ax.set_xlabel('phase')
-                ax.set_title('phase-folded light curve, period = ' + str( ("%.2f" % period) ) + ' d')
+                ax.set_title('phase-folded lightcurve, period = ' + str( ("%.2f" % period) ) + ' d')
                 ax.set_ylim(ax.get_ylim()[::-1])
                 multisave(fig, os.path.join(outroot, atlas['YSOVAR2_id'][i] + lc_name))
                 
@@ -1189,7 +1189,7 @@ def extraplots_2(data, infos, outroot_overview):
     p2 = plt.scatter( infos.median_36[i12], infos.good_period[i12], marker='o', color = color[2] )
     p3 = plt.scatter( infos.median_36[i13], infos.good_period[i13], marker='o', color = color[3] )
     plt.xlabel('median $3.6\mu\mathrm{m}$ flux (mag)')
-    plt.ylabel('Detected period in light curve (d)')
+    plt.ylabel('Detected period in lightcurve (d)')
     plt.legend([p0, p1, p2, p3, p4], ['XYSOs', 'class 1', 'class 2', 'class 3', 'stars'], 'lower left')
     plt.axis([6,17,1,25])
     plt.savefig(outroot_overview + 'period_mag_36.pdf')
