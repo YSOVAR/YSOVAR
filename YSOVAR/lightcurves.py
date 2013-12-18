@@ -251,7 +251,7 @@ def normalize(data):
 
 
 def describe_autocorr(t, val, scale = 0.1, autocorr_scale = 0.5, autosum_limit = 1.75):
-    '''describe the time scales of time series using an autocorrelation function
+    '''describe the timescales of time series using an autocorrelation function
     
     #This procedure takes an unevenly sampled time series and computes
     #the autocorrelation function from that. The result is binned in time bins
@@ -278,7 +278,7 @@ def describe_autocorr(t, val, scale = 0.1, autocorr_scale = 0.5, autosum_limit =
     autosum_limit : float
         The autocorrelation function is also calculated with a time binning
         of ``scale``. To get a robust measure of this, the function
-        calculate the time scale for the cumularitve sum of the autocorrelation
+        calculate the timescale for the cumularitve sum of the autocorrelation
         function to exceed ``autosum_limit``.
 
     Returns
