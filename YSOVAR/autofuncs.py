@@ -97,7 +97,7 @@ register(np.min, n_bands = 1, error = False, time = False, name = 'min', force =
 register(np.max, n_bands = 1, error = False, time = False, name = 'max', force = True, 
          default_colunits=['mag'], default_coldescriptions=['maximum magnitude in lightcurve'])
 register(np.std, n_bands = 1, time = False, error = False, name = 'stddev', 
-         description = 'standard deviation calculated fron non-biased variance', 
+         description = 'standard deviation calculated from non-biased variance', 
          kwargs = {'ddof': 1}, force = True, default_colunits=['mag'])
 register(scipy.stats.skew, n_bands = 1, error = False, time = False, 
          description = 'biased (no correction for dof) skew', force = True, default_colunits=['mag'])
