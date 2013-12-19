@@ -785,7 +785,7 @@ class YSOVAR_atlas(astropy.table.Table):
         for name in ['ra', 'dec', 'YSOVAR2_id','IAU_NAME']:
              col = astropy.table.Column(name=name, data=val_from_dict(self.lclist, name))
              self.add_column(col)
-        self['IAU_NAME'].description = 'J2000.0 IAU designation (JHHMMSS.ss+DDMMSS.s)'
+        self['IAU_NAME'].description = 'J2000.0 IAU designation (JHHMMSS.ss+DDMMSS.s) within the YSOVAR program'
         self['ra'].units = 'deg'
         self['dec'].units = 'deg'
         self['ra'].description = 'J2000.0 Right ascension'
