@@ -94,6 +94,10 @@ def fasper(x,y,ofac,hifac, MACC=4):
       Fast algorithm for spectral analysis of unevenly sampled data
       (1989ApJ...338..277P)
 
+    History:
+        02/23/2009, v1.0, MF
+            Translation of IDL code (orig. Numerical recipies)
+
     Parameters
     ----------
     X   : array
@@ -119,12 +123,8 @@ def fasper(x,y,ofac,hifac, MACC=4):
         The array index corresponding to the MAX( Wk2 ).
     Prob : float
         False Alarm Probability of the largest Periodogram value
-    MACC :
+    MACC : integer
         Number of interpolation points per 1/4 cycle of highest frequency
-
-    History:
-        02/23/2009, v1.0, MF
-            Translation of IDL code (orig. Numerical recipies)
     """
     #Check dimensions of input arrays
     n = long(len(x))
