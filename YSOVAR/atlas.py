@@ -198,7 +198,8 @@ def makecrossids(data1, data2, radius, ra1='RAdeg', dec1='DEdeg', ra2='ra', dec2
     data2 : astropt.table.Table or np.recarray
         This data is matched to data1.
     radius : np.float or array
-       maximum radius to accept a match (in degrees) 
+       maximum radius to accept a match (in degrees); either a scalar or same
+       length as data2
     ra1, dec1, ra2, dec2 : string
         key for access RA and DEG (in degrees) the the data, i.e. the routine
         uses `data1[ra1]` for the RA values of data1.
@@ -216,6 +217,8 @@ def makecrossids(data1, data2, radius, ra1='RAdeg', dec1='DEdeg', ra2='ra', dec2
         that provides the best match. If no match within `radius` is found,
         then entry will be -99999.
     '''
+    if not (np.isscalar(radius) or (len(radius)==len(data2))):
+        raise ValueError("radius must be scalar or have same number of elements as data2")
     cross_ids = np.ones(len(data1),int) * -99999
     
     for i in np.arange(0,len(data1)):
