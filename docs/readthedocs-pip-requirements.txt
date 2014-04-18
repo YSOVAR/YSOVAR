@@ -1,4 +1,5 @@
 numpydoc==0.4
 scipy
-astropy
+astropy>=0.3
+pandas
 statsmodels
