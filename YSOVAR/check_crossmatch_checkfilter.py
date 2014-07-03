@@ -86,7 +86,7 @@ checkallthere.sort()
 np.where(np.diff(checkallthere)==0)
 # check out those cases manually to see if it's all OK.
 np.where(oldinnew == checkallthere[1506])
->>> (array([ 637, 1302]),)
+# >>> (array([ 637, 1302]),)
 dat[637]
 dat[1302]
 dist_radec(dat[637]['ra'],dat[637]['dec'], [dat[1302]['ra']], [dat[1302]['dec']], unit = 'deg') * 3600.
