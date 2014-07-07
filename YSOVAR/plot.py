@@ -498,6 +498,9 @@ def setup_lcplot_axes(data, xlim, twinx = True, fig = None):
         each [x0, x1] pair gives the limits for one panel.
     twinx : boolean
         if true make seperate y axes for IRAC1 and IRAC2 if both are present
+    fig: matplotlib figure instance or ``None``
+        If ``None``, it creates a figure with the matplotlib defaults. Pass in a figure
+        instance to customize e.g. the figure size.
     '''
     # twin axis only if really t1 and t2 are present
     if not(('t36' in data) and ('t45' in data)): twinx=False
