@@ -42,28 +42,28 @@ def read_cluster_grinder(filepath):
     s.out[:,30:40][np.where(s.out[:,30:40]==10)] = np.nan
     
     dat = Table()
-    dat.add_column(Column(name='RA', data=np.ma.mean(coo[:,[0,2,4,12,14,16,18]],axis=1), units = 'deg', format = '9.6g'))   
+    dat.add_column(Column(name='RA', data=np.ma.mean(coo[:,[0,2,4,12,14,16,18]],axis=1), unit = 'deg', format = '9.6g'))   
     #RA is avarage of all valid (non-zero) Ra values in 2MASS JHK, IRAC 1234
-    dat.add_column(Column(name='DEC', data=np.ma.mean(coo[:,[1,3,5,13,15,17,19]],axis=1), units='deg', format='+9.6g'))
+    dat.add_column(Column(name='DEC', data=np.ma.mean(coo[:,[1,3,5,13,15,17,19]],axis=1), unit='deg', format='+9.6g'))
 
     robsyukyformat={'J_MAG': 20,'H_MAG': 21, 'K_MAG': 22,'J_ERR': 30,
                     'H_ERR': 31,'K_ERR': 32,'IRAC_1': 26,'IRAC_2': 27, 
                     'IRAC_3': 28, 'IRAC_4': 29,'IRAC_1_ERR':36,'IRAC_2_ERR':37,
                     'IRAC_3_ERR':38, 'IRAC_4_ERR':39}
     for col in robsyukyformat:
-        dat.add_column(Column(name=col, data=s.out[:, robsyukyformat[col]], units='mag', format='4.2g'))
+        dat.add_column(Column(name=col, data=s.out[:, robsyukyformat[col]], unit='mag', format='4.2g'))
 
     s.mips[:,2][np.where(s.mips[:,2] == -100)] = np.nan
     s.mips[:,3][np.where(s.mips[:,3] == 10)] = np.nan
-    dat.add_column(Column(name='MIPS', data=s.mips[:,2], units='mag', format='4.2g'))
-    dat.add_column(Column(name='MIPS_ERR',data=s.mips[:,3], units='mag', format='4.2g'))
+    dat.add_column(Column(name='MIPS', data=s.mips[:,2], unit='mag', format='4.2g'))
+    dat.add_column(Column(name='MIPS_ERR',data=s.mips[:,3], unit='mag', format='4.2g'))
 
     IRclass = readsav(os.path.join(filepath, 'cg_classified.sav'))
     dat.add_column(Column(name='IRclass', dtype='|S5', length=len(dat)))
     for n1, n2 in zip(['wdeep', 'w1','w2','wtd','w3'], ['I*', 'I', 'II', 'II*', 'III']):
         if n1 in IRclass:
             dat['IRclass'][IRclass[n1]] = n2
-    dat.add_column(Column(name='AK', data=IRclass.ak, units='mag', format='4.2g'))
+    dat.add_column(Column(name='AK', data=IRclass.ak, unit='mag', format='4.2g'))
    
     return dat
 

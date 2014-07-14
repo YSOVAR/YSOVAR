@@ -67,8 +67,8 @@ def coord_add_RADEfromhmsdms(dat, rah, ram, ras, design, ded, dem, des):
     dedeg = design*(np.abs(ded + dem / 60. + des/3600.))
 
     coltype = type(dat.columns[0])  # could be Column or MaskedColumn
-    dat.add_column(coltype(name = 'RAdeg', data = radeg, units='deg', description='Right ascension'))
-    dat.add_column(coltype(name = 'DEdeg', data = dedeg, units='deg', description='Declination'))
+    dat.add_column(coltype(name = 'RAdeg', data = radeg, unit='deg', description='Right ascension'))
+    dat.add_column(coltype(name = 'DEdeg', data = dedeg, unit='deg', description='Declination'))
   
 
 def coord_CDS2RADEC(dat):
@@ -789,8 +789,8 @@ class YSOVAR_atlas(astropy.table.Table):
              col = astropy.table.Column(name=name, data=val_from_dict(self.lclist, name))
              self.add_column(col)
         self['IAU_NAME'].description = 'J2000.0 IAU designation within the YSOVAR program'
-        self['ra'].units = 'deg'
-        self['dec'].units = 'deg'
+        self['ra'].unit = 'deg'
+        self['dec'].unit = 'deg'
         self['ra'].description = 'J2000.0 Right ascension'
         self['dec'].description = 'J2000.0 Declination'
         self['YSOVAR2_id'].description = 'ID in YSOVAR database'
@@ -990,7 +990,7 @@ class YSOVAR_atlas(astropy.table.Table):
         if coldescriptions == []:
             coldescriptions = func.default_coldescriptions
         for c, n in zip(colnames, colunits):
-            self[c].units = n
+            self[c].unit = n
         for c, n in zip(colnames, coldescriptions):
             self[c].description = n
 
@@ -1054,7 +1054,7 @@ class YSOVAR_atlas(astropy.table.Table):
             warn('add_catalog_data: The following sources in the input catalog are matched to more than one source in this atlas: {0}'.format(multmatch), UserWarning)
 
         for n in names:
-            self.add_column(astropy.table.Column(name = n, length  = len(self), dtype=catalog[n].dtype, format=catalog[n].format, units=catalog[n].units, description=catalog[n].description, meta=catalog[n].meta))
+            self.add_column(astropy.table.Column(name = n, length  = len(self), dtype=catalog[n].dtype, format=catalog[n].format, unit=catalog[n].unit, description=catalog[n].description, meta=catalog[n].meta))
             # select all types of floats
             if np.issubdtype(catalog[n].dtype, np.inexact):
                 self[n][:] = np.nan
@@ -1217,7 +1217,7 @@ class YSOVAR_atlas(astropy.table.Table):
                 raise ValueError('FAP=False, so parameter power gives the minimum power in the peak of the periodogram. Values <1 do not make sense.')
         if 'good_period' not in self.colnames:
             self.add_column(astropy.table.Column(name = 'good_period',
-                            dtype=np.float, length = len(self), units='d',
+                            dtype=np.float, length = len(self), unit='d',
                             description='most significant period in object'))
         if 'good_peak' not in self.colnames:
             self.add_column(astropy.table.Column(name = 'good_peak',
