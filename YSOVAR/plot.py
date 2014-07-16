@@ -633,7 +633,7 @@ def make_lc_plots(atlas, outroot, verbose = True, xlim = None, twinx = False, in
     '''
     if ind is None: ind = np.arange(len(atlas))
     for i in ind:
-        print i
+        #print i
         if verbose and np.mod(i,100) == 0: 
             print 'lightcurve plots: ' + str(i) + ' of ' + str(len(atlas))
             plt.close("all")
@@ -888,7 +888,7 @@ def make_phased_lc_cmd_plots(atlas, outroot, bands = ['36','45'], marker = ['o',
                 ax.set_xlabel('phase')
                 ax.set_title('phase-folded light curve, period = ' + str( ("%.2f" % period) ) + ' d')
                 ax.set_ylim(ax.get_ylim()[::-1])
-                multisave(fig, os.path.join(outroot, str(i) + '_lc_phased'))
+                multisave(fig, os.path.join(outroot, atlas['YSOVAR2_id'][i] + '_lc_phased'))
                 
             # make phased color-magnitude plot
             fig.clf()
@@ -928,10 +928,11 @@ def make_sed_plots(infos, outroot, title = 'SED (data from Guenther+ 2012)', sed
         flag36 = 0
         flag45 = 0
         ax.plot(lambdas, plot_sed, 'o')
+        # not used anymore because the means of the non-cryo data can be used directly for this now.
         #Attenion: min(magnitude) = max(flux)
-        m36 = 2.5**(-np.array([infos['median_36'][i], infos['min_36'][i], infos['max_36'][i]])) * 6.50231481e-08
-        m45 = 2.5**(-np.array([infos['median_45'][i], infos['min_45'][i], infos['max_45'][i]])) * 2.66222222e-08
-        ax.errorbar([3.6,4.5], [m36[0],m45[0]], yerr = [[m36[0]-m36[2], m45[0]-m45[2]],[m36[1]-m36[0], m45[1]-m45[0]]], fmt='^')
+        #m36 = 2.5**(-np.array([infos['median_36'][i], infos['min_36'][i], infos['max_36'][i]])) * 6.50231481e-08
+        #m45 = 2.5**(-np.array([infos['median_45'][i], infos['min_45'][i], infos['max_45'][i]])) * 2.66222222e-08
+        #ax.errorbar([3.6,4.5], [m36[0],m45[0]], yerr = [[m36[0]-m36[2], m45[0]-m45[2]],[m36[1]-m36[0], m45[1]-m45[0]]], fmt='^')
         ax.set_xlabel('wavelength ($\mu m$)')
         ax.set_ylabel('flux (erg s$^{-1}$ cm$^{-2}$ $\mu$m$^{-1}$)')
         ax.set_xlim(0.3,30)
