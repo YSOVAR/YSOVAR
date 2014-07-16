@@ -97,7 +97,7 @@ register(np.min, n_bands = 1, error = False, time = False, name = 'min', force =
 register(np.max, n_bands = 1, error = False, time = False, name = 'max', force = True, 
          default_colunits=['mag'], default_coldescriptions=['maximum magnitude in lightcurve'])
 register(np.std, n_bands = 1, time = False, error = False, name = 'stddev', 
-         description = 'standard deviation calculated fron non-biased variance', 
+         description = 'standard deviation calculated from non-biased variance', 
          kwargs = {'ddof': 1}, force = True, default_colunits=['mag'])
 register(scipy.stats.skew, n_bands = 1, error = False, time = False, 
          description = 'biased (no correction for dof) skew', force = True, default_colunits=['mag'])
@@ -112,7 +112,7 @@ for func in [redchi2tomean, wmean]:
 ### functions for two bands ###
 
 def stetson(data1, data2, data1_error, data2_error):
-    '''Stetson index for a two-band light curve.
+    '''Stetson index for a two-band lightcurve.
 
     According to eqn (1) in Stetson 1996, PSAP, 108, 851.
     This procedure uses on the matched lightcurves
@@ -122,9 +122,9 @@ def stetson(data1, data2, data1_error, data2_error):
     Parameters
     ----------
     data1 : np.array
-        single light curve of band 1 in magnitudes
+        single lightcurve of band 1 in magnitudes
     data2 : np.array
-        single light curve of band 2 in magnitudes
+        single lightcurve of band 2 in magnitudes
     data1_error : np.array
         error on data points of band 1 in magnitudes    
     data2_error : np.array
@@ -133,7 +133,7 @@ def stetson(data1, data2, data1_error, data2_error):
     Returns
     -------
     stetson : float
-        Stetson value for the provided two-band light curve
+        Stetson value for the provided two-band lightcurve
         
     '''
     # number of datapoints:
@@ -166,9 +166,9 @@ def cmd_slope_simple(data1, data2, data1_error, data2_error, redvec = redvecs['3
     Parameters
     ----------
     data1 : np.array
-        single light curve of band 1 in magnitudes
+        single lightcurve of band 1 in magnitudes
     data2 : np.array
-        single light curve of band 2 in magnitudes      
+        single lightcurve of band 2 in magnitudes      
     data1_error : np.array
         error on data points of band 1 in magnitudes    
     data2_error : np.array
@@ -231,9 +231,9 @@ def fit_twocolor_odr(band1, band2, band1_err, band2_err, outroot = None,  n_boot
     Parameters
     ----------
     data1 : np.array
-        single light curve of band 1 in magnitudes
+        single lightcurve of band 1 in magnitudes
     data2 : np.array
-        single light curve of band 2 in magnitudes      
+        single lightcurve of band 2 in magnitudes      
     data1_error : np.array
         error on data points of band 1 in magnitudes    
     data2_error : np.array
@@ -417,9 +417,9 @@ def cmdslope_odr(band1, band2, band1_err, band2_err, p_guess = None, redvec = re
     Parameters
     ----------
     data1 : np.array
-        single light curve of band 1 in magnitudes
+        single lightcurve of band 1 in magnitudes
     data2 : np.array
-        single light curve of band 2 in magnitudes      
+        single lightcurve of band 2 in magnitudes      
     data1_error : np.array
         error on data points of band 1 in magnitudes    
     data2_error : np.array

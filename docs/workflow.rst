@@ -156,7 +156,7 @@ While the above method works fine for simple things like the median or
 the mean, more complicated functions need extra parameters. All
 functions
 listed with :func:`YSOVAR.registry.list_lcfuncs` can also be called
-using the :meth:`YSOVAR.atlas.YSOVAT_atlas.calc` method. This allows
+using the :meth:`YSOVAR.atlas.YSOVAR_atlas.calc` method. This allows
 far more flexibility. You can pass arguments to the functions you
 call, limit the calculation to use only a subset of the lightcurve or
 perform some filtering or smoothing of the lightcurve.
