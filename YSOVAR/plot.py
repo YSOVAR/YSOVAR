@@ -501,6 +501,14 @@ def setup_lcplot_axes(data, xlim, twinx = True, fig = None):
     fig: matplotlib figure instance or ``None``
         If ``None``, it creates a figure with the matplotlib defaults. Pass in a figure
         instance to customize e.g. the figure size.
+
+    Returns
+    -------
+    fig : matplotlib figure instance
+    axes : list of matplotlib axes instances
+        This list holds the default axes (axis labels at the left and bottom).
+    taxes : list of matplotlib axes instances
+        This list holds the twin axes (labels on bottom and right).
     '''
     # twin axis only if really t1 and t2 are present
     if not(('t36' in data) and ('t45' in data)): twinx=False
