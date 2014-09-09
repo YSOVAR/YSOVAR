@@ -1111,8 +1111,8 @@ class YSOVAR_atlas(astropy.table.Table):
                 #self.lclist[k]['t'+channel].extend(data[band[2]][ind].tolist())
                 #self.lclist[k]['m'+channel].extend(data[band[0]][ind].tolist())
                 #self.lclist[k]['m'+channel+'_error'].extend(data[band[1]][ind].tolist())
-                self.lclist[k]['t'+channel].extend(data[band[2]][ind])
-                self.lclist[k]['m'+channel].extend(data[band[0]][ind])
+                self.lclist[k]['t'+channel] = data[band[2]][ind]
+                self.lclist[k]['m'+channel] = np.array(data[band[0]][ind])
                 self.lclist[k]['m'+channel+'_error'].extend(data[band[1]][ind])
 
     def calc_allstats(self, band):

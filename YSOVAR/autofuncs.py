@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Copyright (C) 2013 H.M.Guenther & K.Poppenhaeger. See Licence.rst for details.
 '''Define and register some common functions for the autogeneration of columns.
 
@@ -72,6 +73,10 @@ def delta(data):
     '''width of distribution from 10% to 90%'''
     return (scipy.stats.mstats.mquantiles(data, prob=0.9) - scipy.stats.mstats.mquantiles(data, prob=0.1))
 
+def AMCM(data):
+    '''So-called M value from Ann-Marie Cody's 2014 paper. Light curve asymmetry across the median; specifically, average of top and bottom 10% minus median, divided by rms  scatter.'''
+    return (np.mean([scipy.stats.mstats.mquantiles(data, prob=0.9), scipy.stats.mstats.mquantiles(data, prob=0.1)]) - np.median(data))/np.sqrt( ( (data - data.mean())**2).sum()   / len(data) )
+
 def wmean(data, error):
     '''error weighted mean'''
     return np.average(data, weights=1./error**2.)
@@ -89,6 +94,7 @@ register(np.median, n_bands = 1, error = False, time = False, force = True, defa
          default_coldescriptions=['median magnitude'])
 register(mad, n_bands = 1, error = False, time = False, force = True, default_colunits=['mag'])
 register(delta, n_bands = 1, error = False, time = False, force = True, default_colunits=['mag'])
+register(AMCM, n_bands = 1, error = False, time = False, force = True, default_colunits=['mag'])
 register(len, n_bands = 1, error = False, time = False, name = 'n', 
          other_cols = OrderedDict([('n', int)]), force = True, 
          default_coldescriptions=['Number of datapoints'], default_colunits=['ct'])
