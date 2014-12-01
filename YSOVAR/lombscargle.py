@@ -241,6 +241,15 @@ def lombscargle(time, mag, maxper=15., oversamp = 4, maxfreq = 1.):
     maxfreq : float
         max freq of LS periodogram is maxfreq * "average" Nyquist frequency
         For very inhomogenously sampled data, values > 1 can be useful
+
+    Returns
+    -------
+    period1: float
+        Period with highest probability in the allowed range
+    sig1: float
+        Value of the Lomb-Scargle-Periodogram at that position
+    fap: float
+        corresponding false-alarm probability
     '''
     if len(time) > 5:
         test1 = fasper(time, mag, oversamp, maxfreq)
