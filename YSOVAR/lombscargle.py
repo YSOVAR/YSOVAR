@@ -239,7 +239,7 @@ def lombscargle(time, mag, maxper=15., oversamp = 4, maxfreq = 1.):
     oversamp : integer
         oversampling factor
     maxfreq : float
-        max freq of LS periodogram is maxfeq * "average" Nyquist frequency
+        max freq of LS periodogram is maxfreq * "average" Nyquist frequency
         For very inhomogenously sampled data, values > 1 can be useful
     '''
     if len(time) > 5:
