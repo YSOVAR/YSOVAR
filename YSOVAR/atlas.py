@@ -742,7 +742,7 @@ class YSOVAR_atlas(astropy.table.Table):
 
     The :class:`YSOVAR_atlas` is build on top of a `astropy.table.Table
     (documentation here)
-    <http://docs.astropy.org/en/v0.21/table/index.html>`_ object. See that
+    <http://docs.astropy.org/en/stable/table/index.html>`_ object. See that
     documentation for the syntax on how to acess the data or add a column.
 
     Some columns are auto-generated, when they are first
