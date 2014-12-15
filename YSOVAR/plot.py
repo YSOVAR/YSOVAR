@@ -961,7 +961,8 @@ def make_sed_plots(infos, outroot, title = 'SED (data from Guenther+ 2012)', sed
         See :meth:`YSOVAR.atlas.get_sed` for a description of the 
         format for ``sed_bands``.
     '''
-    # plots SED from Guenther+ 2012, and adds m1 and m2 values from the Spitzer monitoring (marked with a different symbol) if the source does not have a Spitzer 3.6 or 4.5 datapoint in Guenther+ 2012.
+    if not sed_bands:
+        raise ValueError('sed_bands needs to be set. An empty dictionary would produce an empty plot.')
     fig = plt.figure()
     for i in np.arange(0,len(infos)):
         print 'SED plots: ' + str(i)
@@ -975,11 +976,6 @@ def make_sed_plots(infos, outroot, title = 'SED (data from Guenther+ 2012)', sed
         flag36 = 0
         flag45 = 0
         ax.plot(lambdas, plot_sed, 'o')
-        # not used anymore because the means of the non-cryo data can be used directly for this now.
-        #Attenion: min(magnitude) = max(flux)
-        #m36 = 2.5**(-np.array([infos['median_36'][i], infos['min_36'][i], infos['max_36'][i]])) * 6.50231481e-08
-        #m45 = 2.5**(-np.array([infos['median_45'][i], infos['min_45'][i], infos['max_45'][i]])) * 2.66222222e-08
-        #ax.errorbar([3.6,4.5], [m36[0],m45[0]], yerr = [[m36[0]-m36[2], m45[0]-m45[2]],[m36[1]-m36[0], m45[1]-m45[0]]], fmt='^')
         ax.set_xlabel('wavelength ($\mu m$)')
         ax.set_ylabel('flux (erg s$^{-1}$ cm$^{-2}$ $\mu$m$^{-1}$)')
         ax.set_xlim(0.3,30)
