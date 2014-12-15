@@ -666,8 +666,8 @@ def cmd_plot(atlas, mergedlc, redvec = None, verbose = True):
     ----------
     atlas : ysovar_atlas.YSOVAR_atlas with one row only 
     mergedlc : np.ndarray
-        contains 't' as time for merged lightcurves and 
-        'm36' and 'm45' as magnitues for lightcurves
+        contains ``'t'`` as time for merged lightcurves and 
+        ``'m36'`` and ``'m45'`` as magnitues for lightcurves
     redvec : float
         slope of reddening vector in the CMD. If ``None`` use default.
 
@@ -727,9 +727,9 @@ def make_cmd_plots(atlas, outroot, verbose = True):
     
     Parameters
     ----------
-    atlas : ysovar_atlas.YSOVAR_atlas
-        contains dict with 't36' and / or 't45' as time for lightcurves and 
-        'm36' and / or 'm45' as magnitues for lightcurves
+    atlas : :class:`~YSOVAR.atlas.YSOVAR_atlas`
+        contains dict with ``'t36'`` and / or ``'t45'`` as time for lightcurves and 
+        ``'m36'`` and / or ``'m45'`` as magnitues for lightcurves
     '''
     for i in range(len(atlas)):
         if verbose and np.mod(i,100) == 0: 
@@ -743,15 +743,15 @@ def make_cmd_plots(atlas, outroot, verbose = True):
             plt.close(fig)
 
 def make_lc_cmd_plots(atlas, outroot, lc_xlim = None, lc_twinx = False):
-    '''plot cmds and lc
+    '''plot CMDs and lightcurves
 
-    See `meth:make_lc_plots` and `meth:make_cmd_plots` for documentation. 
+    See :meth:`make_lc_plots` and :meth:`make_cmd_plots` for documentation. 
     
     Parameters
     ----------
-    atlas : ysovar_atlas.YSOVAR_atlas
-        contains dict with 't36' and / or 't45' as time for lightcurves and 
-        'm36' and / or 'm45' as magnitues for lightcurves
+    atlas : :class:`~YSOVAR.atlas.YSOVAR_atlas`
+        contains dict with ``'t36'`` and / or ``'t45'`` as time for lightcurves and 
+        ``'m36'`` and / or ``'m45'`` as magnitues for lightcurves
     '''
     # basic lc plots and CMD
     make_lc_plots(atlas, outroot, verbose = True, xlim = lc_xlim)
@@ -762,10 +762,10 @@ def plot_polys(atlas, outroot, verbose = True):
     
     Parameters
     ----------
-    atlas : YSOVAR.atlas.YSOVAR_atlas
-        each ls in the atlas contains 't36' and / or 't45' as time
+    atlas : :class:`~YSOVAR.atlas.YSOVAR_atlas`
+        each ls in the atlas contains ``'t36'`` and / or ``'t45'`` as time
         for lightcurves and 
-        'm36' and / or 'm45' as magnitues for lightcurves
+        ``'m36'`` and / or ``'m45'`` as magnitues for lightcurves
     outroot : string
         data path for saving resulting files
     verbose : boolean
@@ -788,7 +788,10 @@ def plot_polys(atlas, outroot, verbose = True):
 
 
 def make_plot_skyview(outroot, infos):
-	# only for IRAS 20050: plots positions of identified YSOs over all detected sources
+	'''only for IRAS 20050: plots positions of identified YSOs over all detected sources
+        This code is specific to the cluster IRAS 20050+2720 and should not be used
+        for other regions.
+        '''
 	plt.clf()
 	p1, = plt.plot(infos['ra'], infos['dec'], '.', color='0.75', markeredgecolor='0.75')
 	
@@ -821,7 +824,7 @@ def make_ls_plots(atlas, outroot, maxper, oversamp, maxfreq, verbose = True):
     
     Parameters
     ----------
-    atlas : ysovar_atlas.YSOVAR_atlas
+    atlas : :class:`YSOVAR.atlas.YSOVAR_atlas`
         input atlas, which includes lightcurves
     outroot : string
         data path for saving resulting files
@@ -869,7 +872,7 @@ def make_phased_lc_cmd_plots(atlas, outroot, bands = ['36','45'], marker = ['o',
     
     Parameters
     ----------
-    atlas : ysovar_atlas.YSOVAR_atlas
+    atlas : :class:`~YSOVAR.atlas.YSOVAR_atlas`
         input atlas, which includes lightcurves
     outroot : string
         data path for saving resulting files
@@ -941,6 +944,23 @@ def make_phased_lc_cmd_plots(atlas, outroot, bands = ['36','45'], marker = ['o',
 
 
 def make_sed_plots(infos, outroot, title = 'SED (data from Guenther+ 2012)', sed_bands = {}):
+    ''' Plot SEDs for all objects in ``infos``
+
+    Parameters
+    ----------
+    infos : :class:`~YSOVAR.atlas.YSOVAR_atlas` or :class:`astropy.table.Table`
+        This input table holds the magnitudes in different bands that form the
+        points of the SED.
+    outroot : string
+        path to an output directory where the plots are saved. Individual
+        files will automatically named according to the YSOVAR id number.
+    title : string
+        Title for each plot. Can be an empty string.
+    sed_bands : dictionary
+        This dictionary specifies which bands are to be plotted in the SED.
+        See :meth:`YSOVAR.atlas.get_sed` for a description of the 
+        format for ``sed_bands``.
+    '''
     # plots SED from Guenther+ 2012, and adds m1 and m2 values from the Spitzer monitoring (marked with a different symbol) if the source does not have a Spitzer 3.6 or 4.5 datapoint in Guenther+ 2012.
     fig = plt.figure()
     for i in np.arange(0,len(infos)):
@@ -970,7 +990,9 @@ def make_sed_plots(infos, outroot, title = 'SED (data from Guenther+ 2012)', sed
 
 
 def extraplots_1():
-	# some random plots I was interested in; may or may not be relevant to others.
+	'''some random plots I was interested in; may or may not be relevant to others.
+        Read the code if you want to know more about this function.
+        '''
 	# m1 min/max plot
 	i1 = np.where(info_ysos[:,30] > -99999)[0]
 	i10 = np.where( (info_ysos[:,30] > -99999) & (info_ysos[:,1] == 0) )[0]
@@ -1121,7 +1143,10 @@ def extraplots_1():
 
 
 def extraplots_2(data, infos, outroot_overview):
-    # some more random plots I was interested in; may or may not be relevant to others.
+    '''some more random plots I was interested in; may or may not be relevant to others.
+
+    Read the code if you want to know more about this function.
+    '''
     # delta plot
     plt.clf()
     i1 = np.where(infos.delta_36 > -99999)[0]
