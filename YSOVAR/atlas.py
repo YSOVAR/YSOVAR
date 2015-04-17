@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Copyright (C) 2013 H.M.Guenther & K.Poppenhaeger. See Licence.rst for details.
 '''Generate an atlas of YSOVAR lightcurves
 
@@ -661,7 +662,11 @@ def dict_from_csv(csvfile,  match_dist = 1.0/3600., min_number_of_times = 5, cha
             radec['DEC'].append(dec)
         dict_temp['ra'].extend([ra] * ind.sum())
         dict_temp['dec'].extend([dec] * ind.sum())
-        dict_temp['IAU_NAME'].append(n.replace('ISY_', 'SSTYSV '))
+        if len(str(n)) > 3: # this here is for using the atlas for Pairitel sources that don't have an ISY identifier.
+            if n[0:4] == 'ISY_':
+                dict_temp['IAU_NAME'].append(n.replace('ISY_', 'SSTYSV '))
+        else:
+            dict_temp['IAU_NAME'].append(str(n))
         dict_temp['YSOVAR2_id'].append(tab[sourceid][ind][0])
         for channel in channels.keys():
             good = ind & (tab[time] >= 0.) & (tab[channelcolumn] == channel)
