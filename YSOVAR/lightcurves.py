@@ -53,23 +53,23 @@ def combinations_with_replacement(iterable, r):
 
 def delta_delta_points(data1, data2):
     '''make a list of scatter delta_data1 vs delta_data2 for all combinations of
-    
+
     E.g. this can be used to calculate delta_T vs. delta mag
-    
+
     Parameters
     ----------
     data1 : np.ndarray
         independend variable (x-axis), e.g. time of a lightcurve
     data2 : np.ndarray
         dependent variable (y-axis), e.g. flux for a lightcurve
-    
+
     Returns
     -------
     diff_1 : np.ndarray
         all possible intervals of the independent variable
     diff_2 : np.ndarray
         corresponding differences in the depended variable
-    
+
     ..note::
         Essentially, this is an autocorrelation for irregularly sampled data
     '''
@@ -88,14 +88,14 @@ def delta_delta_points(data1, data2):
 
 def corr_points(x, data1, data2):
     '''Make all combinations of  two variables at times ``x``
-    
+
     Parameters
     ----------
     x : np.ndarray
         independend variable (x-axis), e.g. time of a lightcurve
     data1, data2 : np.ndarray
         dependent variables (y-axis), e.g. flux for a lightcurve
-    
+
     Returns
     -------
     diff_x : np.ndarray
@@ -118,36 +118,36 @@ def corr_points(x, data1, data2):
 
 def delta_corr_points(x, data1, data2):
     '''correlate two variables sampled at the same (possible irregular) time points
-    
+
     Parameters
     ----------
     x : np.ndarray
         independend variable (x-axis), e.g. time of a lightcurve
     data1, data2 : np.ndarray
         dependent variables (y-axis), e.g. flux for a lightcurve
-    
+
     Returns
     -------
     diff_x : np.ndarray
         all possible intervals of the independent variable
     d_2 : np.ndarray
         corresponding correlation in the dependent variables
-    
+
     ..note::
         Essentially, this is a correltation function for irregularly sampled data
-    
+
     '''
     diff_x, d_2 = corr_points(x, data1, data2)
     return diff_x, d_2[:,0] * d_2[:, 1]
 
 def slotting(xbins, x, y, kernel = None, normalize = True):
     '''Add up all the y values in each x bin
-    
+
     `xbins` defines a (possible non-uniform) bin grid. For each bin, find all
     (x,y) pairs that belong in the x bin and add up all the y values in that bin.
     Optionally, the x values can be convolved with a kernel before, so that
     each y can contribute to more than one bin.
-    
+
     Parameters
     ----------
     xbins : np.ndarray
@@ -155,7 +155,7 @@ def slotting(xbins, x, y, kernel = None, normalize = True):
     x, y : np.ndarry
         x and y value to be binned
     kernel : function
-        Kernel input is binedges, kernel output bin values: 
+        Kernel input is binedges, kernel output bin values:
         Thus, len(kernelout) must be len(kernelin)-1!
         The kernal output should be normalized to 1.
     normalize : bool
@@ -164,7 +164,7 @@ def slotting(xbins, x, y, kernel = None, normalize = True):
         For `normalize = true` divide by the number of entries in a time bin.
         This avoids zero-padding, but leads to an irregular "noise" distribution
         over the bins.
-    
+
     Returns
     -------
     out : np.ndarray
@@ -189,12 +189,12 @@ def slotting(xbins, x, y, kernel = None, normalize = True):
 
 def gauss_kernel(scale = 1):
     '''return a Gauss kernel
-    
+
     Parameters
     ----------
     scale : float
         width (sigma) of the Gauss function
-        
+
     Returns
     -------
     kernel : function
@@ -236,12 +236,12 @@ def discrete_struc_func(t, val, order  = 2, scale = 0.1):
 
 def normalize(data):
     '''normalize data to mean = 1 and stddev = 1
-    
+
     Parameters
     ----------
     data : np.array
         input data
-        
+
     Returns
     -------
     data : np.array
@@ -252,7 +252,7 @@ def normalize(data):
 
 def describe_autocorr(t, val, scale = 0.1, autocorr_scale = 0.5, autosum_limit = 1.75):
     '''describe the timescales of time series using an autocorrelation function
-    
+
     #This procedure takes an unevenly sampled time series and computes
     #the autocorrelation function from that. The result is binned in time bins
     #of width `scale` and three numbers are derived from the shape of the
@@ -299,7 +299,7 @@ def describe_autocorr(t, val, scale = 0.1, autocorr_scale = 0.5, autosum_limit =
 
     if len(t) < 5:
         return np.nan, np.nan, np.nan, np.nan
-    
+
     trebin = np.arange(np.min(t), np.max(t), scale)
     valrebin = np.interp(trebin, t, val)
     valnorm = normalize(valrebin)
@@ -307,8 +307,12 @@ def describe_autocorr(t, val, scale = 0.1, autocorr_scale = 0.5, autosum_limit =
     if not _has_statsmodels:
         raise ImportError('stats models not found')
     acf = tsatools.acf(valnorm, nlags = 100./scale)
-    
-    coherence_time = trebin[np.min(np.where(acf < autocorr_scale))]
+
+    index = np.where(acf < autocorr_scale)
+    if len(index) > 0:
+        coherence_time = trebin[np.min(index)]
+    else:
+        coherence_time = np.inf
     ind1max = scipy.signal.argrelmax(acf)[0]
 
     #set defaults, in case first peak is not found
@@ -319,7 +323,7 @@ def describe_autocorr(t, val, scale = 0.1, autocorr_scale = 0.5, autosum_limit =
         indsubzero = np.min(np.where(acf < 0))
         # autocorr is positive and after the first negative value
         ind = (acf[ind1max] > 0.) & (ind1max > indsubzero)
-        if ind.sum() > 0: 
+        if ind.sum() > 0:
             ind1max = np.min(ind1max[ind])
             autocorr_time = trebin[ind1max]
             autocorr_val = acf[ind1max]
@@ -380,13 +384,13 @@ def ARmodel(t, val, degree = 2, scale = 0.5):
 
 def fit_poly(x, y, yerr, degree = 2):
     ''' Fit a polynom to a dataset
-    
-    ..note:: 
+
+    ..note::
         For numerical stability the ``x`` values will be shifted, such that
         x[0] = 0!
-    
-    Thus, the parameters describe a fit to this shifted dataset! 
-    
+
+    Thus, the parameters describe a fit to this shifted dataset!
+
     Parameters
     ----------
     x : np.ndarray
@@ -397,7 +401,7 @@ def fit_poly(x, y, yerr, degree = 2):
         uncertainty of y values
     degree : integer
         degree of polynomial
-    
+
     Returns
     -------
     res_var : float
@@ -420,7 +424,7 @@ register(fit_poly, n_bands = 1, time = True, error = True, name = 'fitpoly', for
 
 def plot_all_polys(x, y, yerr, title = ''):
     '''plot polynomial fit of degree 1-6 for a dataset
-    
+
     Parameters
     ----------
     x : np.ndarray
@@ -431,7 +435,7 @@ def plot_all_polys(x, y, yerr, title = ''):
         uncertainty of y values
     title : string
         title of plot
-    
+
     Returns
     -------
     fig : matplotlib.figure instance
@@ -453,11 +457,11 @@ def plot_all_polys(x, y, yerr, title = ''):
 
 def calc_poly_chi(data, bands=['36','45']):
     '''Fits polynoms of degree 1..6 to all lightcurves in data
-    
+
     One way to adress if a lightcurve is "smooth" is to fit a low-order
     polynomial. This routine fits polynomial of degree 1 to 6  to each IRAC1 and
     IRAC 2 lightcurve and calculates the chi^2 value for each fit.
-    
+
     Parameters
     ----------
     data : astropy.table.Table
@@ -465,7 +469,7 @@ def calc_poly_chi(data, bands=['36','45']):
     bands : list of strings
         Band identifiers, e.g. ['36', '45'], can also be a list with one
         entry, e.g. ['36']
-     
+
     '''
     for deg in np.arange(1,6):
         for band in bands:
