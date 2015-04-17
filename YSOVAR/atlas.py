@@ -662,7 +662,7 @@ def dict_from_csv(csvfile,  match_dist = 1.0/3600., min_number_of_times = 5, cha
             radec['DEC'].append(dec)
         dict_temp['ra'].extend([ra] * ind.sum())
         dict_temp['dec'].extend([dec] * ind.sum())
-        if len(str(n)) > 3: # this here is for using the atlas for Pairitel sources that don't have an ISY identifier.
+        if len(str(n)) > 3: # this here is for using the atlas for PAIRITEL sources that don't have an ISY identifier.
             if n[0:4] == 'ISY_':
                 dict_temp['IAU_NAME'].append(n.replace('ISY_', 'SSTYSV '))
         else:
