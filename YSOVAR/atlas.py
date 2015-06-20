@@ -788,14 +788,15 @@ class YSOVAR_atlas(astropy.table.Table):
     t_simul = 0.01
 
     @property
-    def lclist():
+    def lclist(self):
         return self['lclist']
 
     def __init__(self, *args, **kwargs):
+        lclist = kwargs.pop('lclist', None)
         super(YSOVAR_atlas, self).__init__(*args, **kwargs)
 
-        if 'lclist' in kwargs:
-            self['lclist'] = kwargs.pop('lclist')
+        if lclist is not None:
+            self['lclist'] = lclist
             self['lclist'].format = _format_lclist
 
             for name in ['ra', 'dec', 'YSOVAR2_id','IAU_NAME']:
@@ -807,18 +808,14 @@ class YSOVAR_atlas(astropy.table.Table):
             self['ra'].description = 'J2000.0 Right ascension'
             self['dec'].description = 'J2000.0 Declination'
             self['YSOVAR2_id'].description = 'ID in YSOVAR database'
-        else:
-            defaultcols = set(['lclist', 'ra', 'dec', 'IAU_NAME', 'YSOVAR2_id'])
-            if not defaultcols.issubset(self.colnames):
-                raise ValueError('Need to pass a list of lightcurves with lclist=')
-            else:
-                # This is (by duck-typing) already a valid YSOVAR_atlas
-                pass
 
     def __getitem__(self, item):
         try:
+            # We don't like rows. Return 1 element table instead.
+            if isinstance(item, int):
+                item = [item]
             return super(YSOVAR_atlas, self).__getitem__(item)
-        except ValueError:
+        except KeyError:
             if isinstance(item, basestring):
                 self.autocalc_newcol(item)
                 # safeguard against infinite loops, because there is no direct
@@ -972,7 +969,7 @@ class YSOVAR_atlas(astropy.table.Table):
                 if data_preprocessor:
                     # need to make copy before we change the content
                     source  = self[i]
-                    source.lclist = np.array([deepcopy(self.lclist[i])])
+                    source['lclist'] = np.array([deepcopy(self.lclist[i])])
                     source = data_preprocessor(source)
                     lc = merge_lc(source.lclist[0], basebands, t_simul = t_simul)
                 else:
