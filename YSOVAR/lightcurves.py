@@ -5,7 +5,7 @@ for periodograms.
 '''
 
 import itertools
-from warning import warn
+from warnings import warn
 
 import numpy as np
 import scipy
