@@ -307,7 +307,7 @@ def describe_autocorr(t, val, scale = 0.1, autocorr_scale = 0.5, autosum_limit =
     trebin = trebin - trebin[0]
     if not _has_statsmodels:
         raise ImportError('stats models not found')
-    acf = tsatools.acf(valnorm, nlags = 100./scale)
+    acf = tsatools.acf(valnorm, nlags = int(100./scale))
 
     index = np.where(acf < autocorr_scale)
     if len(index[0]) > 0:
