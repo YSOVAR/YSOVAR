@@ -3,7 +3,7 @@ import autofuncs
 import lightcurves
 from registry import list_lcfuncs
 
-__version__ = '0.7'
+__version__ = '1.0'
 __all__ = ['atlas', 'lightcurves','atlas', 'registry.list_lcfuncs', 'plot', 'misc']
 
 

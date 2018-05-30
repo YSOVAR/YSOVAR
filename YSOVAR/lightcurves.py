@@ -5,6 +5,7 @@ for periodograms.
 '''
 
 import itertools
+from warnings import warn
 
 import numpy as np
 import scipy
@@ -306,12 +307,13 @@ def describe_autocorr(t, val, scale = 0.1, autocorr_scale = 0.5, autosum_limit =
     trebin = trebin - trebin[0]
     if not _has_statsmodels:
         raise ImportError('stats models not found')
-    acf = tsatools.acf(valnorm, nlags = 100./scale)
+    acf = tsatools.acf(valnorm, nlags = int(100./scale))
 
     index = np.where(acf < autocorr_scale)
-    if len(index) > 0:
+    if len(index[0]) > 0:
         coherence_time = trebin[np.min(index)]
     else:
+        warn("ACF never drops below autocorr_scale. Maybe the time range is not well-sampled?")
         coherence_time = np.inf
     ind1max = scipy.signal.argrelmax(acf)[0]
 
